@@ -700,6 +700,8 @@ async def create_report(request: Request, data: ReportCreate, response: Response
         "downvotes": 0,
         "validation_count": 0,
         "user_id": user_id,
+        "contributor_name": None,
+        "contributor_rank": None,
         "municipality": geo["municipality"],
         "province": geo["province"],
         "country": geo["country"],
@@ -708,6 +710,14 @@ async def create_report(request: Request, data: ReportCreate, response: Response
         "flag_count": 0,
         "is_duplicate_proximity": is_duplicate
     }
+
+    # Set contributor info: subscribers show username+rank, others show anonymous
+    if user and user.get("subscription_active"):
+        report_doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
+        report_doc["contributor_rank"] = user.get("rank", "Aspirante Cagón")
+    else:
+        report_doc["contributor_name"] = "Anónimo"
+        report_doc["contributor_rank"] = None
 
     await db.reports.insert_one(report_doc)
 
@@ -1015,7 +1025,7 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
     await db.flags.insert_one(flag_doc)
     
     flag_count = await db.flags.count_documents({"report_id": report_id})
-    if flag_count >= 3:
+    if flag_count >= 2:
         await db.reports.update_one({"id": report_id}, {"$set": {"flagged": True, "flag_count": flag_count}})
     else:
         await db.reports.update_one({"id": report_id}, {"$set": {"flag_count": flag_count}})
@@ -1221,22 +1231,23 @@ async def resend_municipality_verification(data: MunicipalityResendVerification)
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
-    """Mock municipality subscription - in production verified via payment provider."""
+    """Municipality subscription at €49/month."""
     user = await require_municipality(request)
     body = await request.json()
-    plan = body.get("plan", "monthly")
+    plan = body.get("plan", "monthly")  # monthly = €49/month
     
-    expires = datetime.now(timezone.utc) + (timedelta(days=30) if plan == "monthly" else timedelta(days=365))
+    expires = datetime.now(timezone.utc) + timedelta(days=30)
     
     await db.users.update_one(
         {"_id": ObjectId(user["_id"])},
         {"$set": {
             "municipality_subscription_active": True,
-            "municipality_subscription_type": plan,
+            "municipality_subscription_type": "monthly",
+            "municipality_subscription_price": 49.00,
             "municipality_subscription_expires": expires.isoformat()
         }}
     )
-    return {"message": "Suscripción de municipio activada", "plan": plan, "expires": expires.isoformat()}
+    return {"message": "Suscripción de municipio activada (€49/mes)", "plan": "monthly", "price": "€49/mes", "expires": expires.isoformat()}
 
 @api_router.get("/municipality/stats")
 async def get_municipality_stats(request: Request):
@@ -1321,6 +1332,47 @@ async def moderate_report(report_id: str, data: ModerationAction, request: Reque
         await db.flags.update_many({"report_id": report_id, "municipality": muni_name}, {"$set": {"status": "dismissed"}})
     
     return {"message": f"Acción '{data.action}' aplicada"}
+
+@api_router.get("/municipality/photo-reviews")
+async def get_photo_reviews(request: Request):
+    """Get reports with photos that have been flagged for photo violations (license_plate, face, name, personal_info)."""
+    user = await require_municipality(request)
+    muni_name = user.get("municipality_name", "")
+    
+    photo_violation_reasons = ["license_plate", "face", "name", "personal_info"]
+    
+    # Get flags with photo-related violations
+    flags = await db.flags.find(
+        {"municipality": muni_name, "reason": {"$in": photo_violation_reasons}, "status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+    
+    # Group by report and attach report data
+    seen_reports = set()
+    reviews = []
+    for flag in flags:
+        rid = flag["report_id"]
+        if rid in seen_reports:
+            continue
+        seen_reports.add(rid)
+        
+        report = await db.reports.find_one({"id": rid}, {"_id": 0})
+        if not report:
+            continue
+        
+        # Get all flags for this report
+        all_flags = await db.flags.find({"report_id": rid}, {"_id": 0, "reason": 1, "created_at": 1}).to_list(20)
+        
+        reviews.append({
+            "report": report,
+            "flags": all_flags,
+            "flag_count": len(all_flags),
+            "photo_violation_count": sum(1 for f in all_flags if f["reason"] in photo_violation_reasons)
+        })
+    
+    return reviews
+
+
 
 # ==================== WEBHOOKS ====================
 

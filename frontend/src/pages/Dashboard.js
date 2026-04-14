@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Building2, MapPin, Flag, Archive, Eye, EyeOff, CheckCircle, XCircle, Loader2, BarChart3, AlertTriangle, LogOut, RefreshCw } from "lucide-react";
+import { Building2, MapPin, Flag, Archive, Eye, EyeOff, CheckCircle, XCircle, Loader2, BarChart3, AlertTriangle, LogOut, RefreshCw, Camera, Shield } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
@@ -27,6 +27,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [reports, setReports] = useState([]);
   const [flags, setFlags] = useState([]);
+  const [photoReviews, setPhotoReviews] = useState([]);
   const [reportFilter, setReportFilter] = useState("active");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
@@ -43,21 +44,21 @@ export default function Dashboard() {
   const fetchAll = async () => {
     setLoading(true);
     try {
-      const [statsRes, reportsRes, flagsRes] = await Promise.all([
+      const [statsRes, reportsRes, flagsRes, photoRes] = await Promise.all([
         axios.get(`${API}/municipality/stats`, { withCredentials: true }),
         axios.get(`${API}/municipality/reports?status=${reportFilter}&page=${page}`, { withCredentials: true }),
-        axios.get(`${API}/municipality/flags?status=pending`, { withCredentials: true })
+        axios.get(`${API}/municipality/flags?status=pending`, { withCredentials: true }),
+        axios.get(`${API}/municipality/photo-reviews`, { withCredentials: true }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setReports(reportsRes.data.reports);
       setTotalPages(reportsRes.data.pages);
       setFlags(flagsRes.data);
+      setPhotoReviews(photoRes.data);
     } catch (err) {
       if (err.response?.status === 403) navigate("/dashboard/login");
       else toast.error("Error loading dashboard");
-    } finally {
-      setLoading(false);
-    }
+    } finally { setLoading(false); }
   };
 
   const fetchReports = async (filter, p) => {
@@ -79,21 +80,12 @@ export default function Dashboard() {
       await axios.post(`${API}/municipality/moderate/${reportId}`, { action }, { withCredentials: true });
       toast.success(`Acción "${action}" aplicada`);
       fetchAll();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || "Error");
-    }
+    } catch (err) { toast.error(err.response?.data?.detail || "Error"); }
   };
 
-  const handleLogout = async () => {
-    await logout();
-    navigate("/dashboard/login");
-  };
+  const handleLogout = async () => { await logout(); navigate("/dashboard/login"); };
 
-  if (loading) return (
-    <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center">
-      <Loader2 className="w-8 h-8 animate-spin text-[#2B2D42]" />
-    </div>
-  );
+  if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#2B2D42]" /></div>;
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="dashboard-page">
@@ -104,7 +96,7 @@ export default function Dashboard() {
             <Building2 className="w-6 h-6" />
             <div>
               <h1 className="font-bold text-lg" style={{ fontFamily: 'Nunito, sans-serif' }}>{user?.municipality_name || "Dashboard"}</h1>
-              <p className="text-white/60 text-xs">Panel de Ayuntamiento</p>
+              <p className="text-white/60 text-xs">Panel de Ayuntamiento — €49/mes</p>
             </div>
           </div>
           <Button variant="ghost" onClick={handleLogout} className="text-white/80 hover:text-white hover:bg-white/10" data-testid="dashboard-logout-btn">
@@ -114,7 +106,7 @@ export default function Dashboard() {
       </div>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-6">
-        {/* Stats Grid */}
+        {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
             {[
@@ -125,7 +117,7 @@ export default function Dashboard() {
               { label: "Últimos 7 días", value: stats.recent_reports_7d, icon: BarChart3, color: "#42A5F5" },
               { label: "Flags Pendientes", value: stats.pending_flags, icon: AlertTriangle, color: "#FF5252" }
             ].map(({ label, value, icon: Icon, color }) => (
-              <div key={label} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`stat-${label.toLowerCase().replace(/ /g, '-')}`}>
+              <div key={label} className="bg-white rounded-xl p-4 shadow-sm">
                 <div className="flex items-center gap-2 mb-2">
                   <Icon className="w-4 h-4" style={{ color }} />
                   <span className="text-xs text-[#8D99AE]">{label}</span>
@@ -139,13 +131,16 @@ export default function Dashboard() {
         <Tabs defaultValue="reports" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="reports" data-testid="tab-reports">Reportes</TabsTrigger>
+            <TabsTrigger value="photos" data-testid="tab-photos">
+              Revisión Fotos {photoReviews.length > 0 && <Badge variant="destructive" className="ml-2 text-xs">{photoReviews.length}</Badge>}
+            </TabsTrigger>
             <TabsTrigger value="flags" data-testid="tab-flags">
               Moderación {flags.length > 0 && <Badge variant="destructive" className="ml-2 text-xs">{flags.length}</Badge>}
             </TabsTrigger>
           </TabsList>
 
+          {/* Reports Tab */}
           <TabsContent value="reports">
-            {/* Filter */}
             <div className="flex gap-2 mb-4 flex-wrap">
               {["active", "flagged", "archived"].map((f) => (
                 <Button key={f} variant={reportFilter === f ? "default" : "outline"} size="sm" onClick={() => handleFilterChange(f)}
@@ -156,13 +151,13 @@ export default function Dashboard() {
               <Button variant="ghost" size="sm" onClick={fetchAll} className="ml-auto"><RefreshCw className="w-4 h-4" /></Button>
             </div>
 
-            {/* Reports Table */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead className="bg-[#F8F9FA] border-b">
                     <tr>
                       <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Ubicación</th>
+                      <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Contribuidor</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Fecha</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Votos</th>
                       <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Flags</th>
@@ -172,7 +167,7 @@ export default function Dashboard() {
                   </thead>
                   <tbody className="divide-y">
                     {reports.length === 0 ? (
-                      <tr><td colSpan={6} className="px-4 py-8 text-center text-[#8D99AE]">No hay reportes</td></tr>
+                      <tr><td colSpan={7} className="px-4 py-8 text-center text-[#8D99AE]">No hay reportes</td></tr>
                     ) : reports.map((r) => (
                       <tr key={r.id} className="hover:bg-[#F8F9FA]">
                         <td className="px-4 py-3">
@@ -181,9 +176,15 @@ export default function Dashboard() {
                             <span className="text-xs text-[#2B2D42]">{r.latitude?.toFixed(4)}, {r.longitude?.toFixed(4)}</span>
                           </div>
                         </td>
+                        <td className="px-4 py-3">
+                          <div>
+                            <span className="text-xs font-medium text-[#2B2D42]">{r.contributor_name || "Anónimo"}</span>
+                            {r.contributor_rank && <span className="text-xs text-[#FF6B6B] block">{r.contributor_rank}</span>}
+                          </div>
+                        </td>
                         <td className="px-4 py-3 text-xs text-[#8D99AE]">{new Date(r.created_at).toLocaleDateString("es-ES")}</td>
                         <td className="px-4 py-3">
-                          <span className="text-xs"><span className="text-[#FF5252]">{r.still_there_count || 0}</span> / <span className="text-[#66BB6A]">{r.cleaned_count || 0}</span></span>
+                          <span className="text-xs"><span className="text-[#66BB6A]">{r.upvotes || 0}</span> / <span className="text-[#FF5252]">{r.downvotes || 0}</span></span>
                         </td>
                         <td className="px-4 py-3"><span className="text-xs font-medium text-[#FF5252]">{r.flag_count || 0}</span></td>
                         <td className="px-4 py-3">
@@ -191,8 +192,8 @@ export default function Dashboard() {
                         </td>
                         <td className="px-4 py-3">
                           <div className="flex gap-1">
-                            {!r.flagged && <Button size="sm" variant="ghost" onClick={() => handleModerate(r.id, "hide")} className="text-[#FF5252] h-7 px-2" data-testid={`hide-${r.id}`}><EyeOff className="w-3 h-3" /></Button>}
-                            {r.flagged && <Button size="sm" variant="ghost" onClick={() => handleModerate(r.id, "restore")} className="text-[#66BB6A] h-7 px-2" data-testid={`restore-${r.id}`}><Eye className="w-3 h-3" /></Button>}
+                            {!r.flagged && <Button size="sm" variant="ghost" onClick={() => handleModerate(r.id, "hide")} className="text-[#FF5252] h-7 px-2"><EyeOff className="w-3 h-3" /></Button>}
+                            {r.flagged && <Button size="sm" variant="ghost" onClick={() => handleModerate(r.id, "restore")} className="text-[#66BB6A] h-7 px-2"><Eye className="w-3 h-3" /></Button>}
                           </div>
                         </td>
                       </tr>
@@ -210,6 +211,67 @@ export default function Dashboard() {
             </div>
           </TabsContent>
 
+          {/* Photo Reviews Tab */}
+          <TabsContent value="photos">
+            <div className="mb-4">
+              <div className="flex items-center gap-2 mb-2">
+                <Camera className="w-5 h-5 text-[#FF5252]" />
+                <h2 className="font-bold text-[#2B2D42]">Revisión de Fotos</h2>
+              </div>
+              <p className="text-sm text-[#8D99AE]">Reportes marcados por violaciones de privacidad (matrículas, caras, nombres). Se ocultan automáticamente con 2+ flags.</p>
+            </div>
+
+            <div className="space-y-4">
+              {photoReviews.length === 0 ? (
+                <div className="bg-white rounded-xl p-8 text-center shadow-sm">
+                  <Shield className="w-12 h-12 text-[#66BB6A] mx-auto mb-3" />
+                  <p className="text-[#2B2D42] font-medium">No hay fotos pendientes de revisión</p>
+                  <p className="text-[#8D99AE] text-sm">Todas las fotos cumplen con las normas de privacidad</p>
+                </div>
+              ) : photoReviews.map((review) => (
+                <div key={review.report?.id} className="bg-white rounded-xl shadow-sm overflow-hidden" data-testid={`photo-review-${review.report?.id}`}>
+                  <div className="flex flex-col sm:flex-row">
+                    {/* Photo */}
+                    {review.report?.photo_url ? (
+                      <div className="sm:w-48 h-48 sm:h-auto shrink-0">
+                        <img src={`${API}/files/${review.report.photo_url}`} alt="Foto reportada" className="w-full h-full object-cover" />
+                      </div>
+                    ) : (
+                      <div className="sm:w-48 h-48 sm:h-auto shrink-0 bg-[#F8F9FA] flex items-center justify-center">
+                        <Camera className="w-8 h-8 text-[#8D99AE]" />
+                      </div>
+                    )}
+
+                    {/* Details */}
+                    <div className="flex-1 p-4">
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        {review.flags.map((f, i) => (
+                          <Badge key={i} variant="destructive" className="text-xs">{FLAG_REASON_LABELS[f.reason] || f.reason}</Badge>
+                        ))}
+                      </div>
+                      <div className="text-xs text-[#8D99AE] space-y-1 mb-3">
+                        <p>Ubicación: {review.report?.latitude?.toFixed(4)}, {review.report?.longitude?.toFixed(4)}</p>
+                        <p>Fecha: {review.report?.created_at ? new Date(review.report.created_at).toLocaleDateString("es-ES") : "-"}</p>
+                        <p>Contribuidor: {review.report?.contributor_name || "Anónimo"}</p>
+                        <p className="font-medium text-[#FF5252]">{review.photo_violation_count} violaciones de privacidad</p>
+                      </div>
+
+                      <div className="flex gap-2">
+                        <Button size="sm" onClick={() => handleModerate(review.report.id, "hide")} className="bg-[#FF5252] hover:bg-[#E53935] text-white" data-testid={`photo-hide-${review.report?.id}`}>
+                          <EyeOff className="w-3 h-3 mr-1" />Ocultar Reporte
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => handleModerate(review.report.id, "dismiss")} data-testid={`photo-dismiss-${review.report?.id}`}>
+                          <CheckCircle className="w-3 h-3 mr-1" />Foto Correcta
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </TabsContent>
+
+          {/* Flags Tab */}
           <TabsContent value="flags">
             <div className="space-y-3">
               {flags.length === 0 ? (
@@ -229,15 +291,13 @@ export default function Dashboard() {
                         <Badge variant="destructive" className="text-xs">{FLAG_REASON_LABELS[flag.reason] || flag.reason}</Badge>
                         <span className="text-xs text-[#8D99AE]">{new Date(flag.created_at).toLocaleDateString("es-ES")}</span>
                       </div>
-                      <p className="text-xs text-[#8D99AE]">
-                        Reporte: {flag.report?.latitude?.toFixed(4)}, {flag.report?.longitude?.toFixed(4)}
-                      </p>
+                      <p className="text-xs text-[#8D99AE]">Reporte: {flag.report?.latitude?.toFixed(4)}, {flag.report?.longitude?.toFixed(4)}</p>
                     </div>
-                    <div className="flex gap-2">
-                      <Button size="sm" onClick={() => handleModerate(flag.report_id, "hide")} className="bg-[#FF5252] hover:bg-[#E53935] text-white h-8" data-testid={`flag-hide-${flag.report_id}`}>
+                    <div className="flex gap-2 shrink-0">
+                      <Button size="sm" onClick={() => handleModerate(flag.report_id, "hide")} className="bg-[#FF5252] hover:bg-[#E53935] text-white h-8">
                         <EyeOff className="w-3 h-3 mr-1" />Ocultar
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => handleModerate(flag.report_id, "dismiss")} className="h-8" data-testid={`flag-dismiss-${flag.report_id}`}>
+                      <Button size="sm" variant="outline" onClick={() => handleModerate(flag.report_id, "dismiss")} className="h-8">
                         <XCircle className="w-3 h-3 mr-1" />Descartar
                       </Button>
                     </div>

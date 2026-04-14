@@ -358,6 +358,14 @@ export default function MapPage() {
               {selectedReport.description && (
                 <p className="text-sm text-[#2B2D42] mb-3 italic">"{selectedReport.description}"</p>
               )}
+              {/* Contributor */}
+              <div className="flex items-center gap-2 mb-3">
+                <User className="w-4 h-4 text-[#8D99AE]" />
+                <span className="text-sm text-[#2B2D42] font-medium">{selectedReport.contributor_name || "Anónimo"}</span>
+                {selectedReport.contributor_rank && (
+                  <span className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-0.5 rounded-full">{selectedReport.contributor_rank}</span>
+                )}
+              </div>
               <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-2 text-[#8D99AE] mb-2">
                   <Clock className="w-4 h-4" /><span className="text-sm">{formatDate(selectedReport.created_at)}</span>
