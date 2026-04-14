@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -90,7 +90,15 @@ export default function MapPage() {
   const [myValidation, setMyValidation] = useState(null);
   const [description, setDescription] = useState("");
   const [showHeatmap, setShowHeatmap] = useState(false);
+  const [pushEnabled, setPushEnabled] = useState(false);
   const fileInputRef = useRef(null);
+
+  // Check push notification status
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'granted') {
+      setPushEnabled(true);
+    }
+  }, []);
 
   const fetchReports = async () => {
     try {
@@ -198,6 +206,52 @@ export default function MapPage() {
     } catch (error) { toast.error(error.response?.data?.detail || "Error"); }
   };
 
+  const handleShare = async () => {
+    if (!selectedReport) return;
+    try {
+      const { data } = await axios.get(`${API}/reports/${selectedReport.id}/share`, { withCredentials: true });
+      if (navigator.share) {
+        await navigator.share({ title: data.title, text: data.text, url: data.url });
+      } else {
+        await navigator.clipboard.writeText(data.url);
+        toast.success("Enlace copiado al portapapeles");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") toast.error("Error al compartir");
+    }
+  };
+
+  const togglePush = async () => {
+    if (!user?.subscription_active) { navigate("/subscribe"); return; }
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+      toast.error("Tu navegador no soporta notificaciones push");
+      return;
+    }
+    if (pushEnabled) {
+      await axios.post(`${API}/push/unsubscribe`, {}, { withCredentials: true });
+      setPushEnabled(false);
+      toast.success("Notificaciones desactivadas");
+      return;
+    }
+    try {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') { toast.error("Permiso de notificaciones denegado"); return; }
+      const { data: vapidData } = await axios.get(`${API}/push/vapid-key`);
+      const reg = await navigator.serviceWorker.ready;
+      const subscription = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: vapidData.vapid_public_key
+      });
+      await axios.post(`${API}/push/subscribe`, {
+        subscription: subscription.toJSON(),
+        latitude: userLocation?.lat,
+        longitude: userLocation?.lng
+      }, { withCredentials: true });
+      setPushEnabled(true);
+      toast.success("Notificaciones activadas para reportes cercanos");
+    } catch (err) { toast.error("Error activando notificaciones"); }
+  };
+
   const formatDate = (dateStr) => {
     const date = new Date(dateStr);
     const now = new Date();
@@ -226,6 +280,11 @@ export default function MapPage() {
         </div>
         <div className="flex gap-2">
           <LanguageSelector />
+          {user?.subscription_active && (
+            <Button variant="outline" size="sm" onClick={togglePush} className={`backdrop-blur-sm shadow-lg border-0 ${pushEnabled ? 'bg-[#FF6B6B] text-white' : 'bg-white/95'}`} data-testid="push-toggle">
+              {pushEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+            </Button>
+          )}
           {user ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -437,7 +496,14 @@ export default function MapPage() {
                 <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">{t("alreadyVoted")}: {myVote === "still_there" ? t("stillThere") : t("cleaned")}</div>
               )}
 
-              <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="w-full text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn"><Flag className="w-4 h-4 mr-2" />{t("flagReport")}</Button>
+              <div className="flex gap-2 mb-2">
+                <Button variant="ghost" onClick={handleShare} className="flex-1 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
+                  <Share2 className="w-4 h-4 mr-2" />Compartir
+                </Button>
+                <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="flex-1 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
+                  <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
+                </Button>
+              </div>
             </div>
           )}
           <DrawerFooter className="pt-0"><DrawerClose asChild><Button variant="ghost" className="text-[#8D99AE]">{t("close")}</Button></DrawerClose></DrawerFooter>

@@ -11,6 +11,7 @@ import DashboardLogin from "./pages/DashboardLogin";
 import Dashboard from "./pages/Dashboard";
 import MunicipalityRegister from "./pages/MunicipalityRegister";
 import ProfilePage from "./pages/ProfilePage";
+import AnalyticsPage from "./pages/AnalyticsPage";
 import "./App.css";
 
 function App() {
@@ -28,6 +29,7 @@ function App() {
             <Route path="/dashboard/login" element={<DashboardLogin />} />
             <Route path="/dashboard/register" element={<MunicipalityRegister />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
           </Routes>
           <Toaster position="top-center" richColors />
         </BrowserRouter>

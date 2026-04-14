@@ -32,6 +32,7 @@ from validation_service import process_validation
 from ranking_service import recalculate_all_ranks, get_user_rank_info
 from email_service import send_verification_code as send_verification_email, is_configured as email_configured
 from webhook_handlers import process_apple_notification, process_google_notification
+from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -329,6 +330,11 @@ class MunicipalityVerify(BaseModel):
 
 class MunicipalityResendVerification(BaseModel):
     email: EmailStr
+
+class PushSubscriptionCreate(BaseModel):
+    subscription: dict
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 # Create the main app
 app = FastAPI()
@@ -783,6 +789,11 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     report_doc.pop("_id", None)
     report_doc["points_earned"] = points_result["points"]
     report_doc["points_breakdown"] = points_result["breakdown"]
+
+    # Send push notifications to nearby subscribers (async, non-blocking)
+    import asyncio
+    asyncio.create_task(notify_nearby_users(db, data.latitude, data.longitude, report_id, geo["municipality"]))
+
     return report_doc
 
 @api_router.post("/reports/{report_id}/photo")
@@ -1381,6 +1392,182 @@ async def get_photo_reviews(request: Request):
 
 
 
+
+# ==================== PUSH NOTIFICATIONS ====================
+
+@api_router.get("/push/vapid-key")
+async def get_vapid_key():
+    """Return VAPID public key for client push subscription."""
+    return {"vapid_public_key": VAPID_PUBLIC_KEY}
+
+@api_router.post("/push/subscribe")
+async def subscribe_push(data: PushSubscriptionCreate, request: Request, response: Response):
+    """Subscribe to push notifications for nearby reports."""
+    user = await get_current_user(request)
+    anon_id = get_anonymous_id(request)
+    user_id = user["_id"] if user else anon_id
+
+    # Upsert subscription
+    await db.push_subscriptions.update_one(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": user_id,
+            "subscription": data.subscription,
+            "latitude": data.latitude,
+            "longitude": data.longitude,
+            "active": True,
+            "updated_at": datetime.now(timezone.utc).isoformat()
+        }},
+        upsert=True
+    )
+
+    if not user:
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=False, samesite="lax", max_age=86400*365, path="/")
+
+    return {"message": "Suscripción push activada"}
+
+@api_router.post("/push/unsubscribe")
+async def unsubscribe_push(request: Request):
+    user = await get_current_user(request)
+    anon_id = request.cookies.get("anon_id")
+    user_id = user["_id"] if user else anon_id
+    if user_id:
+        await db.push_subscriptions.update_one({"user_id": user_id}, {"$set": {"active": False}})
+    return {"message": "Suscripción push desactivada"}
+
+# ==================== SOCIAL SHARING ====================
+
+@api_router.get("/reports/{report_id}/share")
+async def get_share_data(report_id: str, request: Request):
+    """Get shareable data for a report."""
+    report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+    share_url = f"{frontend_url}/?report={report_id}"
+    municipality = report.get("municipality", "España")
+    created = report.get("created_at", "")
+    contributor = report.get("contributor_name", "Anónimo")
+
+    return {
+        "url": share_url,
+        "title": f"Reporte de caca en {municipality} — Caca Radar",
+        "text": f"Nuevo reporte en {municipality} por {contributor}. ¡Ayuda a mantener las calles limpias!",
+        "report_id": report_id,
+        "municipality": municipality,
+        "contributor": contributor,
+        "created_at": created,
+        "photo_url": f"{os.environ.get('FRONTEND_URL', '')}/api/files/{report['photo_url']}" if report.get("photo_url") else None
+    }
+
+# ==================== MUNICIPALITY ANALYTICS ====================
+
+@api_router.get("/municipality/analytics")
+async def get_municipality_analytics(request: Request):
+    """Advanced analytics for municipality dashboard."""
+    user = await require_municipality(request)
+    muni_name = user.get("municipality_name", "")
+
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = (now - timedelta(days=30)).isoformat()
+    sixty_days_ago = (now - timedelta(days=60)).isoformat()
+
+    # Summary stats
+    reports_30d = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}})
+    reports_prev = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
+    trend = round(((reports_30d - reports_prev) / max(reports_prev, 1)) * 100) if reports_prev > 0 else 0
+
+    verified = await db.reports.count_documents({"municipality": muni_name, "status": "verified"})
+    total = await db.reports.count_documents({"municipality": muni_name})
+    flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
+    flag_rate = round((flagged / max(total, 1)) * 100, 1)
+
+    # Average resolution time (time from creation to archived/verified)
+    archived_reports = await db.reports.find(
+        {"municipality": muni_name, "archived": True, "created_at": {"$gte": thirty_days_ago}},
+        {"_id": 0, "created_at": 1, "moderated_at": 1}
+    ).to_list(100)
+    resolution_hours = []
+    for r in archived_reports:
+        if r.get("moderated_at"):
+            try:
+                created = datetime.fromisoformat(r["created_at"])
+                resolved = datetime.fromisoformat(r["moderated_at"])
+                hours = (resolved - created).total_seconds() / 3600
+                if hours > 0:
+                    resolution_hours.append(hours)
+            except Exception:
+                pass
+    avg_resolution = round(sum(resolution_hours) / len(resolution_hours), 1) if resolution_hours else None
+
+    # Daily reports for the last 30 days
+    daily_reports = []
+    for i in range(30):
+        day = (now - timedelta(days=29 - i)).date()
+        day_start = day.isoformat()
+        day_end = (day + timedelta(days=1)).isoformat()
+        count = await db.reports.count_documents({
+            "municipality": muni_name,
+            "created_at": {"$gte": day_start, "$lt": day_end}
+        })
+        daily_reports.append({"date": day.strftime("%d/%m"), "count": count})
+
+    # Hourly distribution
+    all_reports = await db.reports.find(
+        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}},
+        {"_id": 0, "created_at": 1}
+    ).to_list(2000)
+    hourly = [0] * 24
+    for r in all_reports:
+        try:
+            h = datetime.fromisoformat(r["created_at"]).hour
+            hourly[h] += 1
+        except Exception:
+            pass
+    hourly_distribution = [{"hour": f"{h:02d}:00", "count": hourly[h]} for h in range(24)]
+
+    # Status distribution
+    status_counts = {}
+    for status in ["pending", "verified", "rejected"]:
+        c = await db.reports.count_documents({"municipality": muni_name, "status": status})
+        if c > 0:
+            status_counts[status] = c
+    archived_count = await db.reports.count_documents({"municipality": muni_name, "archived": True})
+    if archived_count > 0:
+        status_counts["archived"] = archived_count
+    status_labels = {"pending": "Pendiente", "verified": "Verificado", "rejected": "Rechazado", "archived": "Archivado"}
+    status_distribution = [{"status": status_labels.get(s, s), "count": c} for s, c in status_counts.items()]
+
+    # Top zones (cluster reports by approximate grid)
+    zone_reports = await db.reports.find(
+        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}},
+        {"_id": 0, "latitude": 1, "longitude": 1}
+    ).to_list(2000)
+    zone_map = {}
+    for r in zone_reports:
+        # Round to ~100m grid
+        key = f"{round(r['latitude'], 3)},{round(r['longitude'], 3)}"
+        zone_map[key] = zone_map.get(key, 0) + 1
+    top_zones = sorted(zone_map.items(), key=lambda x: -x[1])[:10]
+    top_zones = [{"area": f"Zona {k}", "count": v} for k, v in top_zones]
+
+    return {
+        "municipality": muni_name,
+        "summary": {
+            "reports_30d": reports_30d,
+            "reports_trend": trend,
+            "verified": verified,
+            "avg_resolution_hours": avg_resolution,
+            "flag_rate": flag_rate
+        },
+        "daily_reports": daily_reports,
+        "hourly_distribution": hourly_distribution,
+        "status_distribution": status_distribution,
+        "top_zones": top_zones
+    }
+
+
 # ==================== WEBHOOKS ====================
 
 @api_router.post("/webhooks/apple")
@@ -1504,6 +1691,8 @@ async def startup():
     await db.webhook_notifications.create_index("store")
     await db.webhook_notifications.create_index("received_at")
     await db.webhook_processing_log.create_index("user_id")
+    await db.push_subscriptions.create_index("user_id", unique=True)
+    await db.push_subscriptions.create_index([("latitude", 1), ("longitude", 1)])
     
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@cacaradar.es")

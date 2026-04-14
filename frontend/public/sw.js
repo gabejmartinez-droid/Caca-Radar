@@ -25,6 +25,59 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
+
+// Push notification handler
+self.addEventListener('push', (event) => {
+  if (!event.data) return;
+
+  try {
+    const data = event.data.json();
+    const options = {
+      body: data.body || 'Nuevo reporte cerca de ti',
+      icon: data.icon || '/icon-192.png',
+      badge: data.badge || '/icon-192.png',
+      vibrate: [200, 100, 200],
+      data: { url: data.url || '/' },
+      actions: [
+        { action: 'view', title: 'Ver reporte' },
+        { action: 'dismiss', title: 'Cerrar' }
+      ]
+    };
+
+    event.waitUntil(
+      self.registration.showNotification(data.title || 'Caca Radar', options)
+    );
+  } catch (e) {
+    // Fallback for non-JSON payloads
+    event.waitUntil(
+      self.registration.showNotification('Caca Radar', {
+        body: event.data.text(),
+        icon: '/icon-192.png'
+      })
+    );
+  }
+});
+
+// Notification click handler
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  if (event.action === 'dismiss') return;
+
+  const url = event.notification.data?.url || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) {
+        if (client.url.includes(self.location.origin)) {
+          client.navigate(url);
+          return client.focus();
+        }
+      }
+      return self.clients.openWindow(url);
+    })
+  );
+});
+
           .filter((name) => name !== CACHE_NAME)
           .map((name) => caches.delete(name))
       );

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { Building2, MapPin, Flag, Archive, Eye, EyeOff, CheckCircle, XCircle, Loader2, BarChart3, AlertTriangle, LogOut, RefreshCw, Camera, Shield } from "lucide-react";
+import { Building2, MapPin, Flag, Archive, Eye, EyeOff, CheckCircle, XCircle, Loader2, BarChart3, AlertTriangle, LogOut, RefreshCw, Camera, Shield, TrendingUp } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
@@ -99,9 +99,14 @@ export default function Dashboard() {
               <p className="text-white/60 text-xs">Panel de Ayuntamiento — €49/mes</p>
             </div>
           </div>
-          <Button variant="ghost" onClick={handleLogout} className="text-white/80 hover:text-white hover:bg-white/10" data-testid="dashboard-logout-btn">
-            <LogOut className="w-4 h-4 mr-2" />Salir
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => navigate("/dashboard/analytics")} className="text-white/80 hover:text-white hover:bg-white/10" data-testid="analytics-btn">
+              <TrendingUp className="w-4 h-4 mr-2" />Analíticas
+            </Button>
+            <Button variant="ghost" onClick={handleLogout} className="text-white/80 hover:text-white hover:bg-white/10" data-testid="dashboard-logout-btn">
+              <LogOut className="w-4 h-4 mr-2" />Salir
+            </Button>
+          </div>
         </div>
       </div>
 

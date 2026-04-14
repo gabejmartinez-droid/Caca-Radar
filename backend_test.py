@@ -373,6 +373,143 @@ class CacaRadarAPITester:
         
         return success, response
     
+    def test_share_endpoint(self):
+        """Test share data endpoint for reports"""
+        # Get a report to share (if any exist)
+        reports_success, reports_response = self.run_test(
+            "Get Reports for Share Test", "GET", "reports", 200
+        )
+        
+        if not reports_success or not reports_response or len(reports_response) == 0:
+            self.log("   ⚠️  No reports available for share test")
+            return True, {"message": "No reports to test sharing"}
+        
+        report_id = reports_response[0]['id']
+        
+        # Test share endpoint
+        success, response = self.run_test(
+            "Share Report Data", "GET", f"reports/{report_id}/share", 200
+        )
+        
+        if success:
+            # Check if response contains expected share fields
+            expected_fields = ['url', 'title', 'text', 'report_id', 'municipality', 'contributor']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing share fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ Share data contains all required fields")
+                self.log(f"   📄 Title: {response.get('title', '')[:50]}...")
+                self.log(f"   🔗 URL: {response.get('url', '')}")
+        
+        return success, response
+    
+    def test_vapid_key_endpoint(self):
+        """Test VAPID public key endpoint for push notifications"""
+        success, response = self.run_test(
+            "VAPID Public Key", "GET", "push/vapid-key", 200
+        )
+        
+        if success:
+            if 'vapid_public_key' in response:
+                key = response['vapid_public_key']
+                self.log(f"   ✅ VAPID key received: {key[:20]}...{key[-10:] if len(key) > 30 else key}")
+            else:
+                self.log(f"   ⚠️  No vapid_public_key in response: {response}")
+        
+        return success, response
+    
+    def test_push_subscribe_endpoint(self):
+        """Test push notification subscription endpoint"""
+        if not self.user_token:
+            self.log("⚠️  Skipping push subscribe - no user token")
+            return False, {}
+        
+        # Mock push subscription object
+        mock_subscription = {
+            "endpoint": "https://fcm.googleapis.com/fcm/send/mock-endpoint",
+            "keys": {
+                "p256dh": "mock-p256dh-key",
+                "auth": "mock-auth-key"
+            }
+        }
+        
+        success, response = self.run_test(
+            "Push Subscribe", "POST", "push/subscribe", 200,
+            {
+                "subscription": mock_subscription,
+                "latitude": 40.4168,
+                "longitude": -3.7038
+            },
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            self.log(f"   ✅ Push subscription successful: {response.get('message', '')}")
+        
+        return success, response
+    
+    def test_push_unsubscribe_endpoint(self):
+        """Test push notification unsubscribe endpoint"""
+        if not self.user_token:
+            self.log("⚠️  Skipping push unsubscribe - no user token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Push Unsubscribe", "POST", "push/unsubscribe", 200,
+            {},
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            self.log(f"   ✅ Push unsubscribe successful: {response.get('message', '')}")
+        
+        return success, response
+    
+    def test_municipality_analytics_endpoint(self):
+        """Test municipality analytics endpoint with comprehensive data"""
+        if not self.municipality_token:
+            self.log("⚠️  Skipping municipality analytics - no municipality token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Municipality Analytics", "GET", "municipality/analytics", 200,
+            cookies={'access_token': self.municipality_token}
+        )
+        
+        if success:
+            # Check if response contains expected analytics fields
+            expected_fields = ['municipality', 'summary', 'daily_reports', 'hourly_distribution', 'status_distribution', 'top_zones']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing analytics fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ Analytics contains all required fields")
+                
+                # Check data structure details
+                daily_reports = response.get('daily_reports', [])
+                hourly_distribution = response.get('hourly_distribution', [])
+                status_distribution = response.get('status_distribution', [])
+                top_zones = response.get('top_zones', [])
+                
+                self.log(f"   📊 Daily reports: {len(daily_reports)} data points")
+                self.log(f"   🕐 Hourly distribution: {len(hourly_distribution)} hours")
+                self.log(f"   📈 Status distribution: {len(status_distribution)} statuses")
+                self.log(f"   🗺️  Top zones: {len(top_zones)} zones")
+                
+                # Validate expected data point counts
+                if len(daily_reports) == 30:
+                    self.log(f"   ✅ Daily reports has correct 30 data points")
+                else:
+                    self.log(f"   ⚠️  Daily reports expected 30 points, got {len(daily_reports)}")
+                    
+                if len(hourly_distribution) == 24:
+                    self.log(f"   ✅ Hourly distribution has correct 24 hours")
+                else:
+                    self.log(f"   ⚠️  Hourly distribution expected 24 hours, got {len(hourly_distribution)}")
+        
+        return success, response
+    
     def _create_mock_transaction_jws(self):
         """Create mock Apple transaction info JWS"""
         transaction_info = {
@@ -404,7 +541,7 @@ class CacaRadarAPITester:
     
     def run_all_tests(self):
         """Run all backend tests"""
-        self.log("🚀 Starting Caca Radar Backend Tests - Profile, Categories & New Features")
+        self.log("🚀 Starting Caca Radar Backend Tests - Iteration 7: Social Sharing, Push Notifications & Analytics")
         
         # Basic connectivity
         self.test_health_check()
@@ -414,7 +551,20 @@ class CacaRadarAPITester:
         self.test_municipality_login()
         self.test_user_registration()
         
-        # NEW FEATURES TESTING
+        # ITERATION 7 NEW FEATURES TESTING
+        self.log("\n🆕 Testing New Features - Social Sharing")
+        self.test_share_endpoint()
+        
+        self.log("\n🆕 Testing New Features - Push Notifications")
+        self.test_vapid_key_endpoint()
+        self.test_push_subscribe_endpoint()
+        self.test_push_unsubscribe_endpoint()
+        
+        self.log("\n🆕 Testing New Features - Municipality Analytics")
+        self.test_municipality_analytics_endpoint()
+        
+        # PREVIOUS FEATURES TESTING
+        self.log("\n📋 Testing Previous Features")
         self.test_user_profile_endpoint()
         self.test_reports_with_category_filter()
         self.test_report_creation_with_category()
