@@ -39,6 +39,11 @@ code {
 }
 
 /* Custom marker styles */
+.custom-marker-wrapper {
+    background: transparent !important;
+    border: none !important;
+}
+
 .custom-marker {
     display: flex;
     align-items: center;
@@ -48,10 +53,15 @@ code {
     box-shadow: 0 2px 8px rgba(0,0,0,0.3);
     cursor: pointer;
     transition: transform 0.2s ease;
+    pointer-events: auto;
 }
 
 .custom-marker:hover {
-    transform: scale(1.1);
+    transform: scale(1.2);
+}
+
+.custom-marker svg {
+    pointer-events: none;
 }
 
 .marker-recent {
