@@ -3,8 +3,11 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2 } from "lucide-react";
 import { Button } from "../components/ui/button";
+import {
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
+} from "../components/ui/dropdown-menu";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose
 } from "../components/ui/drawer";
@@ -220,17 +223,47 @@ export default function MapPage() {
         </div>
         <div className="flex gap-2">
           <LanguageSelector />
-          {user && user.subscription_active && (
-            <Button variant="outline" size="sm" onClick={() => navigate("/leaderboard")} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="leaderboard-btn">
-              <Trophy className="w-4 h-4" />
-            </Button>
-          )}
           {user ? (
-            <Button variant="outline" size="sm" onClick={logout} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="logout-btn">
-              <User className="w-4 h-4 mr-1" />
-              <span className="hidden sm:inline">{user.name || "Usuario"}</span>
-              {user.total_score > 0 && <span className="ml-1 text-xs text-[#FF6B6B] font-bold">{user.total_score}pts</span>}
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="bg-white/95 backdrop-blur-sm shadow-lg border-0 gap-1.5" data-testid="user-menu-btn">
+                  <User className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs max-w-[80px] truncate">{user.username || user.name || "Usuario"}</span>
+                  {user.total_score > 0 && <span className="text-xs text-[#FF6B6B] font-bold">{user.total_score}</span>}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <div className="px-3 py-2">
+                  <p className="font-bold text-[#2B2D42] text-sm">{user.username || user.name}</p>
+                  <p className="text-xs text-[#FF6B6B] font-medium">{user.rank || "Aspirante Cagón"}</p>
+                  <div className="flex gap-3 mt-1 text-xs text-[#8D99AE]">
+                    <span>{user.total_score || 0} pts</span>
+                    <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{user.streak_days || 0}d</span>
+                    <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" />{user.trust_score || 50}</span>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                {user.subscription_active && (
+                  <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
+                    <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
+                  </DropdownMenuItem>
+                )}
+                {!user.subscription_active && (
+                  <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
+                    <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium
+                  </DropdownMenuItem>
+                )}
+                {(user.role === "municipality" || user.role === "admin") && (
+                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer" data-testid="menu-dashboard">
+                    <Building2 className="w-4 h-4 mr-2" />Dashboard
+                  </DropdownMenuItem>
+                )}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-500" data-testid="menu-logout">
+                  <LogOut className="w-4 h-4 mr-2" />Salir
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           ) : (
             <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="login-btn">
               <LogIn className="w-4 h-4 mr-1" />{t("enter")}
@@ -239,14 +272,16 @@ export default function MapPage() {
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="absolute bottom-28 left-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3">
-        <div className="flex flex-col gap-2 text-xs">
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
-          <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
+      {/* Legend - hide when drawers open */}
+      {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+        <div className="absolute bottom-28 left-4 z-[999] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3">
+          <div className="flex flex-col gap-2 text-xs">
+            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
+            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
+            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* FAB */}
       <button onClick={() => setShowReportDrawer(true)} className="fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200" style={{ fontFamily: 'Nunito, sans-serif' }} data-testid="report-btn">

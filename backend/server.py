@@ -30,6 +30,8 @@ from antispam_service import (
 )
 from validation_service import process_validation
 from ranking_service import recalculate_all_ranks, get_user_rank_info
+from email_service import send_verification_code as send_verification_email, is_configured as email_configured
+from webhook_handlers import process_apple_notification, process_google_notification
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -1142,6 +1144,10 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     # Log the verification code (in production, send via email)
     logger.info(f"Municipality verification code for {email}: {verification_code}")
     
+    # Send verification email
+    email_result = await send_verification_email(email, verification_code, data.municipality_name)
+    logger.info(f"Verification email result: {email_result}")
+    
     access_token = create_access_token(user_id, email, "municipality")
     refresh_token = create_refresh_token(user_id)
     
@@ -1206,7 +1212,12 @@ async def resend_municipality_verification(data: MunicipalityResendVerification)
     
     logger.info(f"New municipality verification code for {email}: {new_code}")
     
-    return {"message": "Código de verificación reenviado", "verification_code_hint": new_code}
+    # Send verification email
+    user_doc = await db.users.find_one({"email": email})
+    muni_name = user_doc.get("municipality_name", "Municipio") if user_doc else "Municipio"
+    await send_verification_email(email, new_code, muni_name)
+    
+    return {"message": "Código de verificación reenviado"}
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
@@ -1311,6 +1322,84 @@ async def moderate_report(report_id: str, data: ModerationAction, request: Reque
     
     return {"message": f"Acción '{data.action}' aplicada"}
 
+# ==================== WEBHOOKS ====================
+
+@api_router.post("/webhooks/apple")
+async def apple_webhook(request: Request):
+    """Apple App Store Server Notifications V2 webhook.
+    Apple sends {"signedPayload": "eyJhbGciOiJFUzI1Ni..."} as POST.
+    Configure in App Store Connect → App → App Store Server Notifications.
+    """
+    try:
+        body = await request.json()
+        signed_payload = body.get("signedPayload")
+        if not signed_payload:
+            raise HTTPException(status_code=400, detail="Missing signedPayload")
+
+        result = await process_apple_notification(db, signed_payload)
+
+        if result.get("error"):
+            logger.error(f"Apple webhook error: {result['error']}")
+            # Still return 200 so Apple doesn't retry
+            return {"status": "error", "detail": result["error"]}
+
+        logger.info(f"Apple webhook processed: {result.get('event')} for txn {result.get('transaction_id')}")
+        return {"status": "received", "event": result.get("event")}
+
+    except Exception as e:
+        logger.error(f"Apple webhook exception: {e}")
+        return {"status": "error"}
+
+@api_router.post("/webhooks/google")
+async def google_webhook(request: Request):
+    """Google Play RTDN webhook via Cloud Pub/Sub.
+    Pub/Sub sends {"message": {"data": "base64..."}, "subscription": "..."}.
+    Configure in Google Play Console → Monetization → Real-time notifications.
+    """
+    try:
+        body = await request.json()
+        message = body.get("message", {})
+        message_data = message.get("data", "")
+
+        if not message_data:
+            raise HTTPException(status_code=400, detail="Missing message data")
+
+        result = await process_google_notification(db, message_data)
+
+        if result.get("error"):
+            logger.error(f"Google webhook error: {result['error']}")
+            return {"status": "error", "detail": result["error"]}
+
+        logger.info(f"Google webhook processed: {result.get('event')} for token {result.get('purchase_token', '')[:20]}...")
+        return {"status": "received", "event": result.get("event")}
+
+    except Exception as e:
+        logger.error(f"Google webhook exception: {e}")
+        return {"status": "error"}
+
+@api_router.get("/webhooks/status")
+async def webhook_status():
+    """Check webhook configuration status."""
+    apple_count = await db.webhook_notifications.count_documents({"store": "apple"})
+    google_count = await db.webhook_notifications.count_documents({"store": "google"})
+
+    return {
+        "apple": {
+            "bundle_id_configured": bool(os.environ.get("APPLE_BUNDLE_ID")),
+            "notifications_received": apple_count,
+            "webhook_url": "/api/webhooks/apple"
+        },
+        "google": {
+            "package_name_configured": bool(os.environ.get("GOOGLE_PACKAGE_NAME")),
+            "notifications_received": google_count,
+            "webhook_url": "/api/webhooks/google"
+        },
+        "email": {
+            "configured": email_configured(),
+            "sender": os.environ.get("SENDER_EMAIL", "no-reply@cacaradar.es")
+        }
+    }
+
 # ==================== MISC ====================
 
 @api_router.get("/")
@@ -1353,6 +1442,9 @@ async def startup():
     await db.validations.create_index([("report_id", 1), ("user_id", 1)], unique=True)
     await db.report_votes.create_index([("report_id", 1), ("user_id", 1)], unique=True)
     await db.trust_log.create_index("user_id")
+    await db.webhook_notifications.create_index("store")
+    await db.webhook_notifications.create_index("received_at")
+    await db.webhook_processing_log.create_index("user_id")
     
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@cacaradar.es")
@@ -1411,11 +1503,14 @@ async def startup():
         f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
         f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
         f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
-        f.write("\n## Apple/Google Receipt Verification\n")
-        f.write("Apple credentials not configured — falls back to mock verification.\n")
-        f.write("Google credentials not configured — falls back to mock verification.\n")
-        f.write("Set APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH in .env for Apple.\n")
-        f.write("Set GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME in .env for Google.\n")
+        f.write("\n## Webhook Endpoints\n")
+        f.write("- POST /api/webhooks/apple (App Store Server Notifications V2)\n")
+        f.write("- POST /api/webhooks/google (Google Play RTDN via Pub/Sub)\n")
+        f.write("- GET /api/webhooks/status (check configuration)\n")
+        f.write("\n## Email Service\n")
+        f.write(f"- Configured: {email_configured()}\n")
+        f.write(f"- Sender: {os.environ.get('SENDER_EMAIL', 'no-reply@cacaradar.es')}\n")
+        f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
     
     logger.info("Startup complete")
 

@@ -2,27 +2,37 @@
 
 ## Architecture
 - **Frontend:** React 19 + TailwindCSS + Shadcn UI + Leaflet + PWA
-- **Backend:** FastAPI + MongoDB + Object Storage + Apple/Google receipt verification
-- **Services:** scoring_service.py, antispam_service.py, validation_service.py, ranking_service.py
-
-## Gamification System (Implemented)
-### Scoring: 10 base + 5 photo + 3 description (max 5/day, 1.5x subscriber)
-### Trust: 0-100 (start 50), tiers: trusted/normal/low/restricted
-### Ranks: 10 Spanish titles by percentile (weekly recalc)
-### Anti-spam: 60s cooldown, GPS check, proximity duplicate detection, spam pattern detection
+- **Backend:** FastAPI + MongoDB + Object Storage + Resend + Apple/Google webhooks
+- **Services:** scoring, antispam, validation, ranking, email, webhook_handlers
 
 ## Test Credentials
 - Admin: admin@cacaradar.es / admin123
 - Municipality: madrid@cacaradar.es / madrid123
 
-## Key Endpoints
-- POST /api/reports (with description, anti-spam, scoring)
-- POST /api/reports/{id}/validate (confirm/reject with weighted consensus)
-- POST /api/reports/{id}/upvote | /downvote
-- GET /api/users/profile (full gamification stats)
-- GET /api/leaderboard/national (sorted by total_score)
-- POST /api/admin/recalculate-ranks
+## Webhook URLs (configure in App Store Connect / Google Play Console)
+- Apple: POST /api/webhooks/apple
+- Google: POST /api/webhooks/google  
+- Status: GET /api/webhooks/status
 
-## Remaining
-- [ ] Connect email service for municipality verification codes
-- [ ] App Store/Google Play notification webhooks
+## Environment Variables for Production
+```
+RESEND_API_KEY=re_your_key (from resend.com)
+SENDER_EMAIL=no-reply@cacaradar.es
+APPLE_BUNDLE_ID=com.cacaradar.app
+APPLE_KEY_ID=your_key_id
+APPLE_ISSUER_ID=your_issuer_id
+APPLE_KEY_PATH=/path/to/AuthKey.p8
+GOOGLE_SERVICE_ACCOUNT_PATH=/path/to/service-account.json
+GOOGLE_PACKAGE_NAME=com.cacaradar.app
+```
+
+## All Implemented Features
+- Map with color-coded pins, 8 languages, RTL Arabic
+- Reports with GPS, photo, description, anti-spam
+- Gamification: scoring, trust, validation, rankings
+- Municipality auto-tagging, dashboard, self-registration with domain verification
+- Subscriptions with Apple/Google receipt verification
+- Webhooks for real-time subscription status updates
+- Email service for verification codes (Resend)
+- PWA manifest + service worker
+- Content moderation with flag reasons
