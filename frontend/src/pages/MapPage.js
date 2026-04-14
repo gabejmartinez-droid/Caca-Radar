@@ -89,14 +89,20 @@ function MapMarkers({ reports, onMarkerClick }) {
 }
 
 // Location finder component
-function LocationFinder({ onLocationFound }) {
+function LocationFinder({ onLocationFound, allowMapClick }) {
   const map = useMapEvents({
     locationfound(e) {
       map.flyTo(e.latlng, 16);
       onLocationFound(e.latlng);
     },
     locationerror() {
-      toast.error("No se pudo obtener tu ubicación");
+      toast.error("No se pudo obtener tu ubicación. Haz clic en el mapa para seleccionar manualmente.");
+    },
+    click(e) {
+      if (allowMapClick) {
+        onLocationFound(e.latlng);
+        toast.success("Ubicación seleccionada");
+      }
     }
   });
 
@@ -268,7 +274,7 @@ export default function MapPage() {
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
-        <LocationFinder onLocationFound={setUserLocation} />
+        <LocationFinder onLocationFound={setUserLocation} allowMapClick={true} />
         <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />
       </MapContainer>
 
