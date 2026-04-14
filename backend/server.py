@@ -15,7 +15,125 @@ import requests
 from datetime import datetime, timezone, timedelta
 from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Literal
-import asyncio
+import random
+import string
+
+# ==================== RECEIPT VERIFICATION ====================
+
+# Apple App Store verification
+APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
+APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
+APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
+APPLE_KEY_PATH = os.environ.get("APPLE_KEY_PATH")  # Path to .p8 key file
+APPLE_ENVIRONMENT = os.environ.get("APPLE_ENVIRONMENT", "Sandbox")  # "Production" or "Sandbox"
+
+# Google Play verification
+GOOGLE_SERVICE_ACCOUNT_PATH = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH")
+GOOGLE_PACKAGE_NAME = os.environ.get("GOOGLE_PACKAGE_NAME")
+
+async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) -> dict:
+    """Verify Apple App Store receipt using App Store Server API v2."""
+    if not all([APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH]):
+        logger.warning("Apple credentials not configured — using mock verification")
+        return {"valid": True, "mock": True, "product_id": "premium_monthly", "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
+
+    try:
+        from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
+        from appstoreserverlibrary.models.Environment import Environment
+        from appstoreserverlibrary.receipt_utility import ReceiptUtility
+        from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
+
+        env = Environment.PRODUCTION if APPLE_ENVIRONMENT == "Production" else Environment.SANDBOX
+
+        # Read private key
+        with open(APPLE_KEY_PATH, 'r') as f:
+            signing_key = f.read()
+
+        client = AppStoreServerAPIClient(signing_key, APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, env)
+
+        # Extract transaction ID from receipt if not provided
+        if not transaction_id and receipt_data:
+            receipt_util = ReceiptUtility()
+            transaction_id = receipt_util.extract_transaction_id_from_app_receipt(receipt_data)
+
+        if not transaction_id:
+            return {"valid": False, "error": "No transaction ID found"}
+
+        # Get transaction info
+        response = client.get_transaction_info(transaction_id)
+        return {
+            "valid": True,
+            "mock": False,
+            "transaction_id": transaction_id,
+            "product_id": getattr(response, 'product_id', 'unknown'),
+            "expires": getattr(response, 'expires_date', None)
+        }
+    except Exception as e:
+        logger.error(f"Apple receipt verification failed: {e}")
+        return {"valid": False, "error": str(e)}
+
+async def verify_google_receipt(purchase_token: str, subscription_id: str) -> dict:
+    """Verify Google Play subscription using Google Play Developer API."""
+    if not all([GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME]):
+        logger.warning("Google credentials not configured — using mock verification")
+        return {"valid": True, "mock": True, "product_id": subscription_id, "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
+
+    try:
+        from googleapiclient.discovery import build
+        from google.oauth2 import service_account
+
+        credentials = service_account.Credentials.from_service_account_file(
+            GOOGLE_SERVICE_ACCOUNT_PATH,
+            scopes=['https://www.googleapis.com/auth/androidpublisher']
+        )
+        service = build('androidpublisher', 'v3', credentials=credentials)
+
+        result = service.purchases().subscriptions().get(
+            packageName=GOOGLE_PACKAGE_NAME,
+            subscriptionId=subscription_id,
+            token=purchase_token
+        ).execute()
+
+        expiry_millis = int(result.get('expiryTimeMillis', 0))
+        expiry = datetime.fromtimestamp(expiry_millis / 1000, tz=timezone.utc) if expiry_millis else None
+
+        return {
+            "valid": True,
+            "mock": False,
+            "product_id": subscription_id,
+            "expires": expiry.isoformat() if expiry else None,
+            "payment_state": result.get('paymentState'),
+            "auto_renewing": result.get('autoRenewing', False)
+        }
+    except Exception as e:
+        logger.error(f"Google receipt verification failed: {e}")
+        return {"valid": False, "error": str(e)}
+
+# ==================== DOMAIN VERIFICATION ====================
+
+# Allowed municipality email domains
+ALLOWED_MUNICIPALITY_DOMAINS = [
+    ".es", ".gob.es", ".org", ".cat", ".eus", ".gal",
+    "ayuntamiento", "ajuntament", "concello", "udala",
+    "diputacion", "gobierno", "junta"
+]
+
+def is_valid_municipality_email(email: str) -> bool:
+    """Check if email domain looks like an official municipality domain."""
+    domain = email.split("@")[1].lower() if "@" in email else ""
+    # Block common free email providers
+    blocked = ["gmail.com", "yahoo.com", "hotmail.com", "outlook.com", "live.com", "icloud.com", "protonmail.com", "mail.com"]
+    if domain in blocked:
+        return False
+    # Check if domain matches allowed patterns
+    for pattern in ALLOWED_MUNICIPALITY_DOMAINS:
+        if pattern in domain:
+            return True
+    # Allow any non-blocked domain (some small municipalities use local ISPs)
+    return True
+
+def generate_verification_code() -> str:
+    return ''.join(random.choices(string.digits, k=6))
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -169,6 +287,23 @@ class MunicipalityRegister(BaseModel):
 
 class ModerationAction(BaseModel):
     action: Literal["hide", "restore", "dismiss"]
+
+class AppleReceiptVerify(BaseModel):
+    receipt_data: Optional[str] = None
+    transaction_id: Optional[str] = None
+    plan: Literal["monthly", "annual"]
+
+class GoogleReceiptVerify(BaseModel):
+    purchase_token: str
+    subscription_id: str
+    plan: Literal["monthly", "annual"]
+
+class MunicipalityVerify(BaseModel):
+    email: EmailStr
+    code: str
+
+class MunicipalityResendVerification(BaseModel):
+    email: EmailStr
 
 # Create the main app
 app = FastAPI()
@@ -360,7 +495,7 @@ async def update_username(data: UsernameUpdate, request: Request):
 
 @api_router.post("/users/subscribe")
 async def subscribe_user(request: Request):
-    """Mock subscription endpoint - in production, verified via App Store / Google Play receipts."""
+    """Mock subscription endpoint — in production, use /users/subscribe/apple or /users/subscribe/google."""
     user = await require_auth(request)
     body = await request.json()
     plan = body.get("plan", "monthly")
@@ -372,10 +507,96 @@ async def subscribe_user(request: Request):
         {"$set": {
             "subscription_active": True,
             "subscription_type": plan,
-            "subscription_expires": expires.isoformat()
+            "subscription_expires": expires.isoformat(),
+            "subscription_store": "mock"
         }}
     )
-    return {"message": "Suscripción activada", "plan": plan, "expires": expires.isoformat()}
+    return {"message": "Suscripción activada", "plan": plan, "expires": expires.isoformat(), "mock": True}
+
+@api_router.post("/users/subscribe/apple")
+async def subscribe_via_apple(data: AppleReceiptVerify, request: Request):
+    """Verify Apple App Store receipt and activate subscription."""
+    user = await require_auth(request)
+    
+    result = await verify_apple_receipt(data.receipt_data, data.transaction_id)
+    if not result.get("valid"):
+        raise HTTPException(status_code=400, detail=f"Verificación de recibo Apple fallida: {result.get('error', 'Unknown')}")
+    
+    expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": {
+            "subscription_active": True,
+            "subscription_type": data.plan,
+            "subscription_expires": expires,
+            "subscription_store": "apple",
+            "subscription_transaction_id": data.transaction_id,
+            "subscription_mock": result.get("mock", False)
+        }}
+    )
+    
+    # Store receipt for audit
+    await db.subscription_receipts.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["_id"],
+        "store": "apple",
+        "plan": data.plan,
+        "transaction_id": data.transaction_id,
+        "verification_result": {k: v for k, v in result.items() if k != "error"},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Suscripción Apple activada", "plan": data.plan, "expires": expires, "mock": result.get("mock", False)}
+
+@api_router.post("/users/subscribe/google")
+async def subscribe_via_google(data: GoogleReceiptVerify, request: Request):
+    """Verify Google Play receipt and activate subscription."""
+    user = await require_auth(request)
+    
+    result = await verify_google_receipt(data.purchase_token, data.subscription_id)
+    if not result.get("valid"):
+        raise HTTPException(status_code=400, detail=f"Verificación de recibo Google fallida: {result.get('error', 'Unknown')}")
+    
+    expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
+    
+    await db.users.update_one(
+        {"_id": ObjectId(user["_id"])},
+        {"$set": {
+            "subscription_active": True,
+            "subscription_type": data.plan,
+            "subscription_expires": expires,
+            "subscription_store": "google",
+            "subscription_purchase_token": data.purchase_token,
+            "subscription_mock": result.get("mock", False)
+        }}
+    )
+    
+    await db.subscription_receipts.insert_one({
+        "id": str(uuid.uuid4()),
+        "user_id": user["_id"],
+        "store": "google",
+        "plan": data.plan,
+        "purchase_token": data.purchase_token,
+        "subscription_id": data.subscription_id,
+        "verification_result": {k: v for k, v in result.items() if k != "error"},
+        "created_at": datetime.now(timezone.utc).isoformat()
+    })
+    
+    return {"message": "Suscripción Google activada", "plan": data.plan, "expires": expires, "mock": result.get("mock", False)}
+
+@api_router.get("/users/subscription-status")
+async def get_subscription_status(request: Request):
+    """Check current subscription status."""
+    user = await require_auth(request)
+    
+    return {
+        "active": user.get("subscription_active", False),
+        "type": user.get("subscription_type"),
+        "expires": user.get("subscription_expires"),
+        "store": user.get("subscription_store"),
+        "mock": user.get("subscription_mock", False)
+    }
 
 # ==================== REPORTS ====================
 
@@ -662,9 +883,17 @@ async def get_city_list():
 @api_router.post("/municipality/register")
 async def register_municipality(data: MunicipalityRegister, response: Response):
     email = data.email.lower()
+    
+    # Validate email domain
+    if not is_valid_municipality_email(email):
+        raise HTTPException(status_code=400, detail="Debes usar un email oficial del ayuntamiento (no se permiten emails personales como Gmail, Hotmail, etc.)")
+    
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
+    
+    # Generate verification code
+    verification_code = generate_verification_code()
     
     hashed = hash_password(data.password)
     user_doc = {
@@ -677,10 +906,16 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
         "municipality_subscription_active": False,
         "municipality_subscription_type": None,
         "municipality_subscription_expires": None,
+        "email_verified": False,
+        "verification_code": verification_code,
+        "verification_code_expires": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
         "created_at": datetime.now(timezone.utc)
     }
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
+    
+    # Log the verification code (in production, send via email)
+    logger.info(f"Municipality verification code for {email}: {verification_code}")
     
     access_token = create_access_token(user_id, email, "municipality")
     refresh_token = create_refresh_token(user_id)
@@ -691,8 +926,62 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     return {
         "id": user_id, "email": email, "name": data.name,
         "role": "municipality", "municipality_name": data.municipality_name,
-        "municipality_subscription_active": False
+        "municipality_subscription_active": False,
+        "verification_required": True,
+        "verification_code_hint": verification_code  # Only in dev — remove in production
     }
+
+@api_router.post("/municipality/verify")
+async def verify_municipality_email(data: MunicipalityVerify):
+    email = data.email.lower()
+    user = await db.users.find_one({"email": email, "role": "municipality"})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Municipio no encontrado")
+    
+    if user.get("email_verified"):
+        return {"message": "Email ya verificado"}
+    
+    # Check code
+    if user.get("verification_code") != data.code:
+        raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
+    
+    # Check expiry
+    expires = user.get("verification_code_expires", "")
+    if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="El código ha expirado. Solicita uno nuevo.")
+    
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {"email_verified": True}, "$unset": {"verification_code": "", "verification_code_expires": ""}}
+    )
+    
+    return {"message": "Email verificado correctamente", "verified": True}
+
+@api_router.post("/municipality/resend-verification")
+async def resend_municipality_verification(data: MunicipalityResendVerification):
+    email = data.email.lower()
+    user = await db.users.find_one({"email": email, "role": "municipality"})
+    
+    if not user:
+        raise HTTPException(status_code=404, detail="Municipio no encontrado")
+    
+    if user.get("email_verified"):
+        return {"message": "Email ya verificado"}
+    
+    # Generate new code
+    new_code = generate_verification_code()
+    await db.users.update_one(
+        {"email": email},
+        {"$set": {
+            "verification_code": new_code,
+            "verification_code_expires": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        }}
+    )
+    
+    logger.info(f"New municipality verification code for {email}: {new_code}")
+    
+    return {"message": "Código de verificación reenviado", "verification_code_hint": new_code}
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
@@ -884,7 +1173,13 @@ async def startup():
         f.write(f"## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
         f.write(f"## Demo Municipality\n- Email: {demo_muni_email}\n- Password: {demo_muni_password}\n- Role: municipality\n- Municipality: Madrid\n\n")
         f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
-        f.write("## Municipality Endpoints\n- POST /api/municipality/register\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
+        f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
+        f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
+        f.write("\n## Apple/Google Receipt Verification\n")
+        f.write("Apple credentials not configured — falls back to mock verification.\n")
+        f.write("Google credentials not configured — falls back to mock verification.\n")
+        f.write("Set APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH in .env for Apple.\n")
+        f.write("Set GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME in .env for Google.\n")
     
     logger.info("Startup complete")
 

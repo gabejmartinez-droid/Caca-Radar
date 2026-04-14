@@ -1,0 +1,29 @@
+{
+  "short_name": "Caca Radar",
+  "name": "Caca Radar - Reporta caca de perro",
+  "description": "App para reportar excrementos de perro en espacios públicos de España",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "type": "image/png",
+      "sizes": "192x192",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "type": "image/png",
+      "sizes": "512x512",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "theme_color": "#FF6B6B",
+  "background_color": "#F8F9FA",
+  "scope": "/",
+  "lang": "es",
+  "categories": ["utilities", "lifestyle"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

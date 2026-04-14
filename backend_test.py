@@ -307,6 +307,140 @@ class CacaRadarAPITester:
             data=moderation_data
         )
 
+    def test_apple_receipt_verification(self):
+        """Test Apple receipt verification (mock mode)"""
+        apple_data = {
+            "receipt_data": "mock_receipt_data",
+            "transaction_id": "mock_transaction_123",
+            "plan": "monthly"
+        }
+        return self.run_test(
+            "Apple Receipt Verification (Mock)",
+            "POST",
+            "users/subscribe/apple",
+            200,
+            data=apple_data
+        )
+
+    def test_google_receipt_verification(self):
+        """Test Google receipt verification (mock mode)"""
+        google_data = {
+            "purchase_token": "mock_purchase_token_123",
+            "subscription_id": "premium_monthly",
+            "plan": "monthly"
+        }
+        return self.run_test(
+            "Google Receipt Verification (Mock)",
+            "POST",
+            "users/subscribe/google",
+            200,
+            data=google_data
+        )
+
+    def test_subscription_status(self):
+        """Test subscription status endpoint"""
+        return self.run_test(
+            "Subscription Status",
+            "GET",
+            "users/subscription-status",
+            200
+        )
+
+    def test_municipality_register_valid_domain(self):
+        """Test municipality registration with valid domain"""
+        # Use a valid .es domain
+        muni_data = {
+            "email": f"contacto{datetime.now().strftime('%H%M%S')}@alcobendas.es",
+            "password": "testpass123",
+            "name": "Test Municipality Contact",
+            "municipality_name": "Alcobendas",
+            "province": "Madrid"
+        }
+        success, response = self.run_test(
+            "Municipality Registration (Valid Domain)",
+            "POST",
+            "municipality/register",
+            200,
+            data=muni_data
+        )
+        if success and response.get("verification_code_hint"):
+            self.test_verification_code = response["verification_code_hint"]
+            self.test_municipality_email = muni_data["email"]
+            print(f"   Verification code: {self.test_verification_code}")
+        return success
+
+    def test_municipality_register_invalid_domain(self):
+        """Test municipality registration with invalid domain (should fail)"""
+        muni_data = {
+            "email": f"test{datetime.now().strftime('%H%M%S')}@gmail.com",
+            "password": "testpass123",
+            "name": "Test Contact",
+            "municipality_name": "Test City",
+            "province": "Test Province"
+        }
+        success, response = self.run_test(
+            "Municipality Registration (Invalid Domain - Should Fail)",
+            "POST",
+            "municipality/register",
+            400,  # Expecting error
+            data=muni_data
+        )
+        return success
+
+    def test_municipality_email_verification_correct(self):
+        """Test municipality email verification with correct code"""
+        if not hasattr(self, 'test_verification_code') or not hasattr(self, 'test_municipality_email'):
+            print("❌ Skipping - No verification code available")
+            return False
+        
+        verify_data = {
+            "email": self.test_municipality_email,
+            "code": self.test_verification_code
+        }
+        return self.run_test(
+            "Municipality Email Verification (Correct Code)",
+            "POST",
+            "municipality/verify",
+            200,
+            data=verify_data
+        )
+
+    def test_municipality_email_verification_wrong(self):
+        """Test municipality email verification with wrong code"""
+        if not hasattr(self, 'test_municipality_email'):
+            print("❌ Skipping - No municipality email available")
+            return False
+        
+        verify_data = {
+            "email": self.test_municipality_email,
+            "code": "000000"  # Wrong code
+        }
+        success, response = self.run_test(
+            "Municipality Email Verification (Wrong Code - Should Fail)",
+            "POST",
+            "municipality/verify",
+            400,  # Expecting error
+            data=verify_data
+        )
+        return success
+
+    def test_municipality_resend_verification(self):
+        """Test municipality resend verification code"""
+        if not hasattr(self, 'test_municipality_email'):
+            print("❌ Skipping - No municipality email available")
+            return False
+        
+        resend_data = {
+            "email": self.test_municipality_email
+        }
+        return self.run_test(
+            "Municipality Resend Verification",
+            "POST",
+            "municipality/resend-verification",
+            200,
+            data=resend_data
+        )
+
     def test_reverse_geocoding_in_report(self):
         """Test that report creation includes municipality from reverse geocoding"""
         report_data = {
@@ -348,9 +482,17 @@ def main():
         ("Flag Report", tester.test_flag_report),
         ("Duplicate Vote Error", tester.test_duplicate_vote_error),
         ("User Subscription", tester.test_user_subscription),
+        ("Apple Receipt Verification", tester.test_apple_receipt_verification),
+        ("Google Receipt Verification", tester.test_google_receipt_verification),
+        ("Subscription Status", tester.test_subscription_status),
         ("National Leaderboard", tester.test_national_leaderboard),
         ("City Leaderboard", tester.test_city_leaderboard),
         ("City List", tester.test_city_list),
+        ("Municipality Registration (Valid Domain)", tester.test_municipality_register_valid_domain),
+        ("Municipality Registration (Invalid Domain)", tester.test_municipality_register_invalid_domain),
+        ("Municipality Email Verification (Correct)", tester.test_municipality_email_verification_correct),
+        ("Municipality Email Verification (Wrong)", tester.test_municipality_email_verification_wrong),
+        ("Municipality Resend Verification", tester.test_municipality_resend_verification),
         ("Municipality Login", tester.test_municipality_login),
         ("Municipality Stats", tester.test_municipality_stats),
         ("Municipality Reports", tester.test_municipality_reports),

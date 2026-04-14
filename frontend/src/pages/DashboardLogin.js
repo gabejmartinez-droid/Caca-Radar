@@ -80,6 +80,11 @@ export default function DashboardLogin() {
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Acceder al Panel"}
             </Button>
           </form>
+
+          <p className="text-center text-[#8D99AE] text-sm mt-4">
+            ¿Tu municipio no está registrado?{" "}
+            <a href="/dashboard/register" className="text-[#2B2D42] font-medium hover:underline" data-testid="register-municipality-link">Regístrate aquí</a>
+          </p>
         </div>
       </div>
     </div>
