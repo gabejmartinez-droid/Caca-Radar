@@ -1,0 +1,86 @@
+{
+  "theme": "light",
+  "archetype": "3",
+  "archetype_name": "Pastel & Soft (Civic Playful)",
+  "typography": {
+    "headings": "Nunito",
+    "body": "DM Sans",
+    "hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight font-black",
+      "h2": "text-2xl sm:text-3xl tracking-tight font-bold",
+      "h3": "text-xl sm:text-2xl font-bold",
+      "h4": "text-lg sm:text-xl font-semibold",
+      "body": "text-base leading-relaxed",
+      "small": "text-sm text-muted-foreground",
+      "overline": "text-xs font-bold uppercase tracking-[0.2em]"
+    }
+  },
+  "colors": {
+    "background": "#F8F9FA",
+    "surface": "#FFFFFF",
+    "primary": "#FF6B6B",
+    "primary_hover": "#FF5252",
+    "text_primary": "#2B2D42",
+    "text_secondary": "#8D99AE",
+    "status": {
+      "recent": "#FF5252",
+      "moderate": "#FFA726",
+      "old": "#66BB6A"
+    },
+    "border": "rgba(43, 45, 66, 0.08)"
+  },
+  "layout": {
+    "spacing": {
+      "container_padding": "p-4 sm:p-6",
+      "section_gap": "gap-6 sm:gap-8",
+      "grid_gap": "gap-4 sm:gap-6"
+    },
+    "surface_styles": {
+      "bottom_sheet": "bg-white rounded-t-3xl shadow-[0_-8px_32px_rgba(0,0,0,0.1)] border-t border-black/5",
+      "fab": "rounded-full shadow-lg hover:-translate-y-1 transition-transform",
+      "card": "bg-white rounded-2xl shadow-sm border border-black/5 p-4"
+    }
+  },
+  "components": {
+    "map": {
+      "description": "Full screen map background. Map style should be light/clean.",
+      "pins": "Circular markers with white borders. Color coded by status. Pulse animation for recent pins."
+    },
+    "fab": {
+      "description": "Floating action button for 'Reportar'. Placed at bottom-center. High contrast.",
+      "classes": "fixed bottom-8 left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-50 hover:bg-[#FF5252]"
+    },
+    "bottom_sheet": {
+      "description": "Use Shadcn Drawer component for the pin details and report form. Keeps user in map context."
+    }
+  },
+  "motion": {
+    "hover": "transition-all duration-200 ease-in-out",
+    "drawer": "spring-based transition for sliding up",
+    "pin_pulse": "animate-pulse on red (recent) pins"
+  },
+  "media": {
+    "image_urls": {
+      "onboarding_bg": {
+        "url": "https://images.unsplash.com/photo-1710478122325-727f1a4c93aa?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwxfHxjdXRlJTIwZG9nJTIwcGFyayUyMHN1bm55fGVufDB8fHx8MTc3NjE1MDUxMnww&ixlib=rb-4.1.0&q=85",
+        "description": "A brown dog laying on top of a lush green field - Use for empty state or onboarding screens"
+      },
+      "empty_state": {
+         "url": "https://images.unsplash.com/photo-1763718412035-f4457d9c7bc3?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjAzMjh8MHwxfHNlYXJjaHwzfHxjdXRlJTIwZG9nJTIwcGFyayUyMHN1bm55fGVufDB8fHx8MTc3NjE1MDUxMnww&ixlib=rb-4.1.0&q=85",
+         "description": "A corgi stands on grass - Use for 'No reports nearby' or 'All Clean' success states"
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Build a mobile-first UI taking up 100vh.",
+    "Use react-map-gl or a similar mapping library. Ensure the map takes up the full background with 'absolute inset-0 z-0'.",
+    "Render Map Pins dynamically based on data. Color code strictly: Red (#FF5252) for <24h, Orange (#FFA726) for 1-3 days, Green (#66BB6A) for >3 days.",
+    "Clicking a map pin should open a bottom sheet (Shadcn Drawer) showing the pin details (photo, time, confirmations).",
+    "The 'Reportar' button MUST be a prominent Floating Action Button (FAB) anchored at the bottom-center.",
+    "Clicking 'Reportar' opens a reporting Drawer with photo upload capability and GPS auto-capture.",
+    "Implement the Confirmation System ('Sigue ahí' / 'Ya limpio') as large touch-friendly buttons in the Pin Details Drawer.",
+    "All interactive elements MUST have 'data-testid' attributes.",
+    "Use Phosphor Icons (preferred for friendly look) or Lucide React for map markers, camera icons, and close buttons.",
+    "Design is for Spain, so ALL text must be in Spanish (Castilian)."
+  ]
+}
