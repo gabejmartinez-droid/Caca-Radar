@@ -13,6 +13,10 @@ class CacaRadarAPITester:
             "email": "admin@cacaradar.es",
             "password": "admin123"
         }
+        self.municipality_credentials = {
+            "email": "madrid@cacaradar.es",
+            "password": "madrid123"
+        }
         self.test_user_credentials = {
             "email": f"test_user_{datetime.now().strftime('%H%M%S')}@test.com",
             "password": "testpass123",
@@ -176,12 +180,12 @@ class CacaRadarAPITester:
         )
 
     def test_flag_report(self):
-        """Test flagging report"""
+        """Test flagging report with valid reason"""
         if not self.created_report_id:
             print("❌ Skipping - No report ID available")
             return False
         
-        flag_data = {"reason": "Test flag"}
+        flag_data = {"reason": "inappropriate"}  # Valid flag reason
         return self.run_test(
             "Flag Report",
             "POST",
@@ -212,9 +216,118 @@ class CacaRadarAPITester:
         )
         return success
 
+    def test_user_subscription(self):
+        """Test user subscription endpoint (mocked)"""
+        subscription_data = {"plan": "monthly"}
+        return self.run_test(
+            "User Subscription (Mocked)",
+            "POST",
+            "users/subscribe",
+            200,
+            data=subscription_data
+        )
+
+    def test_national_leaderboard(self):
+        """Test national leaderboard (requires subscription)"""
+        return self.run_test(
+            "National Leaderboard",
+            "GET",
+            "leaderboard/national",
+            200
+        )
+
+    def test_city_leaderboard(self):
+        """Test city leaderboard"""
+        return self.run_test(
+            "City Leaderboard",
+            "GET",
+            "leaderboard/city/Madrid",
+            200
+        )
+
+    def test_city_list(self):
+        """Test city list for leaderboards"""
+        return self.run_test(
+            "City List",
+            "GET",
+            "leaderboard/cities",
+            200
+        )
+
+    def test_municipality_login(self):
+        """Test municipality login"""
+        success, response = self.run_test(
+            "Municipality Login",
+            "POST",
+            "auth/login",
+            200,
+            data=self.municipality_credentials
+        )
+        return success
+
+    def test_municipality_stats(self):
+        """Test municipality stats"""
+        return self.run_test(
+            "Municipality Stats",
+            "GET",
+            "municipality/stats",
+            200
+        )
+
+    def test_municipality_reports(self):
+        """Test municipality reports"""
+        return self.run_test(
+            "Municipality Reports",
+            "GET",
+            "municipality/reports",
+            200
+        )
+
+    def test_municipality_flags(self):
+        """Test municipality flags"""
+        return self.run_test(
+            "Municipality Flags",
+            "GET",
+            "municipality/flags",
+            200
+        )
+
+    def test_municipality_moderate(self):
+        """Test municipality moderation"""
+        if not self.created_report_id:
+            print("❌ Skipping - No report ID available")
+            return False
+        
+        moderation_data = {"action": "dismiss"}
+        return self.run_test(
+            "Municipality Moderation",
+            "POST",
+            f"municipality/moderate/{self.created_report_id}",
+            200,
+            data=moderation_data
+        )
+
+    def test_reverse_geocoding_in_report(self):
+        """Test that report creation includes municipality from reverse geocoding"""
+        report_data = {
+            "latitude": 40.4168,  # Madrid coordinates
+            "longitude": -3.7038
+        }
+        success, response = self.run_test(
+            "Report with Reverse Geocoding",
+            "POST",
+            "reports",
+            200,
+            data=report_data
+        )
+        if success and response.get("municipality"):
+            print(f"   Municipality auto-tagged: {response['municipality']}")
+            return True
+        return False
+
 def main():
-    print("🚀 Starting Caca Radar API Tests")
-    print("=" * 50)
+    print("🚀 Starting Caca Radar API Tests (Expanded Features)")
+    print("=" * 60)
     
     tester = CacaRadarAPITester()
     
@@ -228,11 +341,21 @@ def main():
         ("Get Current User", tester.test_get_me),
         ("Get All Reports", tester.test_get_reports),
         ("Create Report", tester.test_create_report),
+        ("Report with Reverse Geocoding", tester.test_reverse_geocoding_in_report),
         ("Get Report by ID", tester.test_get_report_by_id),
         ("Vote on Report", tester.test_vote_on_report),
         ("Get My Vote", tester.test_get_my_vote),
         ("Flag Report", tester.test_flag_report),
         ("Duplicate Vote Error", tester.test_duplicate_vote_error),
+        ("User Subscription", tester.test_user_subscription),
+        ("National Leaderboard", tester.test_national_leaderboard),
+        ("City Leaderboard", tester.test_city_leaderboard),
+        ("City List", tester.test_city_list),
+        ("Municipality Login", tester.test_municipality_login),
+        ("Municipality Stats", tester.test_municipality_stats),
+        ("Municipality Reports", tester.test_municipality_reports),
+        ("Municipality Flags", tester.test_municipality_flags),
+        ("Municipality Moderation", tester.test_municipality_moderate),
         ("Logout", tester.test_logout),
     ]
     
@@ -245,7 +368,7 @@ def main():
             print(f"❌ {test_name} - Exception: {str(e)}")
     
     # Print results
-    print("\n" + "=" * 50)
+    print("\n" + "=" * 60)
     print(f"📊 Test Results: {tester.tests_passed}/{tester.tests_run} passed")
     
     if tester.tests_passed == tester.tests_run:

@@ -6,9 +6,11 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { LanguageSelector } from "../components/LanguageSelector";
 
-function formatApiErrorDetail(detail) {
-  if (detail == null) return "Algo salió mal. Inténtalo de nuevo.";
+function formatApiErrorDetail(detail, t) {
+  if (detail == null) return t("genericError");
   if (typeof detail === "string") return detail;
   if (Array.isArray(detail))
     return detail.map((e) => (e && typeof e.msg === "string" ? e.msg : JSON.stringify(e))).filter(Boolean).join(" ");
@@ -18,6 +20,7 @@ function formatApiErrorDetail(detail) {
 
 export default function RegisterPage() {
   const { register } = useAuth();
+  const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   
   const [name, setName] = useState("");
@@ -31,7 +34,7 @@ export default function RegisterPage() {
     setError("");
     
     if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setError(t("passwordTooShort"));
       return;
     }
     
@@ -39,28 +42,29 @@ export default function RegisterPage() {
 
     try {
       await register(email, password, name);
-      toast.success("Cuenta creada correctamente");
+      toast.success(t("registerSuccess"));
       navigate("/");
     } catch (err) {
-      setError(formatApiErrorDetail(err.response?.data?.detail) || err.message);
+      setError(formatApiErrorDetail(err.response?.data?.detail, t) || err.message);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="register-page">
+    <div className={`min-h-screen bg-[#F8F9FA] flex flex-col ${isRtl ? 'rtl' : 'ltr'}`} data-testid="register-page">
       {/* Header */}
-      <div className="p-4">
+      <div className="p-4 flex justify-between items-center">
         <Button
           variant="ghost"
           onClick={() => navigate("/")}
           className="text-[#8D99AE]"
           data-testid="back-btn"
         >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver al mapa
+          <ArrowLeft className={`w-4 h-4 ${isRtl ? 'ml-2' : 'mr-2'}`} />
+          {t("backToMap")}
         </Button>
+        <LanguageSelector />
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center px-6">
@@ -70,14 +74,14 @@ export default function RegisterPage() {
             <MapPin className="w-6 h-6 text-white" />
           </div>
           <span className="text-2xl font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Caca Radar
+            {t("appName")}
           </span>
         </div>
 
         {/* Form */}
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-6">
           <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-6" style={{ fontFamily: 'Nunito, sans-serif' }}>
-            Crear cuenta
+            {t("register")}
           </h1>
 
           {error && (
@@ -88,32 +92,32 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name" className="text-[#2B2D42]">Nombre (opcional)</Label>
+              <Label htmlFor="name" className="text-[#2B2D42]">{t("name")}</Label>
               <div className="relative mt-1">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
+                <User className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                 <Input
                   id="name"
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  placeholder="Tu nombre"
-                  className="pl-10"
+                  placeholder={t("namePlaceholder")}
+                  className={isRtl ? 'pr-10' : 'pl-10'}
                   data-testid="name-input"
                 />
               </div>
             </div>
 
             <div>
-              <Label htmlFor="email" className="text-[#2B2D42]">Email</Label>
+              <Label htmlFor="email" className="text-[#2B2D42]">{t("email")}</Label>
               <div className="relative mt-1">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
+                <Mail className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                 <Input
                   id="email"
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="tu@email.com"
-                  className="pl-10"
+                  placeholder={t("emailPlaceholder")}
+                  className={isRtl ? 'pr-10' : 'pl-10'}
                   required
                   data-testid="email-input"
                 />
@@ -121,16 +125,16 @@ export default function RegisterPage() {
             </div>
 
             <div>
-              <Label htmlFor="password" className="text-[#2B2D42]">Contraseña</Label>
+              <Label htmlFor="password" className="text-[#2B2D42]">{t("password")}</Label>
               <div className="relative mt-1">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
+                <Lock className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                 <Input
                   id="password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Mínimo 6 caracteres"
-                  className="pl-10"
+                  placeholder={t("passwordPlaceholder")}
+                  className={isRtl ? 'pr-10' : 'pl-10'}
                   required
                   data-testid="password-input"
                 />
@@ -147,21 +151,21 @@ export default function RegisterPage() {
               {loading ? (
                 <Loader2 className="w-5 h-5 animate-spin" />
               ) : (
-                "Crear cuenta"
+                t("register")
               )}
             </Button>
           </form>
 
           <p className="text-center text-[#8D99AE] text-sm mt-4">
-            ¿Ya tienes cuenta?{" "}
+            {t("hasAccount")}{" "}
             <Link to="/login" className="text-[#FF6B6B] font-medium hover:underline" data-testid="login-link">
-              Inicia sesión
+              {t("loginLink")}
             </Link>
           </p>
         </div>
 
         <p className="text-center text-[#8D99AE] text-sm mt-6">
-          También puedes usar la app sin cuenta
+          {t("useWithoutAccount")}
         </p>
       </div>
     </div>
