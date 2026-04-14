@@ -18,6 +18,19 @@ from typing import Optional, List, Literal
 import random
 import string
 
+# Import gamification services
+from scoring_service import (
+    calc_report_points, calc_vote_points, update_streak, reset_daily_counts,
+    HOT_ZONE_BONUS
+)
+from antispam_service import (
+    check_cooldown, check_proximity_duplicate, check_gps_plausible,
+    detect_spam_patterns, update_trust_score, is_hot_zone,
+    get_trust_tier, TRUST_SPAM_BEHAVIOR, TRUST_DOWNVOTED_REPORT, TRUST_UPVOTED_REPORT_MIN
+)
+from validation_service import process_validation
+from ranking_service import recalculate_all_ranks, get_user_rank_info
+
 # ==================== RECEIPT VERIFICATION ====================
 
 # Apple App Store verification
@@ -262,9 +275,16 @@ class UserLogin(BaseModel):
 class ReportCreate(BaseModel):
     latitude: float
     longitude: float
+    description: Optional[str] = None
 
 class VoteCreate(BaseModel):
     vote_type: Literal["still_there", "cleaned"]
+
+class ReportVote(BaseModel):
+    vote_type: Literal["upvote", "downvote"]
+
+class ValidationCreate(BaseModel):
+    vote: Literal["confirm", "reject"]
 
 FLAG_REASONS = ["license_plate", "face", "name", "personal_info", "inappropriate", "spam", "other"]
 
@@ -379,8 +399,15 @@ async def register(data: UserRegister, response: Response):
         "subscription_active": False,
         "subscription_type": None,
         "subscription_expires": None,
+        "total_score": 0,
+        "trust_score": 50,
+        "rank": "Aspirante Cagón",
+        "level": 1,
         "report_count": 0,
         "vote_count": 0,
+        "daily_report_count": 0,
+        "streak_days": 0,
+        "last_active_date": None,
         "created_at": datetime.now(timezone.utc)
     }
     result = await db.users.insert_one(user_doc)
@@ -395,7 +422,9 @@ async def register(data: UserRegister, response: Response):
     return {
         "id": user_id, "email": email, "name": user_doc["name"],
         "username": user_doc["username"], "role": "user",
-        "subscription_active": False, "report_count": 0, "vote_count": 0
+        "subscription_active": False, "report_count": 0, "vote_count": 0,
+        "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
+        "streak_days": 0
     }
 
 @api_router.post("/auth/login")
@@ -438,7 +467,12 @@ async def login(data: UserLogin, request: Request, response: Response):
         "subscription_type": user.get("subscription_type"),
         "report_count": user.get("report_count", 0),
         "vote_count": user.get("vote_count", 0),
-        "municipality_name": user.get("municipality_name")
+        "municipality_name": user.get("municipality_name"),
+        "total_score": user.get("total_score", 0),
+        "trust_score": user.get("trust_score", 50),
+        "rank": user.get("rank", "Aspirante Cagón"),
+        "level": user.get("level", 1),
+        "streak_days": user.get("streak_days", 0)
     }
 
 @api_router.post("/auth/logout")
@@ -620,56 +654,116 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
-    
-    # Reverse geocode to get municipality
+    is_registered = user is not None
+
+    # Anti-spam: GPS plausibility
+    if not await check_gps_plausible(data.latitude, data.longitude):
+        raise HTTPException(status_code=400, detail="Ubicación fuera de España")
+
+    # Anti-spam: cooldown (registered users only)
+    if is_registered and await check_cooldown(db, user_id):
+        raise HTTPException(status_code=429, detail="Espera al menos 60 segundos entre reportes")
+
+    # Anti-spam: trust tier check
+    if is_registered:
+        tier = get_trust_tier(user.get("trust_score", 50))
+        if tier == "restricted":
+            raise HTTPException(status_code=403, detail="Tu cuenta está restringida por comportamiento sospechoso")
+
+    # Anti-spam: proximity duplicate check
+    is_duplicate = await check_proximity_duplicate(db, data.latitude, data.longitude)
+
+    # Determine initial status based on trust
+    trust = user.get("trust_score", 50) if is_registered else 50
+    initial_status = "pending"
+    if trust >= 80:
+        initial_status = "pending"  # Still pending but auto-visible
+
+    # Reverse geocode
     geo = reverse_geocode(data.latitude, data.longitude)
-    
+
     report_id = str(uuid.uuid4())
     report_doc = {
         "id": report_id,
         "latitude": data.latitude,
         "longitude": data.longitude,
         "photo_url": None,
+        "description": data.description,
         "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": initial_status,
         "status_score": 0,
         "still_there_count": 0,
         "cleaned_count": 0,
+        "upvotes": 0,
+        "downvotes": 0,
+        "validation_count": 0,
         "user_id": user_id,
         "municipality": geo["municipality"],
         "province": geo["province"],
         "country": geo["country"],
         "archived": False,
         "flagged": False,
-        "flag_count": 0
+        "flag_count": 0,
+        "is_duplicate_proximity": is_duplicate
     }
-    
+
     await db.reports.insert_one(report_doc)
-    
-    # Increment user report count
-    if user:
-        await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$inc": {"report_count": 1}})
-    
-    # Ensure municipality exists in municipalities collection
+
+    # Scoring (registered users only)
+    points_result = {"points": 0, "breakdown": {}}
+    if is_registered and not is_duplicate:
+        daily_count = user.get("daily_report_count", 0)
+        is_sub = user.get("subscription_active", False)
+        points_result = calc_report_points(
+            has_photo=False,  # Photo uploaded separately
+            has_description=bool(data.description),
+            daily_count=daily_count,
+            is_subscriber=is_sub
+        )
+
+        # Hot zone bonus
+        hot = await is_hot_zone(db, data.latitude, data.longitude)
+        if hot and points_result["points"] > 0:
+            points_result["points"] += HOT_ZONE_BONUS
+            points_result["breakdown"]["hot_zone"] = HOT_ZONE_BONUS
+
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$inc": {
+                "report_count": 1,
+                "total_score": points_result["points"],
+                "daily_report_count": 1
+            }}
+        )
+
+        # Update streak
+        await update_streak(db, user_id)
+
+        # Spam detection
+        violations = await detect_spam_patterns(db, user_id)
+        if violations:
+            await update_trust_score(db, user_id, TRUST_SPAM_BEHAVIOR, f"spam_detected:{','.join(violations)}")
+
+    # Ensure municipality exists
     existing_muni = await db.municipalities.find_one({"name": geo["municipality"], "province": geo["province"]})
     if not existing_muni:
         await db.municipalities.insert_one({
-            "id": str(uuid.uuid4()),
-            "name": geo["municipality"],
-            "province": geo["province"],
-            "country": geo["country"],
-            "report_count": 1,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "id": str(uuid.uuid4()), "name": geo["municipality"],
+            "province": geo["province"], "country": geo["country"],
+            "report_count": 1, "created_at": datetime.now(timezone.utc).isoformat()
         })
     else:
         await db.municipalities.update_one(
             {"name": geo["municipality"], "province": geo["province"]},
             {"$inc": {"report_count": 1}}
         )
-    
+
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=False, samesite="lax", max_age=86400*365, path="/")
-    
+
     report_doc.pop("_id", None)
+    report_doc["points_earned"] = points_result["points"]
+    report_doc["points_breakdown"] = points_result["breakdown"]
     return report_doc
 
 @api_router.post("/reports/{report_id}/photo")
@@ -692,6 +786,19 @@ async def upload_photo(report_id: str, file: UploadFile = File(...)):
     result = put_object(path, data, file.content_type or "image/jpeg")
     
     await db.reports.update_one({"id": report_id}, {"$set": {"photo_url": result["path"]}})
+    
+    # Award photo bonus points to report creator
+    report = await db.reports.find_one({"id": report_id})
+    if report:
+        reporter_id = report.get("user_id", "")
+        try:
+            reporter = await db.users.find_one({"_id": ObjectId(reporter_id)})
+            if reporter:
+                from scoring_service import REPORT_PHOTO_BONUS
+                await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": REPORT_PHOTO_BONUS}})
+        except Exception:
+            pass
+    
     return {"photo_url": result["path"]}
 
 @api_router.get("/files/{path:path}")
@@ -757,6 +864,124 @@ async def get_my_vote(report_id: str, request: Request):
     vote = await db.votes.find_one({"report_id": report_id, "user_id": user_id}, {"_id": 0})
     return {"vote": vote}
 
+
+# ==================== VALIDATION ====================
+
+@api_router.post("/reports/{report_id}/validate")
+async def validate_report(report_id: str, data: ValidationCreate, request: Request, response: Response):
+    """Validate a report (confirm/reject). Triggers consensus check."""
+    report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}})
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    user = await get_current_user(request)
+    anon_id = get_anonymous_id(request)
+    user_id = user["_id"] if user else anon_id
+
+    # Can't validate own report
+    if report.get("user_id") == user_id:
+        raise HTTPException(status_code=400, detail="No puedes validar tu propio reporte")
+
+    # Check if already validated
+    existing = await db.validations.find_one({"report_id": report_id, "user_id": user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya has validado este reporte")
+
+    is_sub = user.get("subscription_active", False) if user else False
+    result = await process_validation(db, report_id, user_id, data.vote, is_sub)
+
+    if not user:
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=False, samesite="lax", max_age=86400*365, path="/")
+
+    return result
+
+@api_router.get("/reports/{report_id}/my-validation")
+async def get_my_validation(report_id: str, request: Request):
+    user = await get_current_user(request)
+    anon_id = request.cookies.get("anon_id")
+    user_id = user["_id"] if user else anon_id
+    if not user_id:
+        return {"validation": None}
+    val = await db.validations.find_one({"report_id": report_id, "user_id": user_id}, {"_id": 0})
+    return {"validation": val}
+
+# ==================== UPVOTE / DOWNVOTE ====================
+
+@api_router.post("/reports/{report_id}/upvote")
+async def upvote_report(report_id: str, request: Request, response: Response):
+    return await _handle_report_vote(report_id, "upvote", request, response)
+
+@api_router.post("/reports/{report_id}/downvote")
+async def downvote_report(report_id: str, request: Request, response: Response):
+    return await _handle_report_vote(report_id, "downvote", request, response)
+
+async def _handle_report_vote(report_id: str, vote_type: str, request: Request, response: Response):
+    report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}})
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    user = await get_current_user(request)
+    anon_id = get_anonymous_id(request)
+    user_id = user["_id"] if user else anon_id
+
+    # Check existing vote
+    existing = await db.report_votes.find_one({"report_id": report_id, "user_id": user_id})
+    if existing:
+        raise HTTPException(status_code=400, detail="Ya has votado en este reporte")
+
+    await db.report_votes.insert_one({
+        "id": str(uuid.uuid4()), "report_id": report_id, "user_id": user_id,
+        "vote_type": vote_type, "created_at": datetime.now(timezone.utc).isoformat()
+    })
+
+    # Update report vote counts
+    inc_field = "upvotes" if vote_type == "upvote" else "downvotes"
+    await db.reports.update_one({"id": report_id}, {"$inc": {inc_field: 1}})
+
+    # Award/deduct points to reporter
+    reporter_id = report.get("user_id", "")
+    points = calc_vote_points(vote_type)
+    try:
+        reporter = await db.users.find_one({"_id": ObjectId(reporter_id)})
+        if reporter:
+            await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": points}})
+            # Trust score adjustments for heavy voting
+            updated_report = await db.reports.find_one({"id": report_id})
+            if updated_report:
+                net = (updated_report.get("upvotes", 0) - updated_report.get("downvotes", 0))
+                if net <= -5:
+                    await update_trust_score(db, reporter_id, TRUST_DOWNVOTED_REPORT, "heavily_downvoted")
+                elif net >= 10:
+                    await update_trust_score(db, reporter_id, TRUST_UPVOTED_REPORT_MIN, "highly_upvoted")
+    except Exception:
+        pass
+
+    if not user:
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=False, samesite="lax", max_age=86400*365, path="/")
+
+    return {"message": "Voto registrado", "vote_type": vote_type}
+
+# ==================== USER GAMIFICATION ====================
+
+@api_router.get("/users/profile")
+async def get_user_profile(request: Request):
+    """Get full gamification profile for current user."""
+    user = await require_auth(request)
+    rank_info = await get_user_rank_info(db, user["_id"])
+    tier = get_trust_tier(user.get("trust_score", 50))
+    return {**rank_info, "trust_tier": tier, "username": user.get("username"), "name": user.get("name"),
+            "subscription_active": user.get("subscription_active", False)}
+
+@api_router.post("/admin/recalculate-ranks")
+async def admin_recalculate_ranks(request: Request):
+    """Admin endpoint to trigger rank recalculation."""
+    user = await require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    count = await recalculate_all_ranks(db)
+    return {"message": f"Ranks recalculated for {count} users"}
+
+
 # ==================== FLAGS ====================
 
 @api_router.post("/reports/{report_id}/flag")
@@ -802,23 +1027,23 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
 
 @api_router.get("/leaderboard/national")
 async def get_national_leaderboard(request: Request):
-    """National leaderboard - subscriber only."""
+    """National leaderboard - subscriber only. Sorted by total_score."""
     user = await get_current_user(request)
     if not user or not user.get("subscription_active"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
     
-    top_reporters = await db.users.find(
-        {"role": "user", "report_count": {"$gt": 0}},
-        {"_id": 0, "username": 1, "name": 1, "report_count": 1, "vote_count": 1, "municipality": 1}
-    ).sort("report_count", -1).to_list(50)
+    top_users = await db.users.find(
+        {"role": "user", "total_score": {"$gt": 0}},
+        {"_id": 0, "username": 1, "name": 1, "total_score": 1, "report_count": 1, "vote_count": 1,
+         "rank": 1, "level": 1, "trust_score": 1, "streak_days": 1, "subscription_active": 1}
+    ).sort("total_score", -1).to_list(50)
     
-    # Add rank
-    for i, u in enumerate(top_reporters):
-        u["rank"] = i + 1
-        u["total_score"] = u.get("report_count", 0) + u.get("vote_count", 0)
+    for i, u in enumerate(top_users):
+        u["position"] = i + 1
         u["display_name"] = u.get("username") or u.get("name", "Anónimo")
+        u["is_subscriber"] = u.get("subscription_active", False)
     
-    return top_reporters
+    return top_users
 
 @api_router.get("/leaderboard/city/{municipality}")
 async def get_city_leaderboard(municipality: str, request: Request):
@@ -1125,6 +1350,9 @@ async def startup():
     await db.flags.create_index("municipality")
     await db.login_attempts.create_index("identifier")
     await db.municipalities.create_index([("name", 1), ("province", 1)], unique=True)
+    await db.validations.create_index([("report_id", 1), ("user_id", 1)], unique=True)
+    await db.report_votes.create_index([("report_id", 1), ("user_id", 1)], unique=True)
+    await db.trust_log.create_index("user_id")
     
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@cacaradar.es")
@@ -1136,7 +1364,8 @@ async def startup():
             "email": admin_email, "password_hash": hashed,
             "name": "Admin", "role": "admin",
             "subscription_active": True, "subscription_type": "annual",
-            "report_count": 0, "vote_count": 0,
+            "total_score": 0, "trust_score": 100, "rank": "Admin", "level": 10,
+            "report_count": 0, "vote_count": 0, "streak_days": 0,
             "created_at": datetime.now(timezone.utc)
         })
         logger.info("Admin user created")
@@ -1165,6 +1394,13 @@ async def startup():
         {"created_at": {"$lt": cutoff}, "archived": {"$ne": True}},
         {"$set": {"archived": True}}
     )
+    
+    # Reset daily report counts
+    await reset_daily_counts(db)
+    
+    # Recalculate ranks
+    rank_count = await recalculate_all_ranks(db)
+    logger.info(f"Ranks recalculated for {rank_count} users")
     
     # Write test credentials
     os.makedirs("/app/memory", exist_ok=True)

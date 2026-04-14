@@ -459,6 +459,200 @@ class CacaRadarAPITester:
             return True
         return False
 
+    def test_report_with_description_points(self):
+        """Test report creation with description awards correct points"""
+        report_data = {
+            "latitude": 40.4168,
+            "longitude": -3.7038,
+            "description": "Test description for bonus points"
+        }
+        success, response = self.run_test(
+            "Report with Description (Points Test)",
+            "POST",
+            "reports",
+            200,
+            data=report_data
+        )
+        if success:
+            points_earned = response.get("points_earned", 0)
+            breakdown = response.get("points_breakdown", {})
+            print(f"   Points earned: {points_earned}")
+            print(f"   Breakdown: {breakdown}")
+            # Should get 10 base + 3 description = 13 points
+            expected_desc_bonus = breakdown.get("description", 0)
+            if expected_desc_bonus == 3:
+                print(f"✅ Description bonus correct: {expected_desc_bonus} points")
+                return True
+            else:
+                print(f"❌ Description bonus incorrect: expected 3, got {expected_desc_bonus}")
+        return False
+
+    def test_gps_plausibility_check(self):
+        """Test GPS plausibility check blocks non-Spain coordinates"""
+        # Test with coordinates outside Spain (e.g., New York)
+        report_data = {
+            "latitude": 40.7128,  # New York coordinates
+            "longitude": -74.0060
+        }
+        success, response = self.run_test(
+            "GPS Plausibility Check (Should Fail)",
+            "POST",
+            "reports",
+            400,  # Should be blocked
+            data=report_data
+        )
+        return success
+
+    def test_cooldown_system(self):
+        """Test cooldown prevents rapid report submission"""
+        # Create first report
+        report_data = {
+            "latitude": 40.4168,
+            "longitude": -3.7038
+        }
+        success1, response1 = self.run_test(
+            "First Report (Cooldown Test)",
+            "POST",
+            "reports",
+            200,
+            data=report_data
+        )
+        
+        if not success1:
+            return False
+        
+        # Try to create second report immediately (should fail due to cooldown)
+        report_data2 = {
+            "latitude": 40.4170,  # Slightly different coordinates
+            "longitude": -3.7040
+        }
+        success2, response2 = self.run_test(
+            "Second Report (Should Fail - Cooldown)",
+            "POST",
+            "reports",
+            429,  # Should be rate limited
+            data=report_data2
+        )
+        return success2
+
+    def test_validation_endpoint(self):
+        """Test report validation (confirm/reject)"""
+        if not self.created_report_id:
+            print("❌ Skipping - No report ID available")
+            return False
+        
+        validation_data = {"vote": "confirm"}
+        return self.run_test(
+            "Validate Report (Confirm)",
+            "POST",
+            f"reports/{self.created_report_id}/validate",
+            200,
+            data=validation_data
+        )
+
+    def test_upvote_downvote_endpoints(self):
+        """Test upvote/downvote endpoints"""
+        if not self.created_report_id:
+            print("❌ Skipping - No report ID available")
+            return False
+        
+        # Test upvote
+        success1, response1 = self.run_test(
+            "Upvote Report",
+            "POST",
+            f"reports/{self.created_report_id}/upvote",
+            200
+        )
+        
+        if not success1:
+            return False
+        
+        # Test downvote on different report (can't vote twice on same report)
+        # Create another report first
+        report_data = {
+            "latitude": 40.4170,
+            "longitude": -3.7040
+        }
+        success_create, response_create = self.run_test(
+            "Create Second Report for Downvote Test",
+            "POST",
+            "reports",
+            200,
+            data=report_data
+        )
+        
+        if success_create and response_create.get("id"):
+            second_report_id = response_create["id"]
+            success2, response2 = self.run_test(
+                "Downvote Report",
+                "POST",
+                f"reports/{second_report_id}/downvote",
+                200
+            )
+            return success2
+        
+        return False
+
+    def test_user_profile_gamification(self):
+        """Test user profile shows gamification stats"""
+        return self.run_test(
+            "User Profile (Gamification Stats)",
+            "GET",
+            "users/profile",
+            200
+        )
+
+    def test_admin_rank_recalculation(self):
+        """Test admin rank recalculation endpoint"""
+        # Need to login as admin first
+        admin_login_success, _ = self.run_test(
+            "Admin Login for Rank Recalc",
+            "POST",
+            "auth/login",
+            200,
+            data=self.admin_credentials
+        )
+        
+        if not admin_login_success:
+            return False
+        
+        return self.run_test(
+            "Admin Rank Recalculation",
+            "POST",
+            "admin/recalculate-ranks",
+            200
+        )
+
+    def test_trust_tier_system(self):
+        """Test trust tier system by checking user profile"""
+        success, response = self.run_test(
+            "Trust Tier System Check",
+            "GET",
+            "users/profile",
+            200
+        )
+        
+        if success and response:
+            trust_score = response.get("trust_score", 50)
+            trust_tier = response.get("trust_tier", "normal")
+            print(f"   Trust score: {trust_score}")
+            print(f"   Trust tier: {trust_tier}")
+            
+            # Verify tier logic
+            if trust_score >= 80 and trust_tier == "trusted":
+                return True
+            elif trust_score >= 50 and trust_tier == "normal":
+                return True
+            elif trust_score >= 20 and trust_tier == "low":
+                return True
+            elif trust_score < 20 and trust_tier == "restricted":
+                return True
+            else:
+                print(f"❌ Trust tier mismatch for score {trust_score}: got {trust_tier}")
+                return False
+        
+        return False
+
 def main():
     print("🚀 Starting Caca Radar API Tests (Expanded Features)")
     print("=" * 60)
@@ -476,9 +670,16 @@ def main():
         ("Get All Reports", tester.test_get_reports),
         ("Create Report", tester.test_create_report),
         ("Report with Reverse Geocoding", tester.test_reverse_geocoding_in_report),
+        ("Report with Description Points", tester.test_report_with_description_points),
+        ("GPS Plausibility Check", tester.test_gps_plausibility_check),
+        ("Cooldown System", tester.test_cooldown_system),
         ("Get Report by ID", tester.test_get_report_by_id),
         ("Vote on Report", tester.test_vote_on_report),
         ("Get My Vote", tester.test_get_my_vote),
+        ("Validation Endpoint", tester.test_validation_endpoint),
+        ("Upvote/Downvote Endpoints", tester.test_upvote_downvote_endpoints),
+        ("User Profile Gamification", tester.test_user_profile_gamification),
+        ("Trust Tier System", tester.test_trust_tier_system),
         ("Flag Report", tester.test_flag_report),
         ("Duplicate Vote Error", tester.test_duplicate_vote_error),
         ("User Subscription", tester.test_user_subscription),
@@ -498,6 +699,7 @@ def main():
         ("Municipality Reports", tester.test_municipality_reports),
         ("Municipality Flags", tester.test_municipality_flags),
         ("Municipality Moderation", tester.test_municipality_moderate),
+        ("Admin Rank Recalculation", tester.test_admin_rank_recalculation),
         ("Logout", tester.test_logout),
     ]
     

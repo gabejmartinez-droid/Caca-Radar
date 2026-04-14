@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   Drawer, DrawerContent, DrawerHeader, DrawerTitle, DrawerDescription, DrawerFooter, DrawerClose
@@ -83,6 +83,8 @@ export default function MapPage() {
   const [photoPreview, setPhotoPreview] = useState(null);
   const [myVote, setMyVote] = useState(null);
   const [selectedFlagReason, setSelectedFlagReason] = useState(null);
+  const [myValidation, setMyValidation] = useState(null);
+  const [description, setDescription] = useState("");
   const fileInputRef = useRef(null);
 
   const fetchReports = async () => {
@@ -98,9 +100,16 @@ export default function MapPage() {
     setSelectedReport(report);
     setShowDetailsDrawer(true);
     try {
-      const { data } = await axios.get(`${API}/reports/${report.id}/my-vote`, { withCredentials: true });
-      setMyVote(data.vote?.vote_type || null);
-    } catch { setMyVote(null); }
+      const [voteRes, valRes] = await Promise.all([
+        axios.get(`${API}/reports/${report.id}/my-vote`, { withCredentials: true }),
+        axios.get(`${API}/reports/${report.id}/my-validation`, { withCredentials: true })
+      ]);
+      setMyVote(voteRes.data.vote?.vote_type || null);
+      setMyValidation(valRes.data.validation?.vote || null);
+    } catch {
+      setMyVote(null);
+      setMyValidation(null);
+    }
   }, []);
 
   const handlePhotoSelect = (e) => {
@@ -116,7 +125,7 @@ export default function MapPage() {
     if (!userLocation) { toast.error(t("locationError")); return; }
     setLoading(true);
     try {
-      const { data: report } = await axios.post(`${API}/reports`, { latitude: userLocation.lat, longitude: userLocation.lng }, { withCredentials: true });
+      const { data: report } = await axios.post(`${API}/reports`, { latitude: userLocation.lat, longitude: userLocation.lng, description: description || null }, { withCredentials: true });
       if (photoFile) {
         const formData = new FormData();
         formData.append("file", photoFile);
@@ -126,6 +135,7 @@ export default function MapPage() {
       setShowReportDrawer(false);
       setPhotoFile(null);
       setPhotoPreview(null);
+      setDescription("");
       fetchReports();
     } catch (error) { toast.error(error.response?.data?.detail || t("reportError")); }
     finally { setLoading(false); }
@@ -156,6 +166,31 @@ export default function MapPage() {
       setSelectedFlagReason(null);
     } catch (error) { toast.error(error.response?.data?.detail || t("flagError")); }
     finally { setLoading(false); }
+  };
+
+  const handleValidation = async (vote) => {
+    if (!selectedReport) return;
+    setLoading(true);
+    try {
+      await axios.post(`${API}/reports/${selectedReport.id}/validate`, { vote }, { withCredentials: true });
+      setMyValidation(vote);
+      toast.success(vote === "confirm" ? "Confirmado" : "Rechazado");
+      fetchReports();
+      const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
+      setSelectedReport(data);
+    } catch (error) { toast.error(error.response?.data?.detail || "Error al validar"); }
+    finally { setLoading(false); }
+  };
+
+  const handleReportVote = async (voteType) => {
+    if (!selectedReport) return;
+    try {
+      const endpoint = voteType === "upvote" ? "upvote" : "downvote";
+      await axios.post(`${API}/reports/${selectedReport.id}/${endpoint}`, {}, { withCredentials: true });
+      toast.success(voteType === "upvote" ? "+1" : "-1");
+      const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
+      setSelectedReport(data);
+    } catch (error) { toast.error(error.response?.data?.detail || "Error"); }
   };
 
   const formatDate = (dateStr) => {
@@ -192,7 +227,9 @@ export default function MapPage() {
           )}
           {user ? (
             <Button variant="outline" size="sm" onClick={logout} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="logout-btn">
-              <User className="w-4 h-4 mr-1" />{user.name || "Usuario"}
+              <User className="w-4 h-4 mr-1" />
+              <span className="hidden sm:inline">{user.name || "Usuario"}</span>
+              {user.total_score > 0 && <span className="ml-1 text-xs text-[#FF6B6B] font-bold">{user.total_score}pts</span>}
             </Button>
           ) : (
             <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="login-btn">
@@ -239,6 +276,17 @@ export default function MapPage() {
             </div>
 
             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoSelect} className="hidden" data-testid="photo-input" />
+
+            {/* Description (optional) */}
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Descripción opcional..."
+              className="w-full p-3 border border-[#8D99AE]/20 rounded-xl text-sm resize-none bg-[#F8F9FA] text-[#2B2D42] placeholder-[#8D99AE] mb-4 focus:outline-none focus:border-[#FF6B6B]"
+              rows={2}
+              maxLength={200}
+              data-testid="description-input"
+            />
             {photoPreview ? (
               <div className="relative mb-4">
                 <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
@@ -272,24 +320,63 @@ export default function MapPage() {
                   <img src={`${API}/files/${selectedReport.photo_url}`} alt="Foto" className="w-full h-48 object-cover" data-testid="report-photo" />
                 </div>
               )}
+              {selectedReport.description && (
+                <p className="text-sm text-[#2B2D42] mb-3 italic">"{selectedReport.description}"</p>
+              )}
               <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-2 text-[#8D99AE] mb-2">
                   <Clock className="w-4 h-4" /><span className="text-sm">{formatDate(selectedReport.created_at)}</span>
                   {selectedReport.municipality && <span className="text-xs bg-[#FF6B6B]/10 text-[#FF6B6B] px-2 py-0.5 rounded-full ml-auto">{selectedReport.municipality}</span>}
                 </div>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : selectedReport.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                    {selectedReport.status === 'verified' ? 'Verificado' : selectedReport.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                  </span>
+                  <span className="text-xs text-[#8D99AE]">{selectedReport.validation_count || 0} validaciones</span>
+                </div>
                 <div className="flex gap-4">
-                  <div className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-[#FF5252]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.still_there_count || 0} {t("stillThereCount")}</span></div>
-                  <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.cleaned_count || 0} {t("cleanedCount")}</span></div>
+                  <div className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.upvotes || 0}</span></div>
+                  <div className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-[#FF5252]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.downvotes || 0}</span></div>
+                  <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.still_there_count || 0} {t("stillThereCount")}</span></div>
                 </div>
               </div>
+
+              {/* Upvote / Downvote */}
+              <div className="flex gap-2 mb-4">
+                <Button size="sm" variant="outline" onClick={() => handleReportVote("upvote")} className="flex-1 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" data-testid="upvote-btn">
+                  <ThumbsUp className="w-4 h-4 mr-1" /> Útil
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => handleReportVote("downvote")} className="flex-1 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10" data-testid="downvote-btn">
+                  <ThumbsDown className="w-4 h-4 mr-1" /> No útil
+                </Button>
+              </div>
+
+              {/* Validation */}
+              {!myValidation && selectedReport.status === 'pending' ? (
+                <div className="flex gap-3 mb-4">
+                  <Button onClick={() => handleValidation("confirm")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="validate-confirm-btn">
+                    <CheckCircle className="w-5 h-5 mr-2" /> Confirmar
+                  </Button>
+                  <Button onClick={() => handleValidation("reject")} disabled={loading} className="flex-1 bg-[#FF5252] hover:bg-[#E53935] text-white py-5 rounded-xl" data-testid="validate-reject-btn">
+                    <X className="w-5 h-5 mr-2" /> Rechazar
+                  </Button>
+                </div>
+              ) : myValidation ? (
+                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
+                  Tu validación: {myValidation === "confirm" ? "Confirmado" : "Rechazado"}
+                </div>
+              ) : null}
+
+              {/* Still there / Cleaned (legacy) */}
               {!myVote ? (
                 <div className="flex gap-3 mb-4">
-                  <Button onClick={() => handleVote("still_there")} disabled={loading} className="flex-1 bg-[#FF5252] hover:bg-[#E53935] text-white py-6 rounded-xl" data-testid="vote-still-there-btn"><ThumbsUp className="w-5 h-5 mr-2" />{t("stillThere")}</Button>
-                  <Button onClick={() => handleVote("cleaned")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-6 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-5 h-5 mr-2" />{t("cleaned")}</Button>
+                  <Button onClick={() => handleVote("still_there")} disabled={loading} className="flex-1 bg-[#FFA726] hover:bg-[#F57C00] text-white py-5 rounded-xl" data-testid="vote-still-there-btn"><ThumbsUp className="w-5 h-5 mr-2" />{t("stillThere")}</Button>
+                  <Button onClick={() => handleVote("cleaned")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-5 h-5 mr-2" />{t("cleaned")}</Button>
                 </div>
               ) : (
-                <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4 text-center"><span className="text-[#8D99AE]">{t("alreadyVoted")}: {myVote === "still_there" ? t("stillThere") : t("cleaned")}</span></div>
+                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">{t("alreadyVoted")}: {myVote === "still_there" ? t("stillThere") : t("cleaned")}</div>
               )}
+
               <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="w-full text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn"><Flag className="w-4 h-4 mr-2" />{t("flagReport")}</Button>
             </div>
           )}
