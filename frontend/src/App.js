@@ -10,6 +10,7 @@ import SubscriptionPage from "./pages/SubscriptionPage";
 import DashboardLogin from "./pages/DashboardLogin";
 import Dashboard from "./pages/Dashboard";
 import MunicipalityRegister from "./pages/MunicipalityRegister";
+import ProfilePage from "./pages/ProfilePage";
 import "./App.css";
 
 function App() {
@@ -23,6 +24,7 @@ function App() {
             <Route path="/register" element={<RegisterPage />} />
             <Route path="/leaderboard" element={<LeaderboardPage />} />
             <Route path="/subscribe" element={<SubscriptionPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="/dashboard/login" element={<DashboardLogin />} />
             <Route path="/dashboard/register" element={<MunicipalityRegister />} />
             <Route path="/dashboard" element={<Dashboard />} />

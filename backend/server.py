@@ -274,10 +274,13 @@ class UserLogin(BaseModel):
     email: EmailStr
     password: str
 
+REPORT_CATEGORIES = ["dog_feces", "trash", "noise", "graffiti", "broken_infrastructure", "other"]
+
 class ReportCreate(BaseModel):
     latitude: float
     longitude: float
     description: Optional[str] = None
+    category: Optional[str] = "dog_feces"
 
 class VoteCreate(BaseModel):
     vote_type: Literal["still_there", "cleaned"]
@@ -637,10 +640,12 @@ async def get_subscription_status(request: Request):
 # ==================== REPORTS ====================
 
 @api_router.get("/reports")
-async def get_reports(municipality: Optional[str] = None):
+async def get_reports(municipality: Optional[str] = None, category: Optional[str] = None):
     query = {"archived": {"$ne": True}, "flagged": {"$ne": True}}
     if municipality:
         query["municipality"] = municipality
+    if category:
+        query["category"] = category
     reports = await db.reports.find(query, {"_id": 0}).to_list(2000)
     return reports
 
@@ -685,12 +690,14 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     geo = reverse_geocode(data.latitude, data.longitude)
 
     report_id = str(uuid.uuid4())
+    category = data.category if data.category in REPORT_CATEGORIES else "dog_feces"
     report_doc = {
         "id": report_id,
         "latitude": data.latitude,
         "longitude": data.longitude,
         "photo_url": None,
         "description": data.description,
+        "category": category,
         "created_at": datetime.now(timezone.utc).isoformat(),
         "status": initial_status,
         "status_score": 0,

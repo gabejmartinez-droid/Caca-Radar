@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2 } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -16,6 +16,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
+import { HeatmapLayer } from "../components/HeatmapLayer";
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
 const DEFAULT_CENTER = [40.4168, -3.7038];
@@ -88,6 +89,7 @@ export default function MapPage() {
   const [selectedFlagReason, setSelectedFlagReason] = useState(null);
   const [myValidation, setMyValidation] = useState(null);
   const [description, setDescription] = useState("");
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const fileInputRef = useRef(null);
 
   const fetchReports = async () => {
@@ -213,6 +215,7 @@ export default function MapPage() {
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <LocationFinder onLocationFound={setUserLocation} allowMapClick={true} t={t} />
         <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />
+        {showHeatmap && <HeatmapLayer reports={reports} visible={showHeatmap} />}
       </MapContainer>
 
       {/* Header */}
@@ -243,6 +246,9 @@ export default function MapPage() {
                   </div>
                 </div>
                 <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer" data-testid="menu-profile">
+                  <User className="w-4 h-4 mr-2" />Mi Perfil
+                </DropdownMenuItem>
                 {user.subscription_active && (
                   <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
                     <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
@@ -271,6 +277,17 @@ export default function MapPage() {
           )}
         </div>
       </div>
+
+      {/* Heatmap toggle - subscriber only */}
+      {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+        <button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          className={`absolute bottom-28 right-4 z-[999] p-3 rounded-xl shadow-lg transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
+          data-testid="heatmap-toggle"
+        >
+          <Layers className="w-5 h-5" />
+        </button>
+      )}
 
       {/* Legend - hide when drawers open */}
       {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
