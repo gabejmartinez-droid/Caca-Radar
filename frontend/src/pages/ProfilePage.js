@@ -134,7 +134,39 @@ export default function ProfilePage() {
             <StatCard icon={BarChart3} label="Votos" value={profile?.vote_count || 0} color="#42A5F5" />
             <StatCard icon={Flame} label="Racha" value={`${profile?.streak_days || 0}d`} color="#FFA726" />
           </div>
+          {profile?.accuracy_rate !== undefined && (
+            <div className="flex gap-3 mt-3">
+              <div className="flex-1 bg-[#F8F9FA] rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-[#66BB6A]">{profile.accuracy_rate}%</p>
+                <p className="text-xs text-[#8D99AE]">Precisión</p>
+              </div>
+              <div className="flex-1 bg-[#F8F9FA] rounded-lg p-2 text-center">
+                <p className="text-lg font-bold text-[#42A5F5]">{profile.impact_score || 0}</p>
+                <p className="text-xs text-[#8D99AE]">Impacto</p>
+              </div>
+            </div>
+          )}
         </div>
+
+        {/* Badges */}
+        {profile?.badges && profile.badges.length > 0 && (
+          <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+            <h3 className="font-bold text-[#2B2D42] mb-3 flex items-center gap-2">
+              <Trophy className="w-5 h-5 text-[#FFA726]" />Insignias ({profile.badges_count || 0})
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              {profile.badges.map((badge) => (
+                <div key={badge.id} className="bg-[#FFA726]/10 rounded-xl p-3 text-center">
+                  <div className="w-8 h-8 bg-[#FFA726] rounded-full flex items-center justify-center mx-auto mb-1">
+                    <Star className="w-4 h-4 text-white" />
+                  </div>
+                  <p className="text-xs font-bold text-[#2B2D42]">{badge.name}</p>
+                  <p className="text-xs text-[#8D99AE]">{badge.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Trust Score */}
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">

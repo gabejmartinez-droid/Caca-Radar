@@ -539,9 +539,263 @@ class CacaRadarAPITester:
         payload_b64 = base64.urlsafe_b64encode(json.dumps(renewal_info).encode()).decode().rstrip('=')
         return f"{header_b64}.{payload_b64}.mock_signature"
     
+    def test_reports_freshness_filter(self):
+        """Test reports endpoint with freshness filter"""
+        success, response = self.run_test(
+            "Reports with Freshness Filter", "GET", "reports?freshness=Fresca", 200
+        )
+        
+        if success and isinstance(response, list):
+            # Check if reports have freshness labels
+            for report in response[:3]:  # Check first 3 reports
+                if 'freshness' in report:
+                    self.log(f"   ✅ Report has freshness: {report['freshness']}")
+                    break
+            else:
+                self.log("   ⚠️  No reports with freshness field found")
+        
+        return success, response
+    
+    def test_reports_confirmed_filter(self):
+        """Test reports endpoint with confirmed_only filter"""
+        success, response = self.run_test(
+            "Reports with Confirmed Filter", "GET", "reports?confirmed_only=true", 200
+        )
+        
+        if success and isinstance(response, list):
+            # Check if all returned reports are verified
+            verified_count = sum(1 for r in response if r.get('status') == 'verified')
+            self.log(f"   ✅ Returned {len(response)} reports, {verified_count} verified")
+        
+        return success, response
+    
+    def test_user_subscription_trial(self):
+        """Test free trial subscription activation"""
+        # Create a new user for trial test
+        test_email = f"trial.user.{uuid.uuid4().hex[:8]}@test.es"
+        
+        success, response = self.run_test(
+            "Trial User Registration", "POST", "auth/register", 200,
+            {
+                "email": test_email,
+                "password": "testpass123",
+                "name": "Trial User"
+            }
+        )
+        
+        if not success:
+            return False, {}
+            
+        trial_token = self.session.cookies.get('access_token')
+        
+        # Test free trial activation
+        success, response = self.run_test(
+            "Free Trial Activation", "POST", "users/subscribe", 200,
+            {"plan": "monthly"},
+            cookies={'access_token': trial_token}
+        )
+        
+        if success:
+            if response.get('trial'):
+                self.log(f"   ✅ Free trial activated: {response.get('message')}")
+            else:
+                self.log(f"   ⚠️  Expected trial activation, got: {response}")
+        
+        return success, response
+    
+    def test_photo_upload_premium_restriction(self):
+        """Test photo upload is restricted to premium users"""
+        # Create a free user
+        test_email = f"free.photo.{uuid.uuid4().hex[:8]}@test.es"
+        
+        success, response = self.run_test(
+            "Free User for Photo Test", "POST", "auth/register", 200,
+            {
+                "email": test_email,
+                "password": "testpass123",
+                "name": "Free Photo User"
+            }
+        )
+        
+        if not success:
+            return False, {}
+            
+        free_token = self.session.cookies.get('access_token')
+        
+        # Create a report first
+        success, report_response = self.run_test(
+            "Create Report for Photo Test", "POST", "reports", 200,
+            {
+                "latitude": 40.4168,
+                "longitude": -3.7038,
+                "description": "Test report for photo upload"
+            },
+            cookies={'access_token': free_token}
+        )
+        
+        if not success:
+            return False, {}
+        
+        report_id = report_response.get('id')
+        
+        # Try to upload photo as free user (should fail with 403)
+        success, response = self.run_test(
+            "Photo Upload (Free User)", "POST", f"reports/{report_id}/photo", 403,
+            {},  # Would normally be FormData but testing restriction
+            cookies={'access_token': free_token}
+        )
+        
+        if success:
+            self.log(f"   ✅ Photo upload correctly restricted for free users")
+        
+        return success, response
+    
+    def test_badges_endpoint(self):
+        """Test user badges endpoint"""
+        if not self.user_token:
+            self.log("⚠️  Skipping badges test - no user token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "User Badges", "GET", "users/badges", 200,
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            if isinstance(response, list):
+                earned_badges = [b for b in response if b.get('earned')]
+                self.log(f"   ✅ Badges endpoint returned {len(response)} badges, {len(earned_badges)} earned")
+            else:
+                self.log(f"   ⚠️  Expected list of badges, got: {type(response)}")
+        
+        return success, response
+    
+    def test_weekly_leaderboard(self):
+        """Test weekly leaderboard endpoint"""
+        # First, activate subscription for a user to access leaderboard
+        if not self.user_token:
+            self.log("⚠️  Skipping weekly leaderboard - no user token")
+            return False, {}
+        
+        # Try to activate subscription first
+        self.run_test(
+            "Activate Subscription for Leaderboard", "POST", "users/subscribe", 200,
+            {"plan": "monthly"},
+            cookies={'access_token': self.user_token}
+        )
+        
+        # Test weekly leaderboard
+        success, response = self.run_test(
+            "Weekly Leaderboard", "GET", "leaderboard/weekly", 200,
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            if isinstance(response, list):
+                self.log(f"   ✅ Weekly leaderboard returned {len(response)} users")
+            else:
+                self.log(f"   ⚠️  Expected list of users, got: {type(response)}")
+        
+        return success, response
+    
+    def test_saved_locations_crud(self):
+        """Test saved locations CRUD operations"""
+        if not self.user_token:
+            self.log("⚠️  Skipping saved locations - no user token")
+            return False, {}
+        
+        # Create saved location
+        success, response = self.run_test(
+            "Create Saved Location", "POST", "users/saved-locations", 200,
+            {
+                "name": "home",
+                "latitude": 40.4168,
+                "longitude": -3.7038,
+                "label": "Mi Casa"
+            },
+            cookies={'access_token': self.user_token}
+        )
+        
+        if not success:
+            return False, {}
+        
+        location_id = response.get('id')
+        
+        # Get saved locations
+        success, response = self.run_test(
+            "Get Saved Locations", "GET", "users/saved-locations", 200,
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success and isinstance(response, list):
+            self.log(f"   ✅ Retrieved {len(response)} saved locations")
+        
+        # Delete saved location
+        if location_id:
+            success, response = self.run_test(
+                "Delete Saved Location", "DELETE", f"users/saved-locations/{location_id}", 200,
+                cookies={'access_token': self.user_token}
+            )
+        
+        return success, response
+    
+    def test_neighborhood_cleanliness_score(self):
+        """Test neighborhood cleanliness score endpoint"""
+        success, response = self.run_test(
+            "Neighborhood Cleanliness Score", "GET", "neighborhood/score?lat=40.42&lon=-3.70", 200
+        )
+        
+        if success:
+            if 'score' in response:
+                score = response['score']
+                self.log(f"   ✅ Cleanliness score: {score}/100")
+            else:
+                self.log(f"   ⚠️  No score in response: {response}")
+        
+        return success, response
+    
+    def test_admin_metrics_endpoint(self):
+        """Test admin metrics endpoint"""
+        if not self.admin_token:
+            self.log("⚠️  Skipping admin metrics - no admin token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Admin Metrics", "GET", "admin/metrics", 200,
+            cookies={'access_token': self.admin_token}
+        )
+        
+        if success:
+            expected_fields = ['total_users', 'total_reports', 'active_subscriptions']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing admin metrics fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ Admin metrics contains all required fields")
+                self.log(f"   📊 Users: {response.get('total_users')}, Reports: {response.get('total_reports')}, Subscriptions: {response.get('active_subscriptions')}")
+        
+        return success, response
+    
+    def test_reports_confidence_scores(self):
+        """Test reports include confidence scores"""
+        success, response = self.run_test(
+            "Reports with Confidence Scores", "GET", "reports", 200
+        )
+        
+        if success and isinstance(response, list) and len(response) > 0:
+            # Check if reports have confidence scores
+            reports_with_confidence = [r for r in response[:5] if 'confidence' in r]
+            self.log(f"   ✅ {len(reports_with_confidence)}/5 reports have confidence scores")
+            
+            if reports_with_confidence:
+                avg_confidence = sum(r['confidence'] for r in reports_with_confidence) / len(reports_with_confidence)
+                self.log(f"   📊 Average confidence: {avg_confidence:.1f}%")
+        
+        return success, response
+
     def run_all_tests(self):
         """Run all backend tests"""
-        self.log("🚀 Starting Caca Radar Backend Tests - Iteration 7: Social Sharing, Push Notifications & Analytics")
+        self.log("🚀 Starting Caca Radar Backend Tests - Iteration 8: Monetization & Gamification")
         
         # Basic connectivity
         self.test_health_check()
@@ -551,17 +805,26 @@ class CacaRadarAPITester:
         self.test_municipality_login()
         self.test_user_registration()
         
-        # ITERATION 7 NEW FEATURES TESTING
-        self.log("\n🆕 Testing New Features - Social Sharing")
-        self.test_share_endpoint()
+        # ITERATION 8 NEW FEATURES TESTING
+        self.log("\n🆕 Testing New Features - Reports with Freshness & Confidence")
+        self.test_reports_freshness_filter()
+        self.test_reports_confirmed_filter()
+        self.test_reports_confidence_scores()
         
-        self.log("\n🆕 Testing New Features - Push Notifications")
-        self.test_vapid_key_endpoint()
-        self.test_push_subscribe_endpoint()
-        self.test_push_unsubscribe_endpoint()
+        self.log("\n🆕 Testing New Features - Subscription & Trial System")
+        self.test_user_subscription_trial()
+        self.test_photo_upload_premium_restriction()
         
-        self.log("\n🆕 Testing New Features - Municipality Analytics")
-        self.test_municipality_analytics_endpoint()
+        self.log("\n🆕 Testing New Features - Badges & Gamification")
+        self.test_badges_endpoint()
+        self.test_weekly_leaderboard()
+        
+        self.log("\n🆕 Testing New Features - Saved Locations")
+        self.test_saved_locations_crud()
+        
+        self.log("\n🆕 Testing New Features - Neighborhood & Admin")
+        self.test_neighborhood_cleanliness_score()
+        self.test_admin_metrics_endpoint()
         
         # PREVIOUS FEATURES TESTING
         self.log("\n📋 Testing Previous Features")
@@ -572,6 +835,15 @@ class CacaRadarAPITester:
         self.test_municipality_subscription_pricing()
         self.test_contributor_anonymity()
         self.test_flag_threshold()
+        
+        # Social sharing & push notifications
+        self.test_share_endpoint()
+        self.test_vapid_key_endpoint()
+        self.test_push_subscribe_endpoint()
+        self.test_push_unsubscribe_endpoint()
+        
+        # Municipality analytics
+        self.test_municipality_analytics_endpoint()
         
         # Webhook endpoints
         self.test_webhook_status()

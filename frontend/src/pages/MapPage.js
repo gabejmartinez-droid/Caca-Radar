@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -31,13 +31,14 @@ function getMarkerCategory(createdAt) {
   return "old";
 }
 
-function createMarkerIcon(category) {
+function createMarkerIcon(category, isPremium) {
   const colors = { recent: "#FF5252", moderate: "#FFA726", old: "#66BB6A" };
   const color = colors[category];
   const pulseClass = category === "recent" ? "marker-recent" : "";
+  const border = isPremium ? "border: 3px solid #FFD700;" : "border: 3px solid white;";
   return L.divIcon({
     className: "custom-marker-wrapper",
-    html: `<div class="custom-marker ${pulseClass}" style="width:32px;height:32px;background-color:${color};"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div>`,
+    html: `<div class="custom-marker ${pulseClass}" style="width:32px;height:32px;background-color:${color};${border}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div>`,
     iconSize: [32, 32], iconAnchor: [16, 16]
   });
 }
@@ -49,7 +50,7 @@ function MapMarkers({ reports, onMarkerClick }) {
     markersRef.current.forEach(m => map.removeLayer(m));
     markersRef.current = [];
     reports.forEach(report => {
-      const icon = createMarkerIcon(getMarkerCategory(report.created_at));
+      const icon = createMarkerIcon(getMarkerCategory(report.created_at), report.is_premium_report);
       const marker = L.marker([report.latitude, report.longitude], { icon }).addTo(map).on("click", () => onMarkerClick(report));
       markersRef.current.push(marker);
     });
@@ -91,6 +92,8 @@ export default function MapPage() {
   const [description, setDescription] = useState("");
   const [showHeatmap, setShowHeatmap] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(false);
+  const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
+  const [showFilterBar, setShowFilterBar] = useState(false);
   const fileInputRef = useRef(null);
 
   // Check push notification status
@@ -102,12 +105,20 @@ export default function MapPage() {
 
   const fetchReports = async () => {
     try {
-      const { data } = await axios.get(`${API}/reports`, { withCredentials: true });
+      let url = `${API}/reports`;
+      const params = [];
+      if (activeFilter === "Fresca" || activeFilter === "En proceso" || activeFilter === "Fósil") {
+        params.push(`freshness=${encodeURIComponent(activeFilter)}`);
+      } else if (activeFilter === "verified") {
+        params.push("confirmed_only=true");
+      }
+      if (params.length) url += "?" + params.join("&");
+      const { data } = await axios.get(url, { withCredentials: true });
       setReports(data);
     } catch (e) { console.error(e); }
   };
 
-  useEffect(() => { fetchReports(); }, []);
+  useEffect(() => { fetchReports(); }, [activeFilter]);
 
   const handleMarkerClick = useCallback(async (report) => {
     setSelectedReport(report);
@@ -337,15 +348,32 @@ export default function MapPage() {
         </div>
       </div>
 
+      {/* Filter Bar */}
+      {showFilterBar && (
+        <div className="absolute top-16 left-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3">
+          <div className="flex gap-2 flex-wrap">
+            {[null, "Fresca", "En proceso", "Fósil", "verified"].map((f) => (
+              <button key={f || "all"} onClick={() => { setActiveFilter(f); if (!user?.subscription_active && f) { navigate("/subscribe"); return; } }}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${activeFilter === f ? 'bg-[#FF6B6B] text-white' : 'bg-[#F8F9FA] text-[#8D99AE] hover:bg-[#FF6B6B]/10'}`}
+                data-testid={`filter-${f || 'all'}`}>
+                {f === null ? "Todos" : f === "verified" ? "Verificados" : f}
+                {f && !user?.subscription_active && <Lock className="w-3 h-3 ml-1 inline" />}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Heatmap toggle - subscriber only */}
       {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
-        <button
-          onClick={() => setShowHeatmap(!showHeatmap)}
-          className={`absolute bottom-28 right-4 z-[999] p-3 rounded-xl shadow-lg transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
-          data-testid="heatmap-toggle"
-        >
-          <Layers className="w-5 h-5" />
-        </button>
+        <div className="absolute bottom-28 right-4 z-[999] flex flex-col gap-2">
+          <button onClick={() => setShowHeatmap(!showHeatmap)} className={`p-3 rounded-xl shadow-lg transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`} data-testid="heatmap-toggle">
+            <Layers className="w-5 h-5" />
+          </button>
+          <button onClick={() => setShowFilterBar(!showFilterBar)} className={`p-3 rounded-xl shadow-lg transition-all ${showFilterBar ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`} data-testid="filter-toggle">
+            <Filter className="w-5 h-5" />
+          </button>
+        </div>
       )}
 
       {/* Legend - hide when drawers open */}
@@ -403,9 +431,13 @@ export default function MapPage() {
                 <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
                 <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white"><X className="w-4 h-4" /></button>
               </div>
-            ) : (
+            ) : user?.subscription_active ? (
               <button onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-[#8D99AE]/30 rounded-xl flex flex-col items-center gap-2 text-[#8D99AE] hover:border-[#FF6B6B] hover:text-[#FF6B6B] transition-colors mb-4" data-testid="add-photo-btn">
                 <Camera className="w-8 h-8" /><span>{t("addPhoto")}</span>
+              </button>
+            ) : (
+              <button onClick={() => navigate("/subscribe")} className="w-full p-6 border-2 border-dashed border-[#8D99AE]/20 rounded-xl flex flex-col items-center gap-2 text-[#8D99AE] mb-4 opacity-60" data-testid="photo-premium-prompt">
+                <Lock className="w-6 h-6" /><span className="text-xs">Fotos — función Premium</span>
               </button>
             )}
           </div>
@@ -451,6 +483,12 @@ export default function MapPage() {
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : selectedReport.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
                     {selectedReport.status === 'verified' ? 'Verificado' : selectedReport.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
                   </span>
+                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
+                    {selectedReport.freshness || "Fósil"}
+                  </span>
+                  {selectedReport.confidence !== undefined && (
+                    <span className="text-xs text-[#8D99AE]">Confianza: {selectedReport.confidence}%</span>
+                  )}
                   <span className="text-xs text-[#8D99AE]">{selectedReport.validation_count || 0} validaciones</span>
                 </div>
                 <div className="flex gap-4">

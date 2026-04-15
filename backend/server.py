@@ -34,6 +34,7 @@ from ranking_service import recalculate_all_ranks, get_user_rank_info
 from email_service import send_verification_code as send_verification_email, is_configured as email_configured
 from webhook_handlers import process_apple_notification, process_google_notification
 from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
+from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -337,6 +338,12 @@ class PushSubscriptionCreate(BaseModel):
     latitude: Optional[float] = None
     longitude: Optional[float] = None
 
+class SavedLocationCreate(BaseModel):
+    name: str  # "home", "work", "custom"
+    latitude: float
+    longitude: float
+    label: Optional[str] = None
+
 # Create the main app
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
@@ -541,13 +548,32 @@ async def update_username(data: UsernameUpdate, request: Request):
 
 @api_router.post("/users/subscribe")
 async def subscribe_user(request: Request):
-    """Mock subscription endpoint — in production, use /users/subscribe/apple or /users/subscribe/google."""
+    """Subscription: €3.99/month or €29.99/year with 7-day free trial."""
     user = await require_auth(request)
     body = await request.json()
     plan = body.get("plan", "monthly")
-    
+
+    # Check if eligible for free trial
+    has_used_trial = user.get("trial_used", False)
+    trial_active = False
+
+    if not has_used_trial and not user.get("subscription_active"):
+        trial_end = datetime.now(timezone.utc) + timedelta(days=7)
+        await db.users.update_one(
+            {"_id": ObjectId(user["_id"])},
+            {"$set": {
+                "subscription_active": True,
+                "subscription_type": plan,
+                "subscription_expires": trial_end.isoformat(),
+                "subscription_store": "trial",
+                "trial_used": True,
+                "trial_end": trial_end.isoformat()
+            }}
+        )
+        return {"message": "Prueba gratuita de 7 días activada", "plan": plan, "trial": True, "expires": trial_end.isoformat()}
+
     expires = datetime.now(timezone.utc) + (timedelta(days=30) if plan == "monthly" else timedelta(days=365))
-    
+
     await db.users.update_one(
         {"_id": ObjectId(user["_id"])},
         {"$set": {
@@ -647,13 +673,38 @@ async def get_subscription_status(request: Request):
 # ==================== REPORTS ====================
 
 @api_router.get("/reports")
-async def get_reports(municipality: Optional[str] = None, category: Optional[str] = None):
+async def get_reports(
+    municipality: Optional[str] = None,
+    category: Optional[str] = None,
+    freshness: Optional[str] = None,
+    status: Optional[str] = None,
+    confirmed_only: Optional[bool] = None
+):
     query = {"archived": {"$ne": True}, "flagged": {"$ne": True}}
     if municipality:
         query["municipality"] = municipality
     if category:
         query["category"] = category
+    if status:
+        query["status"] = status
+    if confirmed_only:
+        query["status"] = "verified"
+
     reports = await db.reports.find(query, {"_id": 0}).to_list(2000)
+
+    # Add freshness labels and confidence scores
+    for r in reports:
+        r["freshness"] = get_freshness_label(r.get("created_at", ""))
+        r["confidence"] = calc_confidence_score(r)
+        r["is_premium_report"] = r.get("contributor_rank") is not None
+        if "contributor_name" not in r:
+            r["contributor_name"] = "Anónimo"
+            r["contributor_rank"] = None
+
+    # Filter by freshness if requested
+    if freshness:
+        reports = [r for r in reports if r["freshness"] == freshness]
+
     return reports
 
 @api_router.get("/reports/{report_id}")
@@ -661,6 +712,9 @@ async def get_report(report_id: str):
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    report["freshness"] = get_freshness_label(report.get("created_at", ""))
+    report["confidence"] = calc_confidence_score(report)
+    report["is_premium_report"] = report.get("contributor_rank") is not None
     return report
 
 @api_router.post("/reports")
@@ -845,6 +899,8 @@ async def process_report_scoring(db, user: dict, user_id: str, data: ReportCreat
     violations = await detect_spam_patterns(db, user_id)
     if violations:
         await update_trust_score(db, user_id, TRUST_SPAM_BEHAVIOR, f"spam_detected:{','.join(violations)}")
+    # Check badges
+    await check_and_award_badges(db, user_id)
     return result
 
 async def upsert_municipality(db, geo: dict) -> None:
@@ -933,7 +989,12 @@ async def calc_top_zones(db, muni_name: str, thirty_days_ago: str) -> list:
     return [{"area": f"Zona {k}", "count": v} for k, v in top]
 
 @api_router.post("/reports/{report_id}/photo")
-async def upload_photo(report_id: str, file: UploadFile = File(...)):
+async def upload_photo(report_id: str, request: Request, file: UploadFile = File(...)):
+    # Premium-only photo uploads
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="La subida de fotos es una función Premium")
+
     report = await db.reports.find_one({"id": report_id})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
@@ -1135,8 +1196,24 @@ async def get_user_profile(request: Request):
     user = await require_auth(request)
     rank_info = await get_user_rank_info(db, user["_id"])
     tier = get_trust_tier(user.get("trust_score", 50))
-    return {**rank_info, "trust_tier": tier, "username": user.get("username"), "name": user.get("name"),
-            "subscription_active": user.get("subscription_active", False)}
+    badges = get_user_badges(user)
+    earned_badges = [b for b in badges if b["earned"]]
+
+    # Accuracy rate
+    user_reports = await db.reports.count_documents({"user_id": user["_id"]})
+    verified_reports = await db.reports.count_documents({"user_id": user["_id"], "status": "verified"})
+    accuracy = round((verified_reports / max(user_reports, 1)) * 100, 1)
+
+    return {
+        **rank_info, "trust_tier": tier,
+        "username": user.get("username"), "name": user.get("name"),
+        "subscription_active": user.get("subscription_active", False),
+        "badges": earned_badges,
+        "badges_count": len(earned_badges),
+        "accuracy_rate": accuracy,
+        "impact_score": rank_info.get("total_score", 0) + (verified_reports * 5),
+        "trial_used": user.get("trial_used", False)
+    }
 
 @api_router.post("/admin/recalculate-ranks")
 async def admin_recalculate_ranks(request: Request):
@@ -1526,6 +1603,147 @@ async def get_photo_reviews(request: Request):
     return reviews
 
 
+
+
+
+# ==================== BADGES ====================
+
+@api_router.get("/users/badges")
+async def get_my_badges(request: Request):
+    user = await require_auth(request)
+    badges = get_user_badges(user)
+    return badges
+
+# ==================== WEEKLY LEADERBOARD ====================
+
+@api_router.get("/leaderboard/weekly")
+async def get_weekly_leaderboard(request: Request):
+    """Weekly leaderboard based on reports created this week."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+
+    # Get start of current week (Monday)
+    now = datetime.now(timezone.utc)
+    start_of_week = (now - timedelta(days=now.weekday())).replace(hour=0, minute=0, second=0, microsecond=0)
+
+    pipeline = [
+        {"$match": {"created_at": {"$gte": start_of_week.isoformat()}}},
+        {"$group": {"_id": "$user_id", "weekly_reports": {"$sum": 1}, "weekly_votes": {"$sum": "$upvotes"}}},
+        {"$sort": {"weekly_reports": -1}},
+        {"$limit": 50}
+    ]
+    weekly_agg = await db.reports.aggregate(pipeline).to_list(50)
+
+    results = []
+    for i, entry in enumerate(weekly_agg):
+        uid = entry["_id"]
+        try:
+            u = await db.users.find_one({"_id": ObjectId(uid)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "subscription_active": 1})
+        except Exception:
+            u = None
+        display_name = (u.get("username") or u.get("name", "Anónimo")) if u else "Anónimo"
+        results.append({
+            "position": i + 1,
+            "display_name": display_name,
+            "rank": u.get("rank") if u else None,
+            "weekly_reports": entry["weekly_reports"],
+            "is_subscriber": u.get("subscription_active", False) if u else False
+        })
+
+    return results
+
+# ==================== SAVED LOCATIONS ====================
+
+@api_router.post("/users/saved-locations")
+async def save_location(data: SavedLocationCreate, request: Request):
+    user = await require_subscriber(request)
+    loc = {
+        "id": str(uuid.uuid4()),
+        "user_id": user["_id"],
+        "name": data.name,
+        "label": data.label or data.name,
+        "latitude": data.latitude,
+        "longitude": data.longitude,
+        "created_at": datetime.now(timezone.utc).isoformat()
+    }
+    await db.saved_locations.update_one(
+        {"user_id": user["_id"], "name": data.name},
+        {"$set": loc},
+        upsert=True
+    )
+    return loc
+
+@api_router.get("/users/saved-locations")
+async def get_saved_locations(request: Request):
+    user = await require_subscriber(request)
+    locs = await db.saved_locations.find({"user_id": user["_id"]}, {"_id": 0}).to_list(10)
+    return locs
+
+@api_router.delete("/users/saved-locations/{name}")
+async def delete_saved_location(name: str, request: Request):
+    user = await require_subscriber(request)
+    await db.saved_locations.delete_one({"user_id": user["_id"], "name": name})
+    return {"message": "Ubicación eliminada"}
+
+# ==================== NEIGHBORHOOD CLEANLINESS ====================
+
+@api_router.get("/neighborhood/score")
+async def get_neighborhood_score(lat: float, lon: float, radius: float = 0.01):
+    """Get cleanliness score for a neighborhood area."""
+    reports = await db.reports.find({
+        "latitude": {"$gte": lat - radius, "$lte": lat + radius},
+        "longitude": {"$gte": lon - radius, "$lte": lon + radius}
+    }, {"_id": 0, "archived": 1, "flagged": 1, "created_at": 1, "status": 1}).to_list(500)
+    score = calc_neighborhood_cleanliness(reports)
+    return {"latitude": lat, "longitude": lon, "cleanliness_score": score, "total_reports": len(reports)}
+
+# ==================== SUCCESS METRICS (Admin) ====================
+
+@api_router.get("/admin/metrics")
+async def get_success_metrics(request: Request):
+    user = await require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+
+    now = datetime.now(timezone.utc)
+    today = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    seven_days = (now - timedelta(days=7)).isoformat()
+    thirty_days = (now - timedelta(days=30)).isoformat()
+
+    total_users = await db.users.count_documents({"role": "user"})
+    premium_users = await db.users.count_documents({"role": "user", "subscription_active": True})
+    daily_active = await db.reports.aggregate([
+        {"$match": {"created_at": {"$gte": today}}},
+        {"$group": {"_id": "$user_id"}},
+        {"$count": "count"}
+    ]).to_list(1)
+    dau = daily_active[0]["count"] if daily_active else 0
+
+    total_reports = await db.reports.count_documents({})
+    reports_7d = await db.reports.count_documents({"created_at": {"$gte": seven_days}})
+    reports_30d = await db.reports.count_documents({"created_at": {"$gte": thirty_days}})
+    verified = await db.reports.count_documents({"status": "verified"})
+    confirmation_rate = round((verified / max(total_reports, 1)) * 100, 1)
+    conversion_rate = round((premium_users / max(total_users, 1)) * 100, 1)
+
+    # 7-day retention
+    week_old_users = await db.users.count_documents({"created_at": {"$lte": seven_days}, "role": "user"})
+    retained_7d = await db.users.count_documents({"created_at": {"$lte": seven_days}, "role": "user", "last_active_date": {"$gte": seven_days}})
+    retention_7d = round((retained_7d / max(week_old_users, 1)) * 100, 1)
+
+    return {
+        "total_users": total_users,
+        "premium_users": premium_users,
+        "conversion_rate": conversion_rate,
+        "dau": dau,
+        "total_reports": total_reports,
+        "reports_7d": reports_7d,
+        "reports_30d": reports_30d,
+        "confirmation_rate": confirmation_rate,
+        "retention_7d": retention_7d,
+        "reports_per_user": round(total_reports / max(total_users, 1), 1)
+    }
 
 
 # ==================== PUSH NOTIFICATIONS ====================
