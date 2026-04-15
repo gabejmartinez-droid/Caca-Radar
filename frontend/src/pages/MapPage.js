@@ -124,10 +124,12 @@ export default function MapPage() {
     setSelectedReport(report);
     setShowDetailsDrawer(true);
     try {
-      const [voteRes, valRes] = await Promise.all([
+      const [detailRes, voteRes, valRes] = await Promise.all([
+        axios.get(`${API}/reports/${report.id}`, { withCredentials: true }),
         axios.get(`${API}/reports/${report.id}/my-vote`, { withCredentials: true }),
         axios.get(`${API}/reports/${report.id}/my-validation`, { withCredentials: true })
       ]);
+      setSelectedReport(detailRes.data);
       setMyVote(voteRes.data.vote?.vote_type || null);
       setMyValidation(valRes.data.validation?.vote || null);
     } catch {
@@ -434,13 +436,9 @@ export default function MapPage() {
                 <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
                 <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white"><X className="w-4 h-4" /></button>
               </div>
-            ) : user?.subscription_active ? (
+            ) : (
               <button onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-[#8D99AE]/30 rounded-xl flex flex-col items-center gap-2 text-[#8D99AE] hover:border-[#FF6B6B] hover:text-[#FF6B6B] transition-colors mb-4" data-testid="add-photo-btn">
                 <Camera className="w-8 h-8" /><span>{t("addPhoto")}</span>
-              </button>
-            ) : (
-              <button onClick={() => navigate("/subscribe")} className="w-full p-6 border-2 border-dashed border-[#8D99AE]/20 rounded-xl flex flex-col items-center gap-2 text-[#8D99AE] mb-4 opacity-60" data-testid="photo-premium-prompt">
-                <Lock className="w-6 h-6" /><span className="text-xs">Fotos — función Premium</span>
               </button>
             )}
           </div>

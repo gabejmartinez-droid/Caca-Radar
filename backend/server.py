@@ -904,10 +904,7 @@ async def calc_top_zones(db, muni_name: str, thirty_days_ago: str) -> list:
 
 @api_router.post("/reports/{report_id}/photo")
 async def upload_photo(report_id: str, request: Request, file: UploadFile = File(...)):
-    # Premium-only photo uploads
-    user = await get_current_user(request)
-    if not user or not user.get("subscription_active"):
-        raise HTTPException(status_code=403, detail="La subida de fotos es una función Premium")
+    user = await require_registered(request)
 
     report = await db.reports.find_one({"id": report_id})
     if not report:
