@@ -15,6 +15,8 @@ import Dashboard from "./pages/Dashboard";
 import MunicipalityRegister from "./pages/MunicipalityRegister";
 import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
+import AdminLoginPage from "./pages/AdminLoginPage";
+import AdminDashboardPage from "./pages/AdminDashboardPage";
 import "./App.css";
 
 function UsernameGate({ children }) {
@@ -48,6 +50,8 @@ function App() {
               <Route path="/dashboard/register" element={<MunicipalityRegister />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
+              <Route path="/admin/login" element={<AdminLoginPage />} />
+              <Route path="/admin" element={<AdminDashboardPage />} />
             </Routes>
           </UsernameGate>
           <NotificationChecker />

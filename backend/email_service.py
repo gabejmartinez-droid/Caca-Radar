@@ -46,6 +46,7 @@ async def send_email(to: str, subject: str, html: str) -> dict:
 
 async def send_verification_code(to: str, code: str, municipality_name: str) -> dict:
     """Send a municipality verification code email."""
+    dashboard_url = os.environ.get("FRONTEND_URL", "https://cacaradar.es") + "/dashboard/login"
     subject = f"Caca Radar — Código de verificación para {municipality_name}"
     html = f"""
     <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
@@ -61,6 +62,11 @@ async def send_verification_code(to: str, code: str, municipality_name: str) -> 
         <div style="background: white; border-radius: 12px; padding: 16px; display: inline-block; border: 2px solid #FF6B6B;">
           <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #2B2D42;">{code}</span>
         </div>
+      </div>
+
+      <div style="background: #2B2D42; border-radius: 16px; padding: 20px; text-align: center; margin-bottom: 24px;">
+        <p style="color: white; font-size: 14px; margin: 0 0 12px;">Una vez verificado, accede a tu panel en:</p>
+        <a href="{dashboard_url}" style="color: #FF6B6B; font-size: 16px; font-weight: 700; text-decoration: none;">{dashboard_url}</a>
       </div>
 
       <p style="color: #8D99AE; font-size: 13px; text-align: center; line-height: 1.5;">
@@ -103,6 +109,32 @@ async def send_subscription_update(to: str, event_type: str, details: dict) -> d
       </div>
       <hr style="border: none; border-top: 1px solid #eee; margin: 24px 0;">
       <p style="color: #8D99AE; font-size: 11px; text-align: center;">Caca Radar</p>
+    </div>
+    """
+    return await send_email(to, subject, html)
+
+
+async def send_admin_verification_code(to: str, code: str) -> dict:
+    """Send an admin 2FA verification code email."""
+    subject = "Caca Radar — Código de acceso Admin"
+    html = f"""
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 480px; margin: 0 auto; padding: 32px;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <h1 style="color: #2B2D42; font-size: 24px; margin: 12px 0 4px;">Caca Radar</h1>
+        <p style="color: #FF6B6B; font-size: 14px; font-weight: 700; margin: 0;">Panel de Administración</p>
+      </div>
+
+      <div style="background: #2B2D42; border-radius: 16px; padding: 24px; text-align: center; margin-bottom: 24px;">
+        <p style="color: white; font-size: 14px; margin: 0 0 12px;">Tu código de verificación:</p>
+        <div style="background: white; border-radius: 12px; padding: 16px; display: inline-block; border: 2px solid #FF6B6B;">
+          <span style="font-size: 32px; font-weight: 900; letter-spacing: 8px; color: #2B2D42;">{code}</span>
+        </div>
+      </div>
+
+      <p style="color: #8D99AE; font-size: 13px; text-align: center; line-height: 1.5;">
+        Este código expira en 10 minutos.<br>
+        Si no has solicitado este código, alguien puede estar intentando acceder a tu cuenta.
+      </p>
     </div>
     """
     return await send_email(to, subject, html)

@@ -40,7 +40,7 @@ from antispam_service import (
 )
 from validation_service import process_validation
 from ranking_service import recalculate_all_ranks, get_user_rank_info
-from email_service import send_verification_code as send_verification_email, is_configured as email_configured
+from email_service import send_verification_code as send_verification_email, is_configured as email_configured, send_admin_verification_code
 from webhook_handlers import process_apple_notification, process_google_notification
 from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
@@ -1504,6 +1504,187 @@ async def get_neighborhood_score(lat: float, lon: float, radius: float = 0.01):
     score = calc_neighborhood_cleanliness(reports)
     return {"latitude": lat, "longitude": lon, "cleanliness_score": score, "score": score, "total_reports": len(reports)}
 
+# ==================== ADMIN 2FA LOGIN ====================
+
+@api_router.post("/admin/login")
+async def admin_login_step1(request: Request):
+    """Step 1: Validate admin credentials, send verification code to email."""
+    body = await request.json()
+    email = body.get("email", "").lower()
+    password = body.get("password", "")
+
+    user = await db.users.find_one({"email": email, "role": "admin"})
+    if not user or not verify_password(password, user["password_hash"]):
+        raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    # Generate 6-digit code
+    code = generate_verification_code()
+    expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
+    await db.admin_codes.update_one(
+        {"email": email},
+        {"$set": {"code": code, "expires": expires}},
+        upsert=True
+    )
+
+    # Send code via email
+    await send_admin_verification_code(email, code)
+    logger.info(f"Admin 2FA code sent to {email}")
+
+    return {"message": "Código de verificación enviado a tu email", "email_sent": True}
+
+@api_router.post("/admin/verify")
+async def admin_login_step2(request: Request, response: Response):
+    """Step 2: Verify the email code and issue session cookies."""
+    body = await request.json()
+    email = body.get("email", "").lower()
+    code = body.get("code", "")
+
+    record = await db.admin_codes.find_one({"email": email})
+    if not record:
+        raise HTTPException(status_code=400, detail="No hay código pendiente. Inicia sesión de nuevo.")
+
+    if record["code"] != code:
+        raise HTTPException(status_code=400, detail="Código incorrecto")
+
+    if datetime.fromisoformat(record["expires"]) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="El código ha expirado. Inicia sesión de nuevo.")
+
+    # Code valid — clean up and issue session
+    await db.admin_codes.delete_one({"email": email})
+    user = await db.users.find_one({"email": email, "role": "admin"})
+    if not user:
+        raise HTTPException(status_code=401, detail="Usuario no encontrado")
+
+    user_id = str(user["_id"])
+    access_token = create_access_token(user_id, email, "admin")
+    refresh_token = create_refresh_token(user_id)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
+
+    return {"message": "Acceso admin verificado", "role": "admin"}
+
+# ==================== ADMIN DASHBOARD DATA ====================
+
+async def _require_admin(request: Request) -> dict:
+    user = await require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    return user
+
+@api_router.get("/admin/dashboard")
+async def admin_dashboard(request: Request):
+    """Full admin dashboard data — platform overview."""
+    await _require_admin(request)
+    now = datetime.now(timezone.utc)
+    seven_days = (now - timedelta(days=7)).isoformat()
+    thirty_days = (now - timedelta(days=30)).isoformat()
+
+    total_users = await db.users.count_documents({"role": "user"})
+    premium_users = await db.users.count_documents({"role": "user", "subscription_active": True})
+    total_municipalities = await db.users.count_documents({"role": "municipality"})
+    active_muni_subs = await db.users.count_documents({"role": "municipality", "municipality_subscription_active": True})
+    total_reports = await db.reports.count_documents({})
+    active_reports = await db.reports.count_documents({"archived": False, "flagged": False})
+    reports_7d = await db.reports.count_documents({"created_at": {"$gte": seven_days}})
+    reports_30d = await db.reports.count_documents({"created_at": {"$gte": thirty_days}})
+    flagged_reports = await db.reports.count_documents({"flagged": True})
+    new_users_7d = await db.users.count_documents({"role": "user", "created_at": {"$gte": seven_days}})
+    new_users_30d = await db.users.count_documents({"role": "user", "created_at": {"$gte": thirty_days}})
+
+    # Subscription revenue estimate
+    monthly_subs = await db.users.count_documents({"role": "user", "subscription_active": True, "subscription_type": "monthly"})
+    annual_subs = await db.users.count_documents({"role": "user", "subscription_active": True, "subscription_type": "annual"})
+    est_monthly_revenue = (monthly_subs * 3.99) + (annual_subs * 29.99 / 12) + (active_muni_subs * 50)
+
+    return {
+        "users": {
+            "total": total_users,
+            "premium": premium_users,
+            "free": total_users - premium_users,
+            "conversion_rate": round((premium_users / max(total_users, 1)) * 100, 1),
+            "new_7d": new_users_7d,
+            "new_30d": new_users_30d,
+        },
+        "subscriptions": {
+            "monthly": monthly_subs,
+            "annual": annual_subs,
+            "municipality_active": active_muni_subs,
+            "municipality_total": total_municipalities,
+            "est_monthly_revenue": round(est_monthly_revenue, 2),
+        },
+        "reports": {
+            "total": total_reports,
+            "active": active_reports,
+            "flagged": flagged_reports,
+            "last_7d": reports_7d,
+            "last_30d": reports_30d,
+        },
+        "generated_at": now.isoformat(),
+    }
+
+@api_router.get("/admin/users")
+async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: str = ""):
+    """List all users with stats."""
+    await _require_admin(request)
+    query = {"role": "user"}
+    if search:
+        query["$or"] = [
+            {"email": {"$regex": search, "$options": "i"}},
+            {"username": {"$regex": search, "$options": "i"}},
+            {"name": {"$regex": search, "$options": "i"}},
+        ]
+    users = await db.users.find(
+        query,
+        {"_id": 0, "password_hash": 0}
+    ).sort("total_score", -1).skip(skip).limit(limit).to_list(limit)
+
+    total = await db.users.count_documents(query)
+    return {"users": users, "total": total, "skip": skip, "limit": limit}
+
+@api_router.get("/admin/photo-violations")
+async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 50):
+    """All photo-related flags across all municipalities."""
+    await _require_admin(request)
+    photo_reasons = ["license_plate", "face", "name", "personal_info"]
+    flags = await db.flags.find(
+        {"reason": {"$in": photo_reasons}, "status": {"$in": ["pending", None]}},
+        {"_id": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
+
+    # Enrich with report data
+    enriched = []
+    for flag in flags:
+        report = await db.reports.find_one(
+            {"id": flag.get("report_id")},
+            {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "municipality": 1, "created_at": 1, "contributor_name": 1}
+        )
+        enriched.append({**flag, "report": report})
+
+    total = await db.flags.count_documents({"reason": {"$in": photo_reasons}, "status": {"$in": ["pending", None]}})
+    return {"violations": enriched, "total": total}
+
+@api_router.post("/admin/moderate/{report_id}")
+async def admin_moderate_report(report_id: str, request: Request):
+    """Admin: moderate any report (hide, restore, dismiss flags)."""
+    await _require_admin(request)
+    body = await request.json()
+    action = body.get("action", "hide")
+
+    report = await db.reports.find_one({"id": report_id})
+    if not report:
+        raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    if action == "hide":
+        await db.reports.update_one({"id": report_id}, {"$set": {"flagged": True}})
+        await db.flags.update_many({"report_id": report_id}, {"$set": {"status": "resolved"}})
+    elif action == "restore":
+        await db.reports.update_one({"id": report_id}, {"$set": {"flagged": False, "flag_count": 0}})
+        await db.flags.update_many({"report_id": report_id}, {"$set": {"status": "dismissed"}})
+    elif action == "dismiss":
+        await db.flags.update_many({"report_id": report_id}, {"$set": {"status": "dismissed"}})
+
+    return {"message": f"Reporte {action}: {report_id}"}
+
 # ==================== SUCCESS METRICS (Admin) ====================
 
 @api_router.get("/admin/metrics")
@@ -1776,16 +1957,17 @@ async def startup():
     await db.push_subscriptions.create_index([("latitude", 1), ("longitude", 1)])
     await db.barrio_cache.create_index([("lat", 1), ("lng", 1)], unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
+    await db.admin_codes.create_index("email", unique=True)
     
     # Seed admin
-    admin_email = os.environ.get("ADMIN_EMAIL", "admin@cacaradar.es")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "admin123")
+    admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
+    admin_password = os.environ.get("ADMIN_PASSWORD", "Cacaradar123$")
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         hashed = hash_password(admin_password)
         await db.users.insert_one({
             "email": admin_email, "password_hash": hashed,
-            "name": "Admin", "role": "admin",
+            "name": "El Jefe", "username": "el_jefe", "role": "admin",
             "subscription_active": True, "subscription_type": "annual",
             "total_score": 0, "trust_score": 100, "rank": "Admin", "level": 10,
             "report_count": 0, "vote_count": 0, "streak_days": 0,
