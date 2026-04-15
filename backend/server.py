@@ -1915,7 +1915,7 @@ app.include_router(api_router)
 # CORS — allow any origin so deploy/preview/custom-domain all work
 app.add_middleware(
     CORSMiddleware,
-    allow_origin_regex=r"https?://.*",
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -1995,23 +1995,26 @@ async def startup():
     rank_count = await recalculate_all_ranks(db)
     logger.info(f"Ranks recalculated for {rank_count} users")
     
-    # Write test credentials
-    os.makedirs("/app/memory", exist_ok=True)
-    with open("/app/memory/test_credentials.md", "w") as f:
-        f.write("# Test Credentials\n\n")
-        f.write(f"## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
-        f.write(f"## Demo Municipality\n- Email: {demo_muni_email}\n- Password: {demo_muni_password}\n- Role: municipality\n- Municipality: Madrid\n\n")
-        f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
-        f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
-        f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
-        f.write("\n## Webhook Endpoints\n")
-        f.write("- POST /api/webhooks/apple (App Store Server Notifications V2)\n")
-        f.write("- POST /api/webhooks/google (Google Play RTDN via Pub/Sub)\n")
-        f.write("- GET /api/webhooks/status (check configuration)\n")
-        f.write("\n## Email Service\n")
-        f.write(f"- Configured: {email_configured()}\n")
-        f.write(f"- Sender: {os.environ.get('SENDER_EMAIL', 'no-reply@cacaradar.es')}\n")
-        f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
+    # Write test credentials (non-critical, skip if path not writable)
+    try:
+        os.makedirs("/app/memory", exist_ok=True)
+        with open("/app/memory/test_credentials.md", "w") as f:
+            f.write("# Test Credentials\n\n")
+            f.write(f"## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
+            f.write(f"## Demo Municipality\n- Email: {demo_muni_email}\n- Password: {demo_muni_password}\n- Role: municipality\n- Municipality: Madrid\n\n")
+            f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/logout\n- GET /api/auth/me\n")
+            f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
+            f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
+            f.write("\n## Webhook Endpoints\n")
+            f.write("- POST /api/webhooks/apple (App Store Server Notifications V2)\n")
+            f.write("- POST /api/webhooks/google (Google Play RTDN via Pub/Sub)\n")
+            f.write("- GET /api/webhooks/status (check configuration)\n")
+            f.write("\n## Email Service\n")
+            f.write(f"- Configured: {email_configured()}\n")
+            f.write(f"- Sender: {os.environ.get('SENDER_EMAIL', 'no-reply@cacaradar.es')}\n")
+            f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
+    except Exception:
+        logger.warning("Could not write test_credentials.md (non-critical)")
     
     logger.info("Startup complete")
 
