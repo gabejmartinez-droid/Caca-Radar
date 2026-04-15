@@ -1696,7 +1696,7 @@ async def get_neighborhood_score(lat: float, lon: float, radius: float = 0.01):
         "longitude": {"$gte": lon - radius, "$lte": lon + radius}
     }, {"_id": 0, "archived": 1, "flagged": 1, "created_at": 1, "status": 1}).to_list(500)
     score = calc_neighborhood_cleanliness(reports)
-    return {"latitude": lat, "longitude": lon, "cleanliness_score": score, "total_reports": len(reports)}
+    return {"latitude": lat, "longitude": lon, "cleanliness_score": score, "score": score, "total_reports": len(reports)}
 
 # ==================== SUCCESS METRICS (Admin) ====================
 
@@ -1735,6 +1735,7 @@ async def get_success_metrics(request: Request):
     return {
         "total_users": total_users,
         "premium_users": premium_users,
+        "active_subscriptions": premium_users,
         "conversion_rate": conversion_rate,
         "dau": dau,
         "total_reports": total_reports,
