@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3 } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -70,6 +70,21 @@ export default function ProfilePage() {
     finally { setSaving(false); }
   };
 
+  const handleShareProfile = async () => {
+    try {
+      const { data } = await axios.get(`${API}/users/${user._id || user.id}/share`, { withCredentials: true });
+      const shareText = `${data.text}\n\n${data.download_text}`;
+      if (navigator.share) {
+        await navigator.share({ title: data.title, text: shareText, url: data.url });
+      } else {
+        await navigator.clipboard.writeText(shareText);
+        toast.success("Perfil copiado al portapapeles");
+      }
+    } catch (err) {
+      if (err.name !== "AbortError") toast.error("Error al compartir");
+    }
+  };
+
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
 
   const trustTier = (profile?.trust_score || 50) >= 80 ? "Confiable" : (profile?.trust_score || 50) >= 50 ? "Normal" : (profile?.trust_score || 50) >= 20 ? "Bajo" : "Restringido";
@@ -121,6 +136,10 @@ export default function ProfilePage() {
               <Star className="w-3 h-3 mr-1" />Hazte Premium
             </Button>
           )}
+
+          <Button size="sm" variant="ghost" onClick={handleShareProfile} className="mt-2 text-[#42A5F5]" data-testid="share-profile-btn">
+            <Share2 className="w-4 h-4 mr-1" />Compartir perfil
+          </Button>
         </div>
 
         {/* Score Card */}

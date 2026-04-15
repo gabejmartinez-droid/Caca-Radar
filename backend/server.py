@@ -35,6 +35,12 @@ from email_service import send_verification_code as send_verification_email, is_
 from webhook_handlers import process_apple_notification, process_google_notification
 from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
+from clean_route_service import analyze_clean_route
+from digest_service import send_weekly_digests, generate_municipality_digest
+
+# App Store placeholder URLs
+APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
+PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.cacaradar.app"
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -388,7 +394,15 @@ async def require_municipality(request: Request) -> dict:
         raise HTTPException(status_code=403, detail="Acceso de municipio requerido")
     return user
 
+async def require_registered(request: Request) -> dict:
+    """Require a registered user for reports and votes."""
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="Debes registrarte para realizar esta acción. ¡Es gratis!")
+    return user
+
 def get_anonymous_id(request: Request) -> str:
+    """Legacy anonymous ID for backward compatibility with existing data."""
     anon_id = request.cookies.get("anon_id")
     if not anon_id:
         anon_id = str(uuid.uuid4())
@@ -719,134 +733,26 @@ async def get_report(report_id: str):
 
 @api_router.post("/reports")
 async def create_report(request: Request, data: ReportCreate, response: Response):
-    user = await get_current_user(request)
-    anon_id = get_anonymous_id(request)
-    user_id = user["_id"] if user else anon_id
-    is_registered = user is not None
+    user = await require_registered(request)
+    user_id = user["_id"]
 
-    # Anti-spam: GPS plausibility
-    if not await check_gps_plausible(data.latitude, data.longitude):
-        raise HTTPException(status_code=400, detail="Ubicación fuera de España")
+    await validate_report_input(db, data, user, user_id)
 
-    # Anti-spam: cooldown (registered users only)
-    if is_registered and await check_cooldown(db, user_id):
-        raise HTTPException(status_code=429, detail="Espera al menos 60 segundos entre reportes")
-
-    # Anti-spam: trust tier check
-    if is_registered:
-        tier = get_trust_tier(user.get("trust_score", 50))
-        if tier == "restricted":
-            raise HTTPException(status_code=403, detail="Tu cuenta está restringida por comportamiento sospechoso")
-
-    # Anti-spam: proximity duplicate check
     is_duplicate = await check_proximity_duplicate(db, data.latitude, data.longitude)
-
-    # Determine initial status based on trust
-    trust = user.get("trust_score", 50) if is_registered else 50
-    initial_status = "pending"
-    if trust >= 80:
-        initial_status = "pending"  # Still pending but auto-visible
-
-    # Reverse geocode
     geo = reverse_geocode(data.latitude, data.longitude)
-
     report_id = str(uuid.uuid4())
-    category = data.category if data.category in REPORT_CATEGORIES else "dog_feces"
-    report_doc = {
-        "id": report_id,
-        "latitude": data.latitude,
-        "longitude": data.longitude,
-        "photo_url": None,
-        "description": data.description,
-        "category": category,
-        "created_at": datetime.now(timezone.utc).isoformat(),
-        "status": initial_status,
-        "status_score": 0,
-        "still_there_count": 0,
-        "cleaned_count": 0,
-        "upvotes": 0,
-        "downvotes": 0,
-        "validation_count": 0,
-        "user_id": user_id,
-        "contributor_name": None,
-        "contributor_rank": None,
-        "municipality": geo["municipality"],
-        "province": geo["province"],
-        "country": geo["country"],
-        "archived": False,
-        "flagged": False,
-        "flag_count": 0,
-        "is_duplicate_proximity": is_duplicate
-    }
 
-    # Set contributor info: subscribers show username+rank, others show anonymous
-    if user and user.get("subscription_active"):
-        report_doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
-        report_doc["contributor_rank"] = user.get("rank", "Aspirante Cagón")
-    else:
-        report_doc["contributor_name"] = "Anónimo"
-        report_doc["contributor_rank"] = None
-
+    report_doc = build_report_doc(report_id, data, user_id, user, geo, is_duplicate)
     await db.reports.insert_one(report_doc)
 
-    # Scoring (registered users only)
-    points_result = {"points": 0, "breakdown": {}}
-    if is_registered and not is_duplicate:
-        daily_count = user.get("daily_report_count", 0)
-        is_sub = user.get("subscription_active", False)
-        points_result = calc_report_points(
-            has_photo=False,  # Photo uploaded separately
-            has_description=bool(data.description),
-            daily_count=daily_count,
-            is_subscriber=is_sub
-        )
-
-        # Hot zone bonus
-        hot = await is_hot_zone(db, data.latitude, data.longitude)
-        if hot and points_result["points"] > 0:
-            points_result["points"] += HOT_ZONE_BONUS
-            points_result["breakdown"]["hot_zone"] = HOT_ZONE_BONUS
-
-        await db.users.update_one(
-            {"_id": ObjectId(user_id)},
-            {"$inc": {
-                "report_count": 1,
-                "total_score": points_result["points"],
-                "daily_report_count": 1
-            }}
-        )
-
-        # Update streak
-        await update_streak(db, user_id)
-
-        # Spam detection
-        violations = await detect_spam_patterns(db, user_id)
-        if violations:
-            await update_trust_score(db, user_id, TRUST_SPAM_BEHAVIOR, f"spam_detected:{','.join(violations)}")
-
-    # Ensure municipality exists
-    existing_muni = await db.municipalities.find_one({"name": geo["municipality"], "province": geo["province"]})
-    if not existing_muni:
-        await db.municipalities.insert_one({
-            "id": str(uuid.uuid4()), "name": geo["municipality"],
-            "province": geo["province"], "country": geo["country"],
-            "report_count": 1, "created_at": datetime.now(timezone.utc).isoformat()
-        })
-    else:
-        await db.municipalities.update_one(
-            {"name": geo["municipality"], "province": geo["province"]},
-            {"$inc": {"report_count": 1}}
-        )
-
-    if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=False, samesite="lax", max_age=86400*365, path="/")
+    points_result = await process_report_scoring(db, user, user_id, data, is_duplicate)
+    await upsert_municipality(db, geo)
 
     report_doc.pop("_id", None)
     report_doc["points_earned"] = points_result["points"]
     report_doc["points_breakdown"] = points_result["breakdown"]
 
     asyncio.create_task(notify_nearby_users(db, data.latitude, data.longitude, report_id, geo["municipality"]))
-
     return report_doc
 
 # ==================== REPORT HELPERS ====================
@@ -1604,6 +1510,70 @@ async def get_photo_reviews(request: Request):
 
 
 
+
+
+
+# ==================== CLEAN ROUTE ====================
+
+@api_router.get("/route/clean")
+async def get_clean_route(
+    start_lat: float, start_lon: float, end_lat: float, end_lon: float,
+    request: Request
+):
+    """Analyze a route and identify danger zones to avoid. Premium only."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Ruta limpia es una función Premium")
+    result = await analyze_clean_route(db, start_lat, start_lon, end_lat, end_lon)
+    return result
+
+# ==================== WEEKLY DIGEST ====================
+
+@api_router.post("/admin/send-digests")
+async def trigger_weekly_digests(request: Request):
+    """Manually trigger weekly digest emails. Admin only."""
+    user = await require_auth(request)
+    if user.get("role") != "admin":
+        raise HTTPException(status_code=403, detail="Solo administradores")
+    result = await send_weekly_digests(db)
+    return result
+
+@api_router.get("/municipality/digest-preview")
+async def preview_digest(request: Request):
+    """Preview the weekly digest for current municipality."""
+    user = await require_municipality(request)
+    digest = await generate_municipality_digest(db, user.get("municipality_name", ""))
+    return digest
+
+# ==================== SOCIAL SHARING ====================
+
+@api_router.get("/users/{user_id_param}/share")
+async def get_user_share_data(user_id_param: str):
+    """Get shareable profile data for social media."""
+    try:
+        u = await db.users.find_one({"_id": ObjectId(user_id_param)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "total_score": 1, "report_count": 1, "badges": 1})
+    except Exception:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if not u:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    display_name = u.get("username") or u.get("name", "Usuario")
+    badge_count = len(u.get("badges", []))
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+
+    return {
+        "title": f"{display_name} en Caca Radar",
+        "text": f"{display_name} es {u.get('rank', 'Aspirante Cagón')} con {u.get('total_score', 0)} puntos y {u.get('report_count', 0)} reportes. {badge_count} insignias. ¡Únete a mantener tu ciudad limpia!",
+        "url": f"{frontend_url}/profile",
+        "app_store_url": APP_STORE_URL,
+        "play_store_url": PLAY_STORE_URL,
+        "download_text": f"Descarga Caca Radar:\niOS: {APP_STORE_URL}\nAndroid: {PLAY_STORE_URL}"
+    }
+
+@api_router.get("/store-links")
+async def get_store_links():
+    """Get app store download links."""
+    return {"app_store_url": APP_STORE_URL, "play_store_url": PLAY_STORE_URL}
 
 
 # ==================== BADGES ====================

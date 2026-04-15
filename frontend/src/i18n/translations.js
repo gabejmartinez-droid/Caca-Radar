@@ -99,7 +99,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -171,7 +174,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -262,7 +268,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -353,7 +362,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -444,7 +456,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -535,7 +550,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -626,7 +644,10 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
   },
   
@@ -717,8 +738,147 @@ export const translations = {
       pl: "Polski",
       ar: "العربية",
       uk: "Українська",
-      ru: "Русский"
+      ru: "Русский",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià",
+      eu: "Euskara",
+      ca: "Català",
+      val: "Valencià"
     }
+  },
+
+  eu: {
+    appName: "Kaka Radarrea",
+    report: "Salatu",
+    enter: "Sartu",
+    logout: "Irten",
+    legend: { recent: "Berria (<24h)", moderate: "1-3 egun", old: ">3 egun" },
+    reportTitle: "Txakur kaka salatu",
+    reportDesc: "Zure kokapena automatikoki gehituko da",
+    gettingLocation: "Kokapena lortzen...",
+    addPhoto: "Argazkia gehitu (aukerakoa)",
+    submitReport: "Salaketa bidali",
+    cancel: "Utzi",
+    reportSuccess: "Salaketa ondo bidali da",
+    reportError: "Errorea salaketa bidaltzean",
+    locationError: "Ezin izan da zure kokapena lortu. Egin klik mapan eskuz hautatzeko.",
+    locationSelected: "Kokapena hautatuta",
+    fileTooLarge: "Argazkia handiegia da (max 5MB)",
+    detailsTitle: "Salaketaren xehetasunak",
+    stillThere: "Oraindik hor dago",
+    cleaned: "Garbituta",
+    stillThereCount: "oraindik hor",
+    cleanedCount: "garbituta",
+    alreadyVoted: "Dagoeneko bozkatu duzu",
+    voteSuccess: { stillThere: "Oraindik hor dagoela baieztatu da", cleaned: "Garbituta markatu da" },
+    voteError: "Errorea bozkatzerakoan",
+    flagReport: "Eduki desegokia salatu",
+    flagSuccess: "Edukia desegoki gisa markatu da",
+    flagError: "Errorea salatzerakoan",
+    close: "Itxi",
+    photoPolicy: "Ez igo matrikulak, izenak, aurpegiak edo informazio pertsonala duten argazkiak.",
+    policyAgreement: "Igotzerakoan, zure argazkia arau hauek betetzen dituela baieztatzen duzu.",
+    flagTitle: "Urratzea salatu",
+    flagDescription: "Hautatu salaketaren arrazoia:",
+    flagReasons: { licensePlate: "Matrikula ikusgai", face: "Aurpegia ikusgai", name: "Izena ikusgai", personalInfo: "Beste informazio pertsonala", inappropriate: "Eduki desegokia", spam: "Spama edo eduki faltsua", other: "Beste arrazoi bat" },
+    flagSubmit: "Salaketa bidali", flagCancel: "Utzi",
+    lessThanHour: "Ordu bat baino gutxiago", hoursAgo: "Duela {n} ordu", hoursAgoPlural: "Duela {n} ordu", daysAgo: "Duela {n} egun", daysAgoPlural: "Duela {n} egun",
+    login: "Hasi saioa", register: "Kontua sortu", email: "Emaila", password: "Pasahitza",
+    name: "Izena (aukerakoa)", namePlaceholder: "Zure izena", emailPlaceholder: "zure@emaila.com", passwordPlaceholder: "Gutxienez 6 karaktere",
+    backToMap: "Mapara itzuli", noAccount: "Ez duzu konturik?", hasAccount: "Dagoeneko kontu bat?",
+    registerLink: "Erregistratu", loginLink: "Hasi saioa", useWithoutAccount: "Aplikazioa konturik gabe ere erabil dezakezu",
+    loginSuccess: "Saioa ondo hasi da", registerSuccess: "Kontua ondo sortu da", passwordTooShort: "Pasahitzak gutxienez 6 karaktere izan behar ditu", genericError: "Zerbait gaizki joan da. Saiatu berriro.",
+    language: "Hizkuntza",
+    languages: { es: "Español", en: "English", de: "Deutsch", nl: "Nederlands", pl: "Polski", ar: "العربية", uk: "Українська", ru: "Русский", eu: "Euskara", ca: "Català", val: "Valencià" }
+  },
+
+  ca: {
+    appName: "Radar Caca",
+    report: "Reportar",
+    enter: "Entrar",
+    logout: "Sortir",
+    legend: { recent: "Recent (<24h)", moderate: "1-3 dies", old: ">3 dies" },
+    reportTitle: "Reportar caca de gos",
+    reportDesc: "La teva ubicació s'afegirà automàticament",
+    gettingLocation: "Obtenint ubicació...",
+    addPhoto: "Afegir foto (opcional)",
+    submitReport: "Enviar report",
+    cancel: "Cancel·lar",
+    reportSuccess: "Report enviat correctament",
+    reportError: "Error en enviar el report",
+    locationError: "No s'ha pogut obtenir la teva ubicació. Fes clic al mapa per seleccionar manualment.",
+    locationSelected: "Ubicació seleccionada",
+    fileTooLarge: "La foto és massa gran (max 5MB)",
+    detailsTitle: "Detalls del report",
+    stillThere: "Encara hi és",
+    cleaned: "Ja net",
+    stillThereCount: "encara hi és",
+    cleanedCount: "net",
+    alreadyVoted: "Ja has votat",
+    voteSuccess: { stillThere: "Confirmat que encara hi és", cleaned: "Marcat com a net" },
+    voteError: "Error en votar",
+    flagReport: "Reportar contingut inapropiat",
+    flagSuccess: "Contingut marcat com a inapropiat",
+    flagError: "Error en reportar",
+    close: "Tancar",
+    photoPolicy: "No pugis fotos amb matrícules, noms, cares o altra informació personal identificable.",
+    policyAgreement: "En pujar, confirmes que la teva foto compleix amb aquestes normes.",
+    flagTitle: "Reportar violació", flagDescription: "Selecciona el motiu del report:",
+    flagReasons: { licensePlate: "Matrícula visible", face: "Cara visible", name: "Nom visible", personalInfo: "Altra informació personal", inappropriate: "Contingut inapropiat", spam: "Spam o contingut fals", other: "Altre motiu" },
+    flagSubmit: "Enviar report", flagCancel: "Cancel·lar",
+    lessThanHour: "Fa menys d'1 hora", hoursAgo: "Fa {n} hora", hoursAgoPlural: "Fa {n} hores", daysAgo: "Fa {n} dia", daysAgoPlural: "Fa {n} dies",
+    login: "Iniciar sessió", register: "Crear compte", email: "Email", password: "Contrasenya",
+    name: "Nom (opcional)", namePlaceholder: "El teu nom", emailPlaceholder: "el@teu.email", passwordPlaceholder: "Mínim 6 caràcters",
+    backToMap: "Tornar al mapa", noAccount: "No tens compte?", hasAccount: "Ja tens compte?",
+    registerLink: "Registra't", loginLink: "Inicia sessió", useWithoutAccount: "També pots fer servir l'app sense compte",
+    loginSuccess: "Sessió iniciada correctament", registerSuccess: "Compte creat correctament", passwordTooShort: "La contrasenya ha de tenir almenys 6 caràcters", genericError: "Alguna cosa ha anat malament. Torna-ho a provar.",
+    language: "Idioma",
+    languages: { es: "Español", en: "English", de: "Deutsch", nl: "Nederlands", pl: "Polski", ar: "العربية", uk: "Українська", ru: "Русский", eu: "Euskara", ca: "Català", val: "Valencià" }
+  },
+
+  val: {
+    appName: "Radar Caca",
+    report: "Reportar",
+    enter: "Entrar",
+    logout: "Eixir",
+    legend: { recent: "Recent (<24h)", moderate: "1-3 dies", old: ">3 dies" },
+    reportTitle: "Reportar caca de gos",
+    reportDesc: "La teua ubicació s'afegirà automàticament",
+    gettingLocation: "Obtenint ubicació...",
+    addPhoto: "Afegir foto (opcional)",
+    submitReport: "Enviar report",
+    cancel: "Cancel·lar",
+    reportSuccess: "Report enviat correctament",
+    reportError: "Error en enviar el report",
+    locationError: "No s'ha pogut obtindre la teua ubicació. Fes clic al mapa per a seleccionar manualment.",
+    locationSelected: "Ubicació seleccionada",
+    fileTooLarge: "La foto és massa gran (max 5MB)",
+    detailsTitle: "Detalls del report",
+    stillThere: "Encara està ahí",
+    cleaned: "Ja net",
+    stillThereCount: "encara ahí",
+    cleanedCount: "net",
+    alreadyVoted: "Ja has votat",
+    voteSuccess: { stillThere: "Confirmat que encara està ahí", cleaned: "Marcat com a net" },
+    voteError: "Error en votar",
+    flagReport: "Reportar contingut inapropiat",
+    flagSuccess: "Contingut marcat com a inapropiat",
+    flagError: "Error en reportar",
+    close: "Tancar",
+    photoPolicy: "No puges fotos amb matrícules, noms, cares o altra informació personal identificable.",
+    policyAgreement: "En pujar, confirmes que la teua foto compleix amb estes normes.",
+    flagTitle: "Reportar violació", flagDescription: "Selecciona el motiu del report:",
+    flagReasons: { licensePlate: "Matrícula visible", face: "Cara visible", name: "Nom visible", personalInfo: "Altra informació personal", inappropriate: "Contingut inapropiat", spam: "Spam o contingut fals", other: "Altre motiu" },
+    flagSubmit: "Enviar report", flagCancel: "Cancel·lar",
+    lessThanHour: "Fa menys d'1 hora", hoursAgo: "Fa {n} hora", hoursAgoPlural: "Fa {n} hores", daysAgo: "Fa {n} dia", daysAgoPlural: "Fa {n} dies",
+    login: "Iniciar sessió", register: "Crear compte", email: "Email", password: "Contrasenya",
+    name: "Nom (opcional)", namePlaceholder: "El teu nom", emailPlaceholder: "el@teu.email", passwordPlaceholder: "Mínim 6 caràcters",
+    backToMap: "Tornar al mapa", noAccount: "No tens compte?", hasAccount: "Ja tens compte?",
+    registerLink: "Registra't", loginLink: "Inicia sessió", useWithoutAccount: "També pots usar l'app sense compte",
+    loginSuccess: "Sessió iniciada correctament", registerSuccess: "Compte creat correctament", passwordTooShort: "La contrasenya ha de tindre almenys 6 caràcters", genericError: "Alguna cosa ha eixit malament. Torna a provar.",
+    language: "Idioma",
+    languages: { es: "Español", en: "English", de: "Deutsch", nl: "Nederlands", pl: "Polski", ar: "العربية", uk: "Українська", ru: "Русский", eu: "Euskara", ca: "Català", val: "Valencià" }
   }
 };
 

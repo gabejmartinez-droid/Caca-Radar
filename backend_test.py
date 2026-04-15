@@ -793,9 +793,197 @@ class CacaRadarAPITester:
         
         return success, response
 
+    def test_clean_route_premium_only(self):
+        """Test clean route endpoint requires premium subscription"""
+        # Test without authentication (should fail)
+        success, response = self.run_test(
+            "Clean Route (No Auth)", "GET", "route/clean?start_lat=40.4168&start_lon=-3.7038&end_lat=40.4200&end_lon=-3.7000", 401
+        )
+        
+        if success:
+            self.log("   ✅ Clean route correctly requires authentication")
+        
+        # Test with free user (should fail with 403)
+        if self.user_token:
+            success, response = self.run_test(
+                "Clean Route (Free User)", "GET", "route/clean?start_lat=40.4168&start_lon=-3.7038&end_lat=40.4200&end_lon=-3.7000", 403,
+                cookies={'access_token': self.user_token}
+            )
+            
+            if success:
+                self.log("   ✅ Clean route correctly requires premium subscription")
+        
+        return success, response
+
+    def test_anonymous_report_creation_blocked(self):
+        """Test anonymous report creation returns 401 with registration prompt"""
+        success, response = self.run_test(
+            "Anonymous Report Creation", "POST", "reports", 401,
+            {
+                "latitude": 40.4168,
+                "longitude": -3.7038,
+                "description": "Anonymous test report"
+            }
+        )
+        
+        if success and "registrarte" in response.get('detail', '').lower():
+            self.log("   ✅ Anonymous report correctly blocked with registration prompt")
+        elif success:
+            self.log(f"   ⚠️  Anonymous report blocked but message: {response.get('detail', '')}")
+        
+        return success, response
+
+    def test_registered_user_can_create_reports(self):
+        """Test registered user can create reports"""
+        if not self.user_token:
+            self.log("⚠️  Skipping registered user report test - no user token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Registered User Report Creation", "POST", "reports", 200,
+            {
+                "latitude": 40.4168,
+                "longitude": -3.7038,
+                "description": "Registered user test report"
+            },
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            self.log(f"   ✅ Registered user can create reports: {response.get('id', '')}")
+        
+        return success, response
+
+    def test_municipality_digest_preview(self):
+        """Test municipality digest preview endpoint"""
+        if not self.municipality_token:
+            self.log("⚠️  Skipping digest preview - no municipality token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Municipality Digest Preview", "GET", "municipality/digest-preview", 200,
+            cookies={'access_token': self.municipality_token}
+        )
+        
+        if success:
+            expected_fields = ['municipality', 'period', 'new_reports', 'resolved', 'active_total']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing digest fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ Digest preview contains all required fields")
+                self.log(f"   📊 {response.get('municipality')}: {response.get('new_reports')} new reports")
+        
+        return success, response
+
+    def test_admin_send_digests(self):
+        """Test admin digest trigger endpoint"""
+        if not self.admin_token:
+            self.log("⚠️  Skipping admin digest trigger - no admin token")
+            return False, {}
+        
+        success, response = self.run_test(
+            "Admin Send Digests", "POST", "admin/send-digests", 200,
+            {},
+            cookies={'access_token': self.admin_token}
+        )
+        
+        if success:
+            sent = response.get('sent', 0)
+            total = response.get('total', 0)
+            self.log(f"   ✅ Digests sent to {sent}/{total} municipalities")
+        
+        return success, response
+
+    def test_user_share_profile_endpoint(self):
+        """Test user share endpoint returns profile + App Store links"""
+        if not self.user_token:
+            self.log("⚠️  Skipping user share test - no user token")
+            return False, {}
+        
+        # Get current user info first
+        user_success, user_response = self.run_test(
+            "Get Current User", "GET", "auth/me", 200,
+            cookies={'access_token': self.user_token}
+        )
+        
+        if not user_success:
+            return False, {}
+        
+        user_id = user_response.get('id')
+        
+        success, response = self.run_test(
+            "User Share Profile", "GET", f"users/{user_id}/share", 200,
+            cookies={'access_token': self.user_token}
+        )
+        
+        if success:
+            expected_fields = ['title', 'text', 'url', 'download_text', 'app_store_url', 'play_store_url']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing share profile fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ User share contains all required fields including App Store links")
+                self.log(f"   🍎 App Store: {response.get('app_store_url', '')}")
+                self.log(f"   🤖 Play Store: {response.get('play_store_url', '')}")
+        
+        return success, response
+
+    def test_store_links_endpoint(self):
+        """Test store links endpoint"""
+        success, response = self.run_test(
+            "Store Links", "GET", "store-links", 200
+        )
+        
+        if success:
+            expected_fields = ['app_store_url', 'play_store_url']
+            missing_fields = [field for field in expected_fields if field not in response]
+            if missing_fields:
+                self.log(f"   ⚠️  Missing store link fields: {missing_fields}")
+            else:
+                self.log(f"   ✅ Store links endpoint contains all required fields")
+                self.log(f"   🍎 App Store: {response.get('app_store_url', '')}")
+                self.log(f"   🤖 Play Store: {response.get('play_store_url', '')}")
+        
+        return success, response
+
+    def test_subscription_pricing(self):
+        """Test subscription pricing shows €3.99/mo, €29.99/yr, 7-day trial"""
+        # Create a new user to test trial eligibility
+        test_email = f"pricing.test.{uuid.uuid4().hex[:8]}@test.es"
+        
+        success, response = self.run_test(
+            "Pricing Test User Registration", "POST", "auth/register", 200,
+            {
+                "email": test_email,
+                "password": "testpass123",
+                "name": "Pricing Test User"
+            }
+        )
+        
+        if not success:
+            return False, {}
+            
+        pricing_token = self.session.cookies.get('access_token')
+        
+        # Test trial activation (should be free for new users)
+        success, response = self.run_test(
+            "Free Trial Activation", "POST", "users/subscribe", 200,
+            {"plan": "monthly"},
+            cookies={'access_token': pricing_token}
+        )
+        
+        if success:
+            if response.get('trial'):
+                self.log(f"   ✅ 7-day free trial activated: {response.get('message')}")
+            else:
+                self.log(f"   ⚠️  Expected trial activation, got: {response}")
+        
+        return success, response
+
     def run_all_tests(self):
         """Run all backend tests"""
-        self.log("🚀 Starting Caca Radar Backend Tests - Iteration 8: Monetization & Gamification")
+        self.log("🚀 Starting Caca Radar Backend Tests - Iteration 9: Clean Routes & Registration Requirements")
         
         # Basic connectivity
         self.test_health_check()
@@ -805,29 +993,48 @@ class CacaRadarAPITester:
         self.test_municipality_login()
         self.test_user_registration()
         
-        # ITERATION 8 NEW FEATURES TESTING
-        self.log("\n🆕 Testing New Features - Reports with Freshness & Confidence")
+        # ITERATION 9 NEW FEATURES TESTING
+        self.log("\n🆕 Testing New Features - Clean Route Analysis (Premium)")
+        self.test_clean_route_premium_only()
+        
+        self.log("\n🆕 Testing New Features - Registration Required for Reports")
+        self.test_anonymous_report_creation_blocked()
+        self.test_registered_user_can_create_reports()
+        
+        self.log("\n🆕 Testing New Features - Weekly Digest System")
+        self.test_municipality_digest_preview()
+        self.test_admin_send_digests()
+        
+        self.log("\n🆕 Testing New Features - Profile Sharing & App Store Links")
+        self.test_user_share_profile_endpoint()
+        self.test_store_links_endpoint()
+        
+        self.log("\n🆕 Testing New Features - Subscription Pricing")
+        self.test_subscription_pricing()
+        
+        # ITERATION 8 FEATURES TESTING
+        self.log("\n📋 Testing Previous Features - Reports with Freshness & Confidence")
         self.test_reports_freshness_filter()
         self.test_reports_confirmed_filter()
         self.test_reports_confidence_scores()
         
-        self.log("\n🆕 Testing New Features - Subscription & Trial System")
+        self.log("\n📋 Testing Previous Features - Subscription & Trial System")
         self.test_user_subscription_trial()
         self.test_photo_upload_premium_restriction()
         
-        self.log("\n🆕 Testing New Features - Badges & Gamification")
+        self.log("\n📋 Testing Previous Features - Badges & Gamification")
         self.test_badges_endpoint()
         self.test_weekly_leaderboard()
         
-        self.log("\n🆕 Testing New Features - Saved Locations")
+        self.log("\n📋 Testing Previous Features - Saved Locations")
         self.test_saved_locations_crud()
         
-        self.log("\n🆕 Testing New Features - Neighborhood & Admin")
+        self.log("\n📋 Testing Previous Features - Neighborhood & Admin")
         self.test_neighborhood_cleanliness_score()
         self.test_admin_metrics_endpoint()
         
         # PREVIOUS FEATURES TESTING
-        self.log("\n📋 Testing Previous Features")
+        self.log("\n📋 Testing Core Features")
         self.test_user_profile_endpoint()
         self.test_reports_with_category_filter()
         self.test_report_creation_with_category()

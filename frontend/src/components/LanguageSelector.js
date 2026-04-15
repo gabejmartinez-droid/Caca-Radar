@@ -17,6 +17,9 @@ const languages = [
   { code: "ar", name: "العربية", flag: "🇸🇦" },
   { code: "uk", name: "Українська", flag: "🇺🇦" },
   { code: "ru", name: "Русский", flag: "🇷🇺" },
+  { code: "eu", name: "Euskara", flag: "🏴" },
+  { code: "ca", name: "Català", flag: "🏴" },
+  { code: "val", name: "Valencià", flag: "🏴" },
 ];
 
 export function LanguageSelector() {

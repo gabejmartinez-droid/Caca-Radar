@@ -146,6 +146,7 @@ export default function MapPage() {
   };
 
   const handleSubmitReport = async () => {
+    if (!user) { toast.error("Regístrate gratis para reportar"); navigate("/register"); return; }
     if (!userLocation) { toast.error(t("locationError")); return; }
     setLoading(true);
     try {
@@ -166,6 +167,7 @@ export default function MapPage() {
   };
 
   const handleVote = async (voteType) => {
+    if (!user) { toast.error("Regístrate gratis para votar"); navigate("/register"); return; }
     if (!selectedReport) return;
     setLoading(true);
     try {
@@ -193,6 +195,7 @@ export default function MapPage() {
   };
 
   const handleValidation = async (vote) => {
+    if (!user) { toast.error("Regístrate gratis para validar"); navigate("/register"); return; }
     if (!selectedReport) return;
     setLoading(true);
     try {
