@@ -10,7 +10,7 @@ Mobile-first web app for Spain — report dog feces, view on map, gamification, 
 
 ## Architecture
 - `server.py` — Routes + startup | `deps.py` — Shared DB/auth/models
-- `*_service.py` — Gamification, email, rankings, clean route, etc.
+- `*_service.py` — Gamification, email, rankings, clean route, webhooks, etc.
 
 ## Implemented
 - Map with color-coded pins, heatmaps, PWA, 11 languages
@@ -18,11 +18,29 @@ Mobile-first web app for Spain — report dog feces, view on map, gamification, 
 - Municipality dashboard (€50/month) with analytics, moderation
 - City/Barrio rankings (premium), Clean Route, rank notifications
 - Username system, photo uploads, 30-day archive, Resend emails
-- **Admin panel** (jefe@cacaradar.es) with 2FA email verification
-  - Global stats, user management, photo violation moderation, subscription analytics
-- Municipality verification emails include dashboard link
+- Admin panel (jefe@cacaradar.es) with 2FA, global stats, user management, photo moderation
+- **Real receipt verification**: Apple App Store Server API v2 + Google Play Developer API
+  - Falls back to mock when credentials not configured
+  - Subscription expiry auto-deactivation on startup
+  - Admin integration-status endpoint to check what's configured
 - Custom app icon (favicon + PWA + headers)
 
+## To Enable Real Payments
+Set in backend/.env:
+```
+# Apple
+APPLE_KEY_ID=your_key_id
+APPLE_ISSUER_ID=your_issuer_id
+APPLE_BUNDLE_ID=com.cacaradar.app
+APPLE_KEY_PATH=/path/to/SubscriptionKey.p8
+APPLE_ENVIRONMENT=Sandbox  (or Production)
+
+# Google
+GOOGLE_SERVICE_ACCOUNT_PATH=/path/to/service-account.json
+GOOGLE_PACKAGE_NAME=com.cacaradar.app
+```
+
 ## Backlog
-- P1: Configure real Apple/Google webhook URLs
-- P2: Implement real receipt verification (currently mocked)
+All major features complete. Remaining:
+- Configure real Apple/Google credentials when app is in stores
+- Production deployment and custom domain setup
