@@ -23,7 +23,7 @@ export default function RegisterPage() {
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   
-  const [name, setName] = useState("");
+  const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -33,6 +33,15 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
     
+    const trimmed = username.trim().toLowerCase();
+    if (trimmed.length < 3 || trimmed.length > 20) {
+      setError(t("usernameLength"));
+      return;
+    }
+    if (!/^[a-z0-9_]+$/.test(trimmed)) {
+      setError(t("usernameChars"));
+      return;
+    }
     if (password.length < 6) {
       setError(t("passwordTooShort"));
       return;
@@ -41,7 +50,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(email, password, name);
+      await register(email, password, trimmed);
       toast.success(t("registerSuccess"));
       navigate("/");
     } catch (err) {
@@ -92,19 +101,22 @@ export default function RegisterPage() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="name" className="text-[#2B2D42]">{t("name")}</Label>
+              <Label htmlFor="username" className="text-[#2B2D42]">{t("username")}</Label>
               <div className="relative mt-1">
                 <User className={`absolute ${isRtl ? 'right-3' : 'left-3'} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                 <Input
-                  id="name"
+                  id="username"
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder={t("namePlaceholder")}
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                  placeholder={t("usernamePlaceholder")}
                   className={isRtl ? 'pr-10' : 'pl-10'}
-                  data-testid="name-input"
+                  maxLength={20}
+                  required
+                  data-testid="username-input"
                 />
               </div>
+              <p className="text-xs text-[#8D99AE] mt-1">{t("usernameHint")}</p>
             </div>
 
             <div>

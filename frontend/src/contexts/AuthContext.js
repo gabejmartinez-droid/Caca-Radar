@@ -30,8 +30,8 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const register = useCallback(async (email, password, name, username) => {
-    const { data } = await axios.post(`${API}/auth/register`, { email, password, name, username }, { withCredentials: true });
+  const register = useCallback(async (email, password, username) => {
+    const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, { withCredentials: true });
     setUser(data);
     return data;
   }, []);

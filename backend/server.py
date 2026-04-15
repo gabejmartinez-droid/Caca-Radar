@@ -277,7 +277,7 @@ class UserRegister(BaseModel):
     email: EmailStr
     password: str
     name: Optional[str] = None
-    username: Optional[str] = None
+    username: str
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -412,22 +412,27 @@ def get_anonymous_id(request: Request) -> str:
 
 @api_router.post("/auth/register")
 async def register(data: UserRegister, response: Response):
+    import re
     email = data.email.lower()
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
     
-    if data.username:
-        existing_username = await db.users.find_one({"username": data.username.lower()})
-        if existing_username:
-            raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
+    username = data.username.lower().strip()
+    if len(username) < 3 or len(username) > 20:
+        raise HTTPException(status_code=400, detail="El nombre de usuario debe tener entre 3 y 20 caracteres")
+    if not re.match(r'^[a-z0-9_]+$', username):
+        raise HTTPException(status_code=400, detail="Solo letras, números y guiones bajos permitidos")
+    existing_username = await db.users.find_one({"username": username})
+    if existing_username:
+        raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
     
     hashed = hash_password(data.password)
     user_doc = {
         "email": email,
         "password_hash": hashed,
-        "name": data.name or email.split("@")[0],
-        "username": data.username.lower() if data.username else None,
+        "name": data.name or username,
+        "username": username,
         "role": "user",
         "subscription_active": False,
         "subscription_type": None,
@@ -457,7 +462,7 @@ async def register(data: UserRegister, response: Response):
         "username": user_doc["username"], "role": "user",
         "subscription_active": False, "report_count": 0, "vote_count": 0,
         "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
-        "streak_days": 0
+        "streak_days": 0, "needs_username": False
     }
 
 @api_router.post("/auth/login")
@@ -505,7 +510,8 @@ async def login(data: UserLogin, request: Request, response: Response):
         "trust_score": user.get("trust_score", 50),
         "rank": user.get("rank", "Aspirante Cagón"),
         "level": user.get("level", 1),
-        "streak_days": user.get("streak_days", 0)
+        "streak_days": user.get("streak_days", 0),
+        "needs_username": not bool(user.get("username"))
     }
 
 @api_router.post("/auth/logout")
@@ -519,6 +525,7 @@ async def get_me(request: Request):
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
+    user["needs_username"] = not bool(user.get("username"))
     return user
 
 @api_router.post("/auth/refresh")
@@ -545,13 +552,14 @@ async def refresh_token_endpoint(request: Request, response: Response):
 
 @api_router.put("/users/username")
 async def update_username(data: UsernameUpdate, request: Request):
+    import re
     user = await require_auth(request)
-    if not user.get("subscription_active"):
-        raise HTTPException(status_code=403, detail="Se requiere suscripción premium para elegir nombre de usuario")
     
     username = data.username.lower().strip()
     if len(username) < 3 or len(username) > 20:
         raise HTTPException(status_code=400, detail="El nombre de usuario debe tener entre 3 y 20 caracteres")
+    if not re.match(r'^[a-z0-9_]+$', username):
+        raise HTTPException(status_code=400, detail="Solo letras, números y guiones bajos permitidos")
     
     existing = await db.users.find_one({"username": username, "_id": {"$ne": ObjectId(user["_id"])}})
     if existing:
