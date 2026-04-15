@@ -1,0 +1,68 @@
+{
+  "summary": "Completed testing of 6 new features for Caca Radar: City rankings, Barrio rankings, Notifications, Archive cutoff (30 days), Freshness labels (48h/144h), and Subscription page updates. All 17 backend tests pass. Frontend rankings page works correctly with city/barrio tabs, dirtiest/cleanest toggle, and share button. Paywall correctly blocks non-premium users.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "passed_tests": [
+    "GET /api/rankings/cities returns 403 for free users",
+    "GET /api/rankings/cities returns city data with reports_per_10k for premium users",
+    "GET /api/rankings/cities returns 401/403 for unauthenticated users",
+    "GET /api/rankings/cities/share is public (no auth required)",
+    "GET /api/rankings/cities/share returns correct structure with download_links and share_text",
+    "GET /api/rankings/cities/share?list_type=cleanest returns cleanest cities",
+    "GET /api/rankings/barrios?city=Madrid returns 403 for free users",
+    "GET /api/rankings/barrios?city=Madrid returns barrio rankings for premium users",
+    "GET /api/notifications returns 401 for unauthenticated users",
+    "GET /api/notifications returns list for authenticated user",
+    "POST /api/notifications/read marks all notifications as read",
+    "POST /api/notifications/read returns 401 for unauthenticated",
+    "GET /api/reports returns freshness field (Fresca/En proceso/Fósil)",
+    "GET /api/reports?freshness=Fresca filters correctly",
+    "Archive cutoff is 30 days (verified in server.py line 2064)",
+    "GET /api/users/subscription-status returns correct data",
+    "POST /api/admin/recalculate-ranks returns rank changes",
+    "Frontend /rankings page shows city rankings with dirtiest/cleanest toggle for premium users",
+    "Frontend /rankings page shows paywall for non-premium users",
+    "Frontend /rankings barrio tab shows barrio data with city selector",
+    "Frontend /subscribe page lists all premium features including city rankings, barrio rankings, clean route",
+    "Rankings menu item visible in map page dropdown for logged-in users",
+    "Share button on rankings page works (copies to clipboard or triggers native share)",
+    "NotificationChecker component is integrated in App.js"
+  ],
+  "test_report_links": [
+    "/app/backend/tests/test_rankings_notifications.py",
+    "/app/test_reports/pytest/rankings_notifications_results.xml"
+  ],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [
+    "/app/backend/tests/test_rankings_notifications.py"
+  ],
+  "success_rate": {
+    "backend": "100% (17/17 tests passed)",
+    "frontend": "100% (all rankings and subscription page tests passed)"
+  },
+  "seed_data_creation": "Used existing test users: admin@cacaradar.es (premium) and corstest@test.com (free)",
+  "retest_needed": false,
+  "should_main_agent_self_test": false,
+  "context_for_next_testing_agent": "All 6 new features fully implemented and tested. City rankings use hardcoded population data from Wikipedia/INE 2023. Barrio data comes from Nominatim reverse geocoding with caching. Notification system stores rank_change events when recalculate_all_ranks detects changes. Archive cutoff is 30 days (line 2064 in server.py). Freshness labels: <48h=Fresca, 48h-144h=En proceso, >144h=Fósil (badges_service.py lines 86-90). Test file at /app/backend/tests/test_rankings_notifications.py covers all ranking and notification scenarios.",
+  "verified_features": {
+    "city_rankings_premium_only": "PASS - Returns 403 for free users, 200 with data for premium",
+    "city_rankings_share_public": "PASS - Public endpoint with download_links and share_text",
+    "barrio_rankings_premium_only": "PASS - Returns 403 for free users, 200 with barrio data for premium",
+    "notifications_auth_required": "PASS - Returns 401 for unauthenticated, list for authenticated",
+    "notifications_mark_read": "PASS - POST /api/notifications/read works correctly",
+    "archive_cutoff_30_days": "PASS - Verified in server.py line 2064",
+    "freshness_labels_doubled": "PASS - <48h=Fresca, 48h-144h=En proceso, >144h=Fósil",
+    "subscription_page_features": "PASS - Lists city rankings, barrio rankings, clean route",
+    "rankings_page_paywall": "PASS - Shows lock icon and upgrade button for non-premium",
+    "rankings_menu_item": "PASS - Visible in user dropdown menu",
+    "share_button_works": "PASS - Triggers share or copies to clipboard"
+  }
+}

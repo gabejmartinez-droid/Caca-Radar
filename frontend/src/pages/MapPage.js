@@ -26,8 +26,8 @@ function getMarkerCategory(createdAt) {
   const created = new Date(createdAt);
   const now = new Date();
   const hoursDiff = (now - created) / (1000 * 60 * 60);
-  if (hoursDiff < 24) return "recent";
-  if (hoursDiff < 72) return "moderate";
+  if (hoursDiff < 48) return "recent";
+  if (hoursDiff < 144) return "moderate";
   return "old";
 }
 
@@ -329,6 +329,9 @@ export default function MapPage() {
                     <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
                   </DropdownMenuItem>
                 )}
+                <DropdownMenuItem onClick={() => navigate("/rankings")} className="cursor-pointer" data-testid="menu-rankings">
+                  <BarChart3 className="w-4 h-4 mr-2 text-[#FF6B6B]" />Rankings
+                </DropdownMenuItem>
                 {!user.subscription_active && (
                   <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
                     <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium

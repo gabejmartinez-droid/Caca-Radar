@@ -25,21 +25,22 @@ export default function SubscriptionPage() {
   };
 
   const freeFeatures = [
-    { icon: MapPin, text: "Reportar en 1-2 toques" },
+    { icon: MapPin, text: "Reportar con foto y descripción" },
     { icon: MapPin, text: "Ver todos los reportes en el mapa" },
     { icon: Check, text: "Confirmar y validar reportes" },
     { icon: Crown, text: "Sistema de rangos y racha" },
-    { icon: Star, text: "Leaderboard local básico" },
+    { icon: Bell, text: "Alertas de cambio de rango" },
   ];
 
   const premiumFeatures = [
-    { icon: Camera, text: "Subir fotos y notas en reportes" },
     { icon: Zap, text: "Mapa de calor de densidad" },
     { icon: Filter, text: "Filtros avanzados (frescura, estado)" },
     { icon: Bell, text: "Alertas push para reportes cercanos" },
+    { icon: Star, text: "Ranking de ciudades más limpias/sucias" },
+    { icon: MapPin, text: "Ranking de barrios por limpieza" },
+    { icon: Zap, text: "Ruta limpia (evitar zonas sucias)" },
+    { icon: Crown, text: "Leaderboard completo + semanal" },
     { icon: Crown, text: "Nombre y rango visible en reportes" },
-    { icon: Star, text: "Leaderboard completo + semanal" },
-    { icon: Lock, text: "Ubicaciones guardadas (casa/trabajo)" },
     { icon: Zap, text: "Multiplicador de puntos 1.5x" },
     { icon: Crown, text: "Insignia Premium en el mapa" },
   ];

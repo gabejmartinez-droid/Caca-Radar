@@ -37,6 +37,7 @@ from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
+from city_rankings_service import get_city_rankings, get_barrio_rankings
 
 # App Store placeholder URLs
 APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
@@ -241,7 +242,7 @@ def reverse_geocode(lat: float, lon: float) -> dict:
     try:
         resp = requests.get(
             "https://nominatim.openstreetmap.org/reverse",
-            params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 1, "zoom": 14},
+            params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 1, "zoom": 16},
             headers={"User-Agent": "CacaRadar/1.0"},
             timeout=10
         )
@@ -261,16 +262,24 @@ def reverse_geocode(lat: float, lon: float) -> dict:
         
         province = address.get("state") or address.get("province") or ""
         country = address.get("country") or "España"
+        barrio = (
+            address.get("neighbourhood") or
+            address.get("suburb") or
+            address.get("quarter") or
+            address.get("city_district") or
+            ""
+        )
         
         return {
             "municipality": municipality,
             "province": province,
             "country": country,
+            "barrio": barrio,
             "display_name": data.get("display_name", "")
         }
     except Exception as e:
         logger.error(f"Reverse geocode failed: {e}")
-        return {"municipality": "Desconocido", "province": "", "country": "España", "display_name": ""}
+        return {"municipality": "Desconocido", "province": "", "country": "España", "barrio": "", "display_name": ""}
 
 # Pydantic Models
 class UserRegister(BaseModel):
@@ -787,10 +796,11 @@ def build_report_doc(report_id: str, data: ReportCreate, user_id: str, user: dic
         "upvotes": 0, "downvotes": 0, "validation_count": 0,
         "user_id": user_id, "contributor_name": "Anónimo", "contributor_rank": None,
         "municipality": geo["municipality"], "province": geo["province"], "country": geo["country"],
+        "barrio": geo.get("barrio", ""),
         "archived": False, "flagged": False, "flag_count": 0, "is_duplicate_proximity": is_duplicate
     }
+    doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
     if user and user.get("subscription_active"):
-        doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
         doc["contributor_rank"] = user.get("rank", "Aspirante Cagón")
     return doc
 
@@ -1132,8 +1142,18 @@ async def admin_recalculate_ranks(request: Request):
     user = await require_auth(request)
     if user.get("role") != "admin":
         raise HTTPException(status_code=403, detail="Solo administradores")
-    count = await recalculate_all_ranks(db)
-    return {"message": f"Ranks recalculated for {count} users"}
+    count, rank_changes = await recalculate_all_ranks(db)
+    # Store rank change notifications
+    for rc in rank_changes:
+        await db.notifications.insert_one({
+            "user_id": rc["user_id"],
+            "type": "rank_change",
+            "old_rank": rc["old_rank"],
+            "new_rank": rc["new_rank"],
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    return {"message": f"Ranks recalculated for {count} users, {len(rank_changes)} rank changes"}
 
 
 # ==================== FLAGS ====================
@@ -1176,6 +1196,66 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
     
     return {"message": "Reporte marcado"}
+
+# ==================== CITY & BARRIO RANKINGS ====================
+
+@api_router.get("/rankings/cities")
+async def api_city_rankings(request: Request):
+    """Premium: Get cleanest/dirtiest cities ranked by reports per 10k residents."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    return await get_city_rankings(db)
+
+@api_router.get("/rankings/cities/share")
+async def api_city_rankings_share(list_type: str = "dirtiest"):
+    """Public shareable city ranking data (top 10 only)."""
+    data = await get_city_rankings(db, limit=10)
+    cities = data.get(list_type, data["dirtiest"])[:10]
+    title = "Las ciudades más sucias de España" if list_type == "dirtiest" else "Las ciudades más limpias de España"
+    return {
+        "title": title,
+        "cities": cities,
+        "total_cities": data["total_cities"],
+        "generated_at": data["generated_at"],
+        "app_url": "https://cacaradar.es",
+        "download_links": {
+            "ios": APP_STORE_URL,
+            "android": PLAY_STORE_URL,
+        },
+        "share_text": f"{title} según Caca Radar. ¡Descarga la app y ayuda a mantener tu ciudad limpia! {APP_STORE_URL}",
+    }
+
+@api_router.get("/rankings/barrios")
+async def api_barrio_rankings(request: Request, city: str = "Madrid"):
+    """Premium: Get barrio rankings within a city."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    return await get_barrio_rankings(db, city)
+
+# ==================== NOTIFICATIONS ====================
+
+@api_router.get("/notifications")
+async def get_notifications(request: Request):
+    """Get unread notifications for the current user."""
+    user = await require_auth(request)
+    user_id = user["_id"]
+    notifications = await db.notifications.find(
+        {"user_id": user_id, "read": False},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(20)
+    return notifications
+
+@api_router.post("/notifications/read")
+async def mark_notifications_read(request: Request):
+    """Mark all notifications as read."""
+    user = await require_auth(request)
+    await db.notifications.update_many(
+        {"user_id": user["_id"], "read": False},
+        {"$set": {"read": True}}
+    )
+    return {"message": "ok"}
 
 # ==================== LEADERBOARDS ====================
 
@@ -1943,6 +2023,8 @@ async def startup():
     await db.webhook_processing_log.create_index("user_id")
     await db.push_subscriptions.create_index("user_id", unique=True)
     await db.push_subscriptions.create_index([("latitude", 1), ("longitude", 1)])
+    await db.barrio_cache.create_index([("lat", 1), ("lng", 1)], unique=True)
+    await db.notifications.create_index([("user_id", 1), ("read", 1)])
     
     # Seed admin
     admin_email = os.environ.get("ADMIN_EMAIL", "admin@cacaradar.es")
@@ -1978,8 +2060,8 @@ async def startup():
         })
         logger.info("Demo municipality user created")
     
-    # Archive old reports (7 days)
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+    # Archive old reports (30 days)
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     await db.reports.update_many(
         {"created_at": {"$lt": cutoff}, "archived": {"$ne": True}},
         {"$set": {"archived": True}}
@@ -1989,8 +2071,18 @@ async def startup():
     await reset_daily_counts(db)
     
     # Recalculate ranks
-    rank_count = await recalculate_all_ranks(db)
-    logger.info(f"Ranks recalculated for {rank_count} users")
+    rank_count, rank_changes = await recalculate_all_ranks(db)
+    # Store rank change notifications
+    for rc in rank_changes:
+        await db.notifications.insert_one({
+            "user_id": rc["user_id"],
+            "type": "rank_change",
+            "old_rank": rc["old_rank"],
+            "new_rank": rc["new_rank"],
+            "read": False,
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    logger.info(f"Ranks recalculated for {rank_count} users, {len(rank_changes)} changes")
     
     # Write test credentials (non-critical, skip if path not writable)
     try:

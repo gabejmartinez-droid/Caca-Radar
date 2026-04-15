@@ -77,15 +77,15 @@ def calc_confidence_score(report: dict) -> float:
 
 
 def get_freshness_label(created_at: str) -> str:
-    """Get freshness label: Fresca (<6h), En proceso (6h-48h), Fósil (>48h)."""
+    """Get freshness label: Fresca (<48h), En proceso (48h-144h/6d), Fósil (>6d)."""
     try:
         created = datetime.fromisoformat(created_at)
         if created.tzinfo is None:
             created = created.replace(tzinfo=timezone.utc)
         hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600
-        if hours < 6:
+        if hours < 48:
             return "Fresca"
-        elif hours < 48:
+        elif hours < 144:
             return "En proceso"
         else:
             return "Fósil"

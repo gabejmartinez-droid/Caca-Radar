@@ -27,22 +27,32 @@ def get_rank_for_percentile(percentile: float) -> str:
 
 
 async def recalculate_all_ranks(db):
-    """Recalculate ranks for all users based on total_score percentiles."""
+    """Recalculate ranks for all users based on total_score percentiles.
+    Returns (count, rank_changes) where rank_changes is a list of {user_id, old_rank, new_rank}."""
     users = await db.users.find(
         {"role": "user", "total_score": {"$exists": True}},
-        {"_id": 1, "total_score": 1}
+        {"_id": 1, "total_score": 1, "rank": 1}
     ).sort("total_score", -1).to_list(100000)
 
     total = len(users)
     if total == 0:
-        return 0
+        return 0, []
 
     from bson import ObjectId
     updates = []
+    rank_changes = []
     for i, user in enumerate(users):
         percentile = ((total - i) / total) * 100  # 100 = top, 0 = bottom
         rank = get_rank_for_percentile(percentile)
         level = max(1, math.ceil(percentile / 10))  # 1–10
+
+        old_rank = user.get("rank", "Aspirante Cagón")
+        if old_rank != rank:
+            rank_changes.append({
+                "user_id": str(user["_id"]),
+                "old_rank": old_rank,
+                "new_rank": rank,
+            })
 
         updates.append({
             "filter": {"_id": user["_id"]},
@@ -54,7 +64,7 @@ async def recalculate_all_ranks(db):
     for u in updates:
         await db.users.update_one(u["filter"], u["update"])
 
-    return total
+    return total, rank_changes
 
 
 async def get_user_rank_info(db, user_id: str) -> dict:

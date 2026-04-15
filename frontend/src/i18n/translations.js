@@ -8,9 +8,9 @@ export const translations = {
     enter: "Entrar",
     logout: "Salir",
     legend: {
-      recent: "Reciente (<24h)",
-      moderate: "1-3 días",
-      old: ">3 días"
+      recent: "Reciente (<48h)",
+      moderate: "2-6 días",
+      old: ">6 días"
     },
     
     // Report Drawer
@@ -121,9 +121,9 @@ export const translations = {
     enter: "Login",
     logout: "Logout",
     legend: {
-      recent: "Recent (<24h)",
-      moderate: "1-3 days",
-      old: ">3 days"
+      recent: "Recent (<48h)",
+      moderate: "2-6 days",
+      old: ">6 days"
     },
     reportTitle: "Report dog poop",
     reportDesc: "Your location will be added automatically",
@@ -205,9 +205,9 @@ export const translations = {
     enter: "Anmelden",
     logout: "Abmelden",
     legend: {
-      recent: "Aktuell (<24h)",
-      moderate: "1-3 Tage",
-      old: ">3 Tage"
+      recent: "Aktuell (<48h)",
+      moderate: "2-6 Tage",
+      old: ">6 Tage"
     },
     reportTitle: "Hundekot melden",
     reportDesc: "Dein Standort wird automatisch hinzugefügt",
@@ -309,8 +309,8 @@ export const translations = {
     logout: "Uitloggen",
     legend: {
       recent: "Recent (<24u)",
-      moderate: "1-3 dagen",
-      old: ">3 dagen"
+      moderate: "2-6 dagen",
+      old: ">6 dagen"
     },
     reportTitle: "Hondenpoep melden",
     reportDesc: "Je locatie wordt automatisch toegevoegd",
@@ -411,9 +411,9 @@ export const translations = {
     enter: "Zaloguj",
     logout: "Wyloguj",
     legend: {
-      recent: "Ostatnie (<24h)",
-      moderate: "1-3 dni",
-      old: ">3 dni"
+      recent: "Ostatnie (<48h)",
+      moderate: "2-6 dni",
+      old: ">6 dni"
     },
     reportTitle: "Zgłoś psią kupę",
     reportDesc: "Twoja lokalizacja zostanie dodana automatycznie",
@@ -515,8 +515,8 @@ export const translations = {
     logout: "خروج",
     legend: {
       recent: "حديث (<24 ساعة)",
-      moderate: "1-3 أيام",
-      old: ">3 أيام"
+      moderate: "2-6 أيام",
+      old: ">6 أيام"
     },
     reportTitle: "الإبلاغ عن براز كلب",
     reportDesc: "سيتم إضافة موقعك تلقائياً",
@@ -618,8 +618,8 @@ export const translations = {
     logout: "Вийти",
     legend: {
       recent: "Нещодавно (<24г)",
-      moderate: "1-3 дні",
-      old: ">3 днів"
+      moderate: "2-6 днів",
+      old: ">6 днів"
     },
     reportTitle: "Повідомити про собачі екскременти",
     reportDesc: "Ваше місцезнаходження буде додано автоматично",
@@ -721,8 +721,8 @@ export const translations = {
     logout: "Выйти",
     legend: {
       recent: "Недавно (<24ч)",
-      moderate: "1-3 дня",
-      old: ">3 дней"
+      moderate: "2-6 дней",
+      old: ">6 дней"
     },
     reportTitle: "Сообщить о собачьих экскрементах",
     reportDesc: "Ваше местоположение будет добавлено автоматически",
@@ -825,7 +825,7 @@ export const translations = {
     report: "Salatu",
     enter: "Sartu",
     logout: "Irten",
-    legend: { recent: "Berria (<24h)", moderate: "1-3 egun", old: ">3 egun" },
+    legend: { recent: "Berria (<48h)", moderate: "2-6 egun", old: ">6 egun" },
     reportTitle: "Txakur kaka salatu",
     reportDesc: "Zure kokapena automatikoki gehituko da",
     gettingLocation: "Kokapena lortzen...",
@@ -871,7 +871,7 @@ export const translations = {
     report: "Reportar",
     enter: "Entrar",
     logout: "Sortir",
-    legend: { recent: "Recent (<24h)", moderate: "1-3 dies", old: ">3 dies" },
+    legend: { recent: "Recent (<48h)", moderate: "2-6 dies", old: ">6 dies" },
     reportTitle: "Reportar caca de gos",
     reportDesc: "La teva ubicació s'afegirà automàticament",
     gettingLocation: "Obtenint ubicació...",
@@ -916,7 +916,7 @@ export const translations = {
     report: "Reportar",
     enter: "Entrar",
     logout: "Eixir",
-    legend: { recent: "Recent (<24h)", moderate: "1-3 dies", old: ">3 dies" },
+    legend: { recent: "Recent (<48h)", moderate: "2-6 dies", old: ">6 dies" },
     reportTitle: "Reportar caca de gos",
     reportDesc: "La teua ubicació s'afegirà automàticament",
     gettingLocation: "Obtenint ubicació...",

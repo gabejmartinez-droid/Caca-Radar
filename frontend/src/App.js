@@ -3,10 +3,12 @@ import { Toaster } from "./components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import UsernamePrompt from "./components/UsernamePrompt";
+import NotificationChecker from "./components/NotificationChecker";
 import MapPage from "./pages/MapPage";
 import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
+import RankingsPage from "./pages/RankingsPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import DashboardLogin from "./pages/DashboardLogin";
 import Dashboard from "./pages/Dashboard";
@@ -39,6 +41,7 @@ function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/rankings" element={<RankingsPage />} />
               <Route path="/subscribe" element={<SubscriptionPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/dashboard/login" element={<DashboardLogin />} />
@@ -47,6 +50,7 @@ function App() {
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
             </Routes>
           </UsernameGate>
+          <NotificationChecker />
           <Toaster position="top-center" richColors />
         </BrowserRouter>
       </AuthProvider>
