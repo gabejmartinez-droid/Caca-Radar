@@ -63,9 +63,7 @@ export default function LoginPage() {
       <div className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Logo */}
         <div className="flex items-center gap-2 mb-8">
-          <div className="w-12 h-12 bg-[#FF6B6B] rounded-full flex items-center justify-center">
-            <MapPin className="w-6 h-6 text-white" />
-          </div>
+          <img src="/icon-64x64.png" alt="Caca Radar" className="w-12 h-12 rounded-xl" />
           <span className="text-2xl font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>
             {t("appName")}
           </span>

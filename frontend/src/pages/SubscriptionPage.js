@@ -154,7 +154,7 @@ export default function SubscriptionPage() {
           <p className="text-white/60 text-xs mb-3">Panel de control, analíticas avanzadas y moderación</p>
           <div className="flex justify-between items-center">
             <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black">49</span><span className="text-white/60">€/mes</span>
+              <span className="text-2xl font-black">50</span><span className="text-white/60">€/mes</span>
             </div>
             <Button onClick={() => navigate("/dashboard/register")} variant="outline" className="border-white/30 text-white hover:bg-white/10 rounded-xl font-bold" data-testid="municipality-subscribe-btn">
               Registrar Municipio
