@@ -141,7 +141,7 @@ export default function LoginPage() {
           </p>
         </div>
 
-        <p className="text-center text-[#8D99AE] text-sm mt-6">
+        <p className="text-center text-[#8D99AE] text-sm mt-6 mb-20">
           {t("useWithoutAccount")}
         </p>
       </div>
