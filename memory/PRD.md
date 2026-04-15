@@ -25,8 +25,22 @@ Build a mobile-first web app called "Caca Radar" for Spain. Users report dog fec
 - Registration enforcement (no anonymous reporting/voting)
 - Code quality refactoring (component splitting, backend service extraction)
 - **Username system** (Apr 2026): Required at registration, existing users prompted on login. Username displayed publicly instead of email.
-- CORS fix: `allow_origin_regex` for cross-domain deployment compatibility
+- **Photo uploads for all users** (Apr 2026): Removed premium gate — any registered user can upload photos with reports. Detail drawer fetches fresh report data to always show latest photo.
+- CORS fix: `allow_origins=["*"]` for universal deployment compatibility
 - Secure cookies: `Secure=True` flag for HTTPS environments
+
+## Free Tier Features
+- Reporting (with GPS, photo, description)
+- Viewing map and report details
+- Voting (still there / cleaned, upvote / downvote)
+- Validation (confirm / reject)
+
+## Premium Tier Features
+- Heatmaps
+- Advanced filters
+- Clean Route (Smart Navigation)
+- Push notifications
+- Leaderboard access
 
 ## Production Credentials Needed
 ```
@@ -37,7 +51,6 @@ GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME
 VAPID keys already generated and configured.
 
 ## Prioritized Backlog
-- P0: Remind user to verify cacaradar.es domain in Resend (DNS propagated, emails working)
 - P1: Configure real Apple/Google webhook URLs in App Store Connect / Google Play Console
 - P2: Implement actual receipt verification against Apple/Google production endpoints (currently mocked)
 - P2: Further decompose server.py (~2050 lines) into route modules
