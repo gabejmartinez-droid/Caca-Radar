@@ -227,12 +227,14 @@ class MunicipalityRegister(BaseModel):
     contact_name: Optional[str] = None
 
 class AppleReceiptVerify(BaseModel):
-    receipt_data: str
+    receipt_data: Optional[str] = None
     transaction_id: Optional[str] = None
+    plan: Literal["monthly", "annual"] = "monthly"
 
 class GoogleReceiptVerify(BaseModel):
     purchase_token: str
     subscription_id: str
+    plan: Literal["monthly", "annual"] = "monthly"
 
 # ── Municipality domain verification ─────────────────
 ALLOWED_MUNICIPALITY_DOMAINS = [

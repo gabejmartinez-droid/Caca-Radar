@@ -62,20 +62,22 @@ GOOGLE_SERVICE_ACCOUNT_PATH = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH")
 GOOGLE_PACKAGE_NAME = os.environ.get("GOOGLE_PACKAGE_NAME")
 
 async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) -> dict:
-    """Verify Apple App Store receipt using App Store Server API v2."""
+    """Verify Apple App Store receipt using App Store Server API v2.
+    Falls back to mock if credentials not configured."""
     if not all([APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH]):
         logger.warning("Apple credentials not configured — using mock verification")
         return {"valid": True, "mock": True, "product_id": "premium_monthly", "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
 
     try:
-        from appstoreserverlibrary.api_client import AppStoreServerAPIClient, APIException
+        from appstoreserverlibrary.api_client import AppStoreServerAPIClient, GetTransactionHistoryVersion
         from appstoreserverlibrary.models.Environment import Environment
+        from appstoreserverlibrary.models.TransactionHistoryRequest import TransactionHistoryRequest
+        from appstoreserverlibrary.models.ProductType import ProductType
         from appstoreserverlibrary.receipt_utility import ReceiptUtility
-        from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier, VerificationException
+        import json as _json, base64 as _b64
 
         env = Environment.PRODUCTION if APPLE_ENVIRONMENT == "Production" else Environment.SANDBOX
 
-        # Read private key
         with open(APPLE_KEY_PATH, 'r') as f:
             signing_key = f.read()
 
@@ -87,23 +89,49 @@ async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) ->
             transaction_id = receipt_util.extract_transaction_id_from_app_receipt(receipt_data)
 
         if not transaction_id:
-            return {"valid": False, "error": "No transaction ID found"}
+            return {"valid": False, "error": "No transaction ID found in receipt"}
 
-        # Get transaction info
-        response = client.get_transaction_info(transaction_id)
+        # Get subscription status via transaction history
+        request = TransactionHistoryRequest(productTypes=[ProductType.AUTO_RENEWABLE])
+        response = client.get_transaction_history(transaction_id, None, request, GetTransactionHistoryVersion.V2)
+
+        if not response.signedTransactions:
+            return {"valid": False, "error": "No transactions found"}
+
+        # Decode the latest signed transaction (JWS)
+        latest_jws = response.signedTransactions[-1]
+        parts = latest_jws.split(".")
+        if len(parts) == 3:
+            padded = parts[1] + "=" * (4 - len(parts[1]) % 4)
+            tx_info = _json.loads(_b64.urlsafe_b64decode(padded))
+        else:
+            return {"valid": False, "error": "Invalid JWS transaction format"}
+
+        product_id = tx_info.get("productId", "unknown")
+        expires_ms = tx_info.get("expiresDate")
+        expires_iso = datetime.fromtimestamp(expires_ms / 1000, tz=timezone.utc).isoformat() if expires_ms else None
+        original_tx_id = tx_info.get("originalTransactionId", transaction_id)
+
+        # Check if expired
+        is_active = True
+        if expires_ms:
+            is_active = datetime.fromtimestamp(expires_ms / 1000, tz=timezone.utc) > datetime.now(timezone.utc)
+
         return {
-            "valid": True,
+            "valid": is_active,
             "mock": False,
-            "transaction_id": transaction_id,
-            "product_id": getattr(response, 'product_id', 'unknown'),
-            "expires": getattr(response, 'expires_date', None)
+            "product_id": product_id,
+            "transaction_id": original_tx_id,
+            "expires": expires_iso,
+            "environment": str(env),
         }
     except Exception as e:
         logger.error(f"Apple receipt verification failed: {e}")
         return {"valid": False, "error": str(e)}
 
 async def verify_google_receipt(purchase_token: str, subscription_id: str) -> dict:
-    """Verify Google Play subscription using Google Play Developer API."""
+    """Verify Google Play subscription using Google Play Developer API v3/v2.
+    Falls back to mock if credentials not configured."""
     if not all([GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME]):
         logger.warning("Google credentials not configured — using mock verification")
         return {"valid": True, "mock": True, "product_id": subscription_id, "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
@@ -118,6 +146,37 @@ async def verify_google_receipt(purchase_token: str, subscription_id: str) -> di
         )
         service = build('androidpublisher', 'v3', credentials=credentials)
 
+        # Try subscriptionsv2 first (newer, supports add-ons)
+        try:
+            result = service.purchases().subscriptionsv2().get(
+                packageName=GOOGLE_PACKAGE_NAME,
+                token=purchase_token
+            ).execute()
+
+            line_items = result.get("lineItems", [])
+            if line_items:
+                item = line_items[0]
+                expiry_str = item.get("expiryTime")  # RFC3339 string
+                auto_renew = item.get("autoRenewingPlan", {}).get("autoRenewing", False)
+                product_id = item.get("productId", subscription_id)
+
+                is_active = True
+                if expiry_str:
+                    expiry_dt = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
+                    is_active = expiry_dt > datetime.now(timezone.utc)
+
+                return {
+                    "valid": is_active,
+                    "mock": False,
+                    "product_id": product_id,
+                    "expires": expiry_str,
+                    "auto_renewing": auto_renew,
+                    "acknowledgement_state": result.get("acknowledgementState"),
+                }
+        except Exception:
+            pass  # Fall back to v3 subscriptions.get
+
+        # Fallback: v3 subscriptions.get (needs subscription_id)
         result = service.purchases().subscriptions().get(
             packageName=GOOGLE_PACKAGE_NAME,
             subscriptionId=subscription_id,
@@ -126,9 +185,10 @@ async def verify_google_receipt(purchase_token: str, subscription_id: str) -> di
 
         expiry_millis = int(result.get('expiryTimeMillis', 0))
         expiry = datetime.fromtimestamp(expiry_millis / 1000, tz=timezone.utc) if expiry_millis else None
+        is_active = expiry > datetime.now(timezone.utc) if expiry else False
 
         return {
-            "valid": True,
+            "valid": is_active,
             "mock": False,
             "product_id": subscription_id,
             "expires": expiry.isoformat() if expiry else None,
@@ -1685,6 +1745,32 @@ async def admin_moderate_report(report_id: str, request: Request):
 
     return {"message": f"Reporte {action}: {report_id}"}
 
+@api_router.get("/admin/integration-status")
+async def admin_integration_status(request: Request):
+    """Admin: Check which integrations are configured for production."""
+    await _require_admin(request)
+    return {
+        "apple": {
+            "configured": bool(APPLE_KEY_ID and APPLE_ISSUER_ID and APPLE_BUNDLE_ID and APPLE_KEY_PATH),
+            "environment": APPLE_ENVIRONMENT,
+            "bundle_id": APPLE_BUNDLE_ID or "Not set",
+            "key_id": APPLE_KEY_ID[:4] + "..." if APPLE_KEY_ID else "Not set",
+        },
+        "google": {
+            "configured": bool(GOOGLE_SERVICE_ACCOUNT_PATH and GOOGLE_PACKAGE_NAME),
+            "package_name": GOOGLE_PACKAGE_NAME or "Not set",
+            "service_account": "Configured" if GOOGLE_SERVICE_ACCOUNT_PATH else "Not set",
+        },
+        "resend": {
+            "configured": email_configured(),
+            "sender": os.environ.get("SENDER_EMAIL", "Not set"),
+        },
+        "setup_instructions": {
+            "apple": "Set APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH in .env. Download .p8 key from App Store Connect > Keys.",
+            "google": "Set GOOGLE_SERVICE_ACCOUNT_PATH (JSON key file), GOOGLE_PACKAGE_NAME in .env. Create service account in Google Cloud Console.",
+        }
+    }
+
 # ==================== SUCCESS METRICS (Admin) ====================
 
 @api_router.get("/admin/metrics")
@@ -2002,6 +2088,15 @@ async def startup():
     
     # Reset daily report counts
     await reset_daily_counts(db)
+    
+    # Check and deactivate expired subscriptions
+    now_iso = datetime.now(timezone.utc).isoformat()
+    expired = await db.users.update_many(
+        {"subscription_active": True, "subscription_expires": {"$lt": now_iso, "$ne": None}},
+        {"$set": {"subscription_active": False}}
+    )
+    if expired.modified_count > 0:
+        logger.info(f"Deactivated {expired.modified_count} expired subscriptions")
     
     # Recalculate ranks
     rank_count, rank_changes = await recalculate_all_ranks(db)
