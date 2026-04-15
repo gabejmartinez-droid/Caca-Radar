@@ -12,6 +12,11 @@ import {
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
 const COLORS = ["#FF6B6B", "#FFA726", "#66BB6A", "#42A5F5", "#AB47BC", "#26C6DA"];
+const TICK_STYLE = { fontSize: 11 };
+const GRID_DASH = "3 3";
+const GRID_COLOR = "#F0F0F0";
+const AXIS_COLOR = "#8D99AE";
+const BAR_RADIUS = [4, 4, 0, 0];
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
@@ -91,9 +96,9 @@ export default function AnalyticsPage() {
               <h3 className="font-bold text-[#2B2D42] mb-4">Reportes por día</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={analytics.daily_reports}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
-                  <XAxis dataKey="date" tick={{ fontSize: 11 }} stroke="#8D99AE" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#8D99AE" />
+                  <CartesianGrid strokeDasharray={GRID_DASH} stroke={GRID_COLOR} />
+                  <XAxis dataKey="date" tick={TICK_STYLE} stroke={AXIS_COLOR} />
+                  <YAxis tick={TICK_STYLE} stroke={AXIS_COLOR} />
                   <Tooltip />
                   <Area type="monotone" dataKey="count" stroke="#FF6B6B" fill="#FF6B6B" fillOpacity={0.15} strokeWidth={2} />
                 </AreaChart>
@@ -107,11 +112,11 @@ export default function AnalyticsPage() {
               <h3 className="font-bold text-[#2B2D42] mb-4">Distribución por hora del día</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.hourly_distribution}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#F0F0F0" />
-                  <XAxis dataKey="hour" tick={{ fontSize: 11 }} stroke="#8D99AE" />
-                  <YAxis tick={{ fontSize: 11 }} stroke="#8D99AE" />
+                  <CartesianGrid strokeDasharray={GRID_DASH} stroke={GRID_COLOR} />
+                  <XAxis dataKey="hour" tick={TICK_STYLE} stroke={AXIS_COLOR} />
+                  <YAxis tick={TICK_STYLE} stroke={AXIS_COLOR} />
                   <Tooltip />
-                  <Bar dataKey="count" fill="#FF6B6B" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="count" fill="#FF6B6B" radius={BAR_RADIUS} />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -153,7 +158,7 @@ export default function AnalyticsPage() {
               ) : (
                 <div className="space-y-3">
                   {analytics.top_zones.map((zone, i) => (
-                    <div key={i} className="flex items-center gap-3">
+                    <div key={zone.area} className="flex items-center gap-3">
                       <span className="w-6 h-6 flex items-center justify-center rounded-full bg-[#FF6B6B]/10 text-[#FF6B6B] text-xs font-bold">{i + 1}</span>
                       <div className="flex-1">
                         <div className="flex justify-between mb-1">

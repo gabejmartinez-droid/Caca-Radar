@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field, EmailStr
 from typing import Optional, List, Literal
 import random
 import string
+import asyncio
 
 # Import gamification services
 from scoring_service import (
@@ -790,11 +791,146 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     report_doc["points_earned"] = points_result["points"]
     report_doc["points_breakdown"] = points_result["breakdown"]
 
-    # Send push notifications to nearby subscribers (async, non-blocking)
-    import asyncio
     asyncio.create_task(notify_nearby_users(db, data.latitude, data.longitude, report_id, geo["municipality"]))
 
     return report_doc
+
+# ==================== REPORT HELPERS ====================
+
+async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str) -> None:
+    """Validate anti-spam rules before creating a report."""
+    if not await check_gps_plausible(data.latitude, data.longitude):
+        raise HTTPException(status_code=400, detail="Ubicación fuera de España")
+    if user is not None and await check_cooldown(db, user_id):
+        raise HTTPException(status_code=429, detail="Espera al menos 60 segundos entre reportes")
+    if user is not None:
+        tier = get_trust_tier(user.get("trust_score", 50))
+        if tier == "restricted":
+            raise HTTPException(status_code=403, detail="Tu cuenta está restringida por comportamiento sospechoso")
+
+def build_report_doc(report_id: str, data: ReportCreate, user_id: str, user: dict, geo: dict, is_duplicate: bool) -> dict:
+    """Build the report document for insertion."""
+    category = data.category if data.category in REPORT_CATEGORIES else "dog_feces"
+    doc = {
+        "id": report_id, "latitude": data.latitude, "longitude": data.longitude,
+        "photo_url": None, "description": data.description, "category": category,
+        "created_at": datetime.now(timezone.utc).isoformat(), "status": "pending",
+        "status_score": 0, "still_there_count": 0, "cleaned_count": 0,
+        "upvotes": 0, "downvotes": 0, "validation_count": 0,
+        "user_id": user_id, "contributor_name": "Anónimo", "contributor_rank": None,
+        "municipality": geo["municipality"], "province": geo["province"], "country": geo["country"],
+        "archived": False, "flagged": False, "flag_count": 0, "is_duplicate_proximity": is_duplicate
+    }
+    if user and user.get("subscription_active"):
+        doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
+        doc["contributor_rank"] = user.get("rank", "Aspirante Cagón")
+    return doc
+
+async def process_report_scoring(db, user: dict, user_id: str, data: ReportCreate, is_duplicate: bool) -> dict:
+    """Calculate and apply points for a report submission."""
+    if user is None or is_duplicate:
+        return {"points": 0, "breakdown": {}}
+    daily_count = user.get("daily_report_count", 0)
+    is_sub = user.get("subscription_active", False)
+    result = calc_report_points(has_photo=False, has_description=bool(data.description), daily_count=daily_count, is_subscriber=is_sub)
+    hot = await is_hot_zone(db, data.latitude, data.longitude)
+    if hot and result["points"] > 0:
+        result["points"] += HOT_ZONE_BONUS
+        result["breakdown"]["hot_zone"] = HOT_ZONE_BONUS
+    await db.users.update_one(
+        {"_id": ObjectId(user_id)},
+        {"$inc": {"report_count": 1, "total_score": result["points"], "daily_report_count": 1}}
+    )
+    await update_streak(db, user_id)
+    violations = await detect_spam_patterns(db, user_id)
+    if violations:
+        await update_trust_score(db, user_id, TRUST_SPAM_BEHAVIOR, f"spam_detected:{','.join(violations)}")
+    return result
+
+async def upsert_municipality(db, geo: dict) -> None:
+    """Ensure municipality exists and increment report count."""
+    existing = await db.municipalities.find_one({"name": geo["municipality"], "province": geo["province"]})
+    if not existing:
+        await db.municipalities.insert_one({
+            "id": str(uuid.uuid4()), "name": geo["municipality"],
+            "province": geo["province"], "country": geo["country"],
+            "report_count": 1, "created_at": datetime.now(timezone.utc).isoformat()
+        })
+    else:
+        await db.municipalities.update_one(
+            {"name": geo["municipality"], "province": geo["province"]}, {"$inc": {"report_count": 1}}
+        )
+
+# ==================== ANALYTICS HELPERS ====================
+
+async def calc_analytics_summary(db, muni_name: str, now, thirty_days_ago: str, sixty_days_ago: str) -> dict:
+    reports_30d = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}})
+    reports_prev = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
+    trend = round(((reports_30d - reports_prev) / max(reports_prev, 1)) * 100) if reports_prev > 0 else 0
+    verified = await db.reports.count_documents({"municipality": muni_name, "status": "verified"})
+    total = await db.reports.count_documents({"municipality": muni_name})
+    flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
+    flag_rate = round((flagged / max(total, 1)) * 100, 1)
+    archived = await db.reports.find(
+        {"municipality": muni_name, "archived": True, "created_at": {"$gte": thirty_days_ago}},
+        {"_id": 0, "created_at": 1, "moderated_at": 1}
+    ).to_list(100)
+    hours = []
+    for r in archived:
+        if r.get("moderated_at"):
+            try:
+                h = (datetime.fromisoformat(r["moderated_at"]) - datetime.fromisoformat(r["created_at"])).total_seconds() / 3600
+                if h > 0:
+                    hours.append(h)
+            except Exception:
+                pass
+    avg_res = round(sum(hours) / len(hours), 1) if hours else None
+    return {"reports_30d": reports_30d, "reports_trend": trend, "verified": verified, "avg_resolution_hours": avg_res, "flag_rate": flag_rate}
+
+async def calc_daily_reports(db, muni_name: str, now) -> list:
+    result = []
+    for i in range(30):
+        day = (now - timedelta(days=29 - i)).date()
+        count = await db.reports.count_documents({
+            "municipality": muni_name, "created_at": {"$gte": day.isoformat(), "$lt": (day + timedelta(days=1)).isoformat()}
+        })
+        result.append({"date": day.strftime("%d/%m"), "count": count})
+    return result
+
+async def calc_hourly_distribution(db, muni_name: str, thirty_days_ago: str) -> list:
+    all_reports = await db.reports.find(
+        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}}, {"_id": 0, "created_at": 1}
+    ).to_list(2000)
+    hourly = [0] * 24
+    for r in all_reports:
+        try:
+            hourly[datetime.fromisoformat(r["created_at"]).hour] += 1
+        except Exception:
+            pass
+    return [{"hour": f"{h:02d}:00", "count": hourly[h]} for h in range(24)]
+
+async def calc_status_distribution(db, muni_name: str) -> list:
+    labels = {"pending": "Pendiente", "verified": "Verificado", "rejected": "Rechazado", "archived": "Archivado"}
+    result = []
+    for status in ["pending", "verified", "rejected"]:
+        c = await db.reports.count_documents({"municipality": muni_name, "status": status})
+        if c > 0:
+            result.append({"status": labels[status], "count": c})
+    archived = await db.reports.count_documents({"municipality": muni_name, "archived": True})
+    if archived > 0:
+        result.append({"status": labels["archived"], "count": archived})
+    return result
+
+async def calc_top_zones(db, muni_name: str, thirty_days_ago: str) -> list:
+    reports = await db.reports.find(
+        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}}, {"_id": 0, "latitude": 1, "longitude": 1}
+    ).to_list(2000)
+    zone_map = {}
+    for r in reports:
+        key = f"{round(r['latitude'], 3)},{round(r['longitude'], 3)}"
+        zone_map[key] = zone_map.get(key, 0) + 1
+    top = sorted(zone_map.items(), key=lambda x: -x[1])[:10]
+    return [{"area": f"Zona {k}", "count": v} for k, v in top]
 
 @api_router.post("/reports/{report_id}/photo")
 async def upload_photo(report_id: str, file: UploadFile = File(...)):
@@ -1251,8 +1387,7 @@ async def resend_municipality_verification(data: MunicipalityResendVerification)
 async def subscribe_municipality(request: Request):
     """Municipality subscription at €49/month."""
     user = await require_municipality(request)
-    body = await request.json()
-    plan = body.get("plan", "monthly")  # monthly = €49/month
+    await request.json()  # Accept body for future plan options
     
     expires = datetime.now(timezone.utc) + timedelta(days=30)
     
@@ -1473,94 +1608,15 @@ async def get_municipality_analytics(request: Request):
     thirty_days_ago = (now - timedelta(days=30)).isoformat()
     sixty_days_ago = (now - timedelta(days=60)).isoformat()
 
-    # Summary stats
-    reports_30d = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}})
-    reports_prev = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
-    trend = round(((reports_30d - reports_prev) / max(reports_prev, 1)) * 100) if reports_prev > 0 else 0
-
-    verified = await db.reports.count_documents({"municipality": muni_name, "status": "verified"})
-    total = await db.reports.count_documents({"municipality": muni_name})
-    flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
-    flag_rate = round((flagged / max(total, 1)) * 100, 1)
-
-    # Average resolution time (time from creation to archived/verified)
-    archived_reports = await db.reports.find(
-        {"municipality": muni_name, "archived": True, "created_at": {"$gte": thirty_days_ago}},
-        {"_id": 0, "created_at": 1, "moderated_at": 1}
-    ).to_list(100)
-    resolution_hours = []
-    for r in archived_reports:
-        if r.get("moderated_at"):
-            try:
-                created = datetime.fromisoformat(r["created_at"])
-                resolved = datetime.fromisoformat(r["moderated_at"])
-                hours = (resolved - created).total_seconds() / 3600
-                if hours > 0:
-                    resolution_hours.append(hours)
-            except Exception:
-                pass
-    avg_resolution = round(sum(resolution_hours) / len(resolution_hours), 1) if resolution_hours else None
-
-    # Daily reports for the last 30 days
-    daily_reports = []
-    for i in range(30):
-        day = (now - timedelta(days=29 - i)).date()
-        day_start = day.isoformat()
-        day_end = (day + timedelta(days=1)).isoformat()
-        count = await db.reports.count_documents({
-            "municipality": muni_name,
-            "created_at": {"$gte": day_start, "$lt": day_end}
-        })
-        daily_reports.append({"date": day.strftime("%d/%m"), "count": count})
-
-    # Hourly distribution
-    all_reports = await db.reports.find(
-        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}},
-        {"_id": 0, "created_at": 1}
-    ).to_list(2000)
-    hourly = [0] * 24
-    for r in all_reports:
-        try:
-            h = datetime.fromisoformat(r["created_at"]).hour
-            hourly[h] += 1
-        except Exception:
-            pass
-    hourly_distribution = [{"hour": f"{h:02d}:00", "count": hourly[h]} for h in range(24)]
-
-    # Status distribution
-    status_counts = {}
-    for status in ["pending", "verified", "rejected"]:
-        c = await db.reports.count_documents({"municipality": muni_name, "status": status})
-        if c > 0:
-            status_counts[status] = c
-    archived_count = await db.reports.count_documents({"municipality": muni_name, "archived": True})
-    if archived_count > 0:
-        status_counts["archived"] = archived_count
-    status_labels = {"pending": "Pendiente", "verified": "Verificado", "rejected": "Rechazado", "archived": "Archivado"}
-    status_distribution = [{"status": status_labels.get(s, s), "count": c} for s, c in status_counts.items()]
-
-    # Top zones (cluster reports by approximate grid)
-    zone_reports = await db.reports.find(
-        {"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}},
-        {"_id": 0, "latitude": 1, "longitude": 1}
-    ).to_list(2000)
-    zone_map = {}
-    for r in zone_reports:
-        # Round to ~100m grid
-        key = f"{round(r['latitude'], 3)},{round(r['longitude'], 3)}"
-        zone_map[key] = zone_map.get(key, 0) + 1
-    top_zones = sorted(zone_map.items(), key=lambda x: -x[1])[:10]
-    top_zones = [{"area": f"Zona {k}", "count": v} for k, v in top_zones]
+    summary = await calc_analytics_summary(db, muni_name, now, thirty_days_ago, sixty_days_ago)
+    daily_reports = await calc_daily_reports(db, muni_name, now)
+    hourly_distribution = await calc_hourly_distribution(db, muni_name, thirty_days_ago)
+    status_distribution = await calc_status_distribution(db, muni_name)
+    top_zones = await calc_top_zones(db, muni_name, thirty_days_ago)
 
     return {
         "municipality": muni_name,
-        "summary": {
-            "reports_30d": reports_30d,
-            "reports_trend": trend,
-            "verified": verified,
-            "avg_resolution_hours": avg_resolution,
-            "flag_rate": flag_rate
-        },
+        "summary": summary,
         "daily_reports": daily_reports,
         "hourly_distribution": hourly_distribution,
         "status_distribution": status_distribution,
@@ -1713,8 +1769,8 @@ async def startup():
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
     
     # Seed demo municipality
-    demo_muni_email = "madrid@cacaradar.es"
-    demo_muni_password = "madrid123"
+    demo_muni_email = os.environ.get("DEMO_MUNI_EMAIL", "madrid@cacaradar.es")
+    demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD", "madrid123")
     existing_muni = await db.users.find_one({"email": demo_muni_email})
     if not existing_muni:
         hashed = hash_password(demo_muni_password)

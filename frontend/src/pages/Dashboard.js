@@ -66,7 +66,7 @@ export default function Dashboard() {
       const { data } = await axios.get(`${API}/municipality/reports?status=${filter}&page=${p}`, { withCredentials: true });
       setReports(data.reports);
       setTotalPages(data.pages);
-    } catch { /* ignore */ }
+    } catch (err) { console.error("Failed to fetch reports:", err); }
   };
 
   const handleFilterChange = (filter) => {
@@ -251,7 +251,7 @@ export default function Dashboard() {
                     <div className="flex-1 p-4">
                       <div className="flex items-center gap-2 mb-2 flex-wrap">
                         {review.flags.map((f, i) => (
-                          <Badge key={i} variant="destructive" className="text-xs">{FLAG_REASON_LABELS[f.reason] || f.reason}</Badge>
+                          <Badge key={`${f.reason}-${i}`} variant="destructive" className="text-xs">{FLAG_REASON_LABELS[f.reason] || f.reason}</Badge>
                         ))}
                       </div>
                       <div className="text-xs text-[#8D99AE] space-y-1 mb-3">
