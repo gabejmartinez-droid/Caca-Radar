@@ -23,7 +23,7 @@ from deps import (
     UsernameUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code,
-    APP_STORE_URL, PLAY_STORE_URL,
+    APP_STORE_URL, PLAY_STORE_URL, VIP_EMAILS,
 )
 import jwt
 import re
@@ -248,14 +248,15 @@ async def register(data: UserRegister, response: Response):
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
     
     hashed = hash_password(data.password)
+    is_vip = email in VIP_EMAILS
     user_doc = {
         "email": email,
         "password_hash": hashed,
         "name": data.name or username,
         "username": username,
         "role": "user",
-        "subscription_active": False,
-        "subscription_type": None,
+        "subscription_active": is_vip,
+        "subscription_type": "lifetime" if is_vip else None,
         "subscription_expires": None,
         "total_score": 0,
         "trust_score": 50,
@@ -280,7 +281,7 @@ async def register(data: UserRegister, response: Response):
     return {
         "id": user_id, "email": email, "name": user_doc["name"],
         "username": user_doc["username"], "role": "user",
-        "subscription_active": False, "report_count": 0, "vote_count": 0,
+        "subscription_active": is_vip, "report_count": 0, "vote_count": 0,
         "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
         "streak_days": 0, "needs_username": False
     }
@@ -309,6 +310,12 @@ async def login(data: UserLogin, request: Request, response: Response):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
     
     await db.login_attempts.delete_one({"identifier": identifier})
+    
+    # Ensure VIP users always have premium
+    if email in VIP_EMAILS and not user.get("subscription_active"):
+        await db.users.update_one({"_id": user["_id"]}, {"$set": {"subscription_active": True, "subscription_type": "lifetime"}})
+        user["subscription_active"] = True
+        user["subscription_type"] = "lifetime"
     
     user_id = str(user["_id"])
     role = user.get("role", "user")
@@ -2095,10 +2102,10 @@ async def startup():
     # Reset daily report counts
     await reset_daily_counts(db)
     
-    # Check and deactivate expired subscriptions
+    # Check and deactivate expired subscriptions (skip VIP/lifetime users)
     now_iso = datetime.now(timezone.utc).isoformat()
     expired = await db.users.update_many(
-        {"subscription_active": True, "subscription_expires": {"$lt": now_iso, "$ne": None}},
+        {"subscription_active": True, "subscription_expires": {"$lt": now_iso, "$ne": None}, "subscription_type": {"$ne": "lifetime"}},
         {"$set": {"subscription_active": False}}
     )
     if expired.modified_count > 0:

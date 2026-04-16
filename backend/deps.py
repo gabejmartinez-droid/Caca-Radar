@@ -127,6 +127,9 @@ def reverse_geocode(lat: float, lon: float) -> dict:
 APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.cacaradar.app"
 
+# ── VIP / Owner emails — permanent premium access ────
+VIP_EMAILS = {"gabejmartinez@gmail.com"}
+
 # ── Auth Middleware ───────────────────────────────────
 async def get_current_user(request: Request) -> Optional[dict]:
     token = request.cookies.get("access_token")
