@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -94,6 +94,7 @@ export default function MapPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
   const [showFilterBar, setShowFilterBar] = useState(false);
+  const [userCity, setUserCity] = useState(null);
   const fileInputRef = useRef(null);
 
   // Check push notification status
@@ -119,6 +120,21 @@ export default function MapPage() {
   };
 
   useEffect(() => { fetchReports(); }, [activeFilter]);
+
+  // Detect user's city from location
+  useEffect(() => {
+    if (!userLocation) return;
+    const detectCity = async () => {
+      try {
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json&addressdetails=1&zoom=12`, { headers: { "User-Agent": "CacaRadar/1.0" } });
+        const data = await resp.json();
+        const addr = data.address || {};
+        const city = addr.city || addr.town || addr.village || addr.municipality || "";
+        if (city) setUserCity(city);
+      } catch {}
+    };
+    detectCity();
+  }, [userLocation]);
 
   const handleMarkerClick = useCallback(async (report) => {
     setSelectedReport(report);
@@ -290,10 +306,74 @@ export default function MapPage() {
 
       {/* Header */}
       <div className="absolute top-4 left-4 right-4 z-[1000] flex justify-between items-center">
-        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2">
-          <img src="/icon-32x32.png" alt="Caca Radar" className="w-7 h-7 rounded-md" />
-          <span className="font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2 hover:shadow-xl transition-shadow" data-testid="app-menu-btn">
+              <img src="/icon-32x32.png" alt="Caca Radar" className="w-7 h-7 rounded-md" />
+              <span className="font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
+              <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE]" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start" className="w-64 rounded-xl shadow-xl p-1">
+            {userCity && (
+              <>
+                <div className="px-3 py-2 flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-[#FF6B6B]" />
+                  <span className="text-sm font-bold text-[#2B2D42]">{userCity}</span>
+                </div>
+                <DropdownMenuSeparator />
+              </>
+            )}
+            <DropdownMenuItem
+              onClick={() => user?.subscription_active ? navigate("/rankings") : navigate("/subscribe")}
+              className="cursor-pointer gap-2"
+              data-testid="menu-city-rankings"
+            >
+              <Building2 className="w-4 h-4 text-[#FF6B6B]" />
+              <span className="flex-1">{t("cityRankings")}</span>
+              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => user?.subscription_active ? navigate(`/rankings?tab=barrios&city=${encodeURIComponent(userCity || "Madrid")}`) : navigate("/subscribe")}
+              className="cursor-pointer gap-2"
+              data-testid="menu-barrio-rankings"
+            >
+              <MapPin className="w-4 h-4 text-[#FF6B6B]" />
+              <span className="flex-1">{t("barrioRankings")}</span>
+              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                if (user?.subscription_active) { setShowHeatmap(h => !h); }
+                else { navigate("/subscribe"); }
+              }}
+              className="cursor-pointer gap-2"
+              data-testid="menu-heatmap"
+            >
+              <Flame className="w-4 h-4 text-[#FF6B6B]" />
+              <span className="flex-1">{t("heatmap")}</span>
+              {user?.subscription_active && showHeatmap && <CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" />}
+              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                if (user?.subscription_active) { setShowFilterBar(f => !f); }
+                else { navigate("/subscribe"); }
+              }}
+              className="cursor-pointer gap-2"
+              data-testid="menu-filters"
+            >
+              <Filter className="w-4 h-4 text-[#FF6B6B]" />
+              <span className="flex-1">{t("advancedFilters")}</span>
+              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer gap-2" data-testid="menu-premium-link">
+              <Star className="w-4 h-4 text-amber-500" />
+              <span className="flex-1 font-bold text-amber-600">{t("goPremium")}</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
         <div className="flex gap-2">
           <LanguageSelector />
           {user?.subscription_active && (
@@ -329,9 +409,6 @@ export default function MapPage() {
                     <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
                   </DropdownMenuItem>
                 )}
-                <DropdownMenuItem onClick={() => navigate("/rankings")} className="cursor-pointer" data-testid="menu-rankings">
-                  <BarChart3 className="w-4 h-4 mr-2 text-[#FF6B6B]" />Rankings
-                </DropdownMenuItem>
                 {!user.subscription_active && (
                   <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
                     <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium

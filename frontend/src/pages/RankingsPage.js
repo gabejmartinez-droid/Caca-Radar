@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Trophy, MapPin, Share2, Building2, ChevronDown, Lock, Loader2, BarChart3 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
@@ -59,11 +59,12 @@ export default function RankingsPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
   const navigate = useNavigate();
-  const [tab, setTab] = useState("cities");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(searchParams.get("tab") || "cities");
   const [listType, setListType] = useState("dirtiest");
   const [cityData, setCityData] = useState(null);
   const [barrioData, setBarrioData] = useState(null);
-  const [selectedCity, setSelectedCity] = useState("Madrid");
+  const [selectedCity, setSelectedCity] = useState(searchParams.get("city") || "Madrid");
   const [loading, setLoading] = useState(true);
   const [cities, setCities] = useState([]);
 
