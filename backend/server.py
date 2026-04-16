@@ -311,11 +311,17 @@ async def login(data: UserLogin, request: Request, response: Response):
     
     await db.login_attempts.delete_one({"identifier": identifier})
     
-    # Ensure VIP users always have premium
-    if email in VIP_EMAILS and not user.get("subscription_active"):
-        await db.users.update_one({"_id": user["_id"]}, {"$set": {"subscription_active": True, "subscription_type": "lifetime"}})
-        user["subscription_active"] = True
-        user["subscription_type"] = "lifetime"
+    # Ensure VIP users always have premium and healthy trust
+    if email in VIP_EMAILS:
+        updates = {}
+        if not user.get("subscription_active"):
+            updates["subscription_active"] = True
+            updates["subscription_type"] = "lifetime"
+        if user.get("trust_score", 50) < 50:
+            updates["trust_score"] = 50
+        if updates:
+            await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+            user.update(updates)
     
     user_id = str(user["_id"])
     role = user.get("role", "user")
@@ -635,7 +641,8 @@ async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str
         raise HTTPException(status_code=400, detail="Ubicación fuera de España")
     if user is not None and await check_cooldown(db, user_id):
         raise HTTPException(status_code=429, detail="Espera al menos 30 segundos entre reportes")
-    if user is not None:
+    # VIP users bypass trust restrictions
+    if user is not None and user.get("email", "").lower() not in VIP_EMAILS:
         tier = get_trust_tier(user.get("trust_score", 50))
         if tier == "restricted":
             raise HTTPException(status_code=403, detail="Tu cuenta está restringida por comportamiento sospechoso")
