@@ -1,11 +1,24 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
+import { API } from "../config";
+import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
 
 const AuthContext = createContext(null);
 
-import { API } from "../config";
+// Axios interceptor: attach Bearer token on native, handle auto-refresh on 401
+axios.interceptors.request.use((config) => {
+  if (isCapacitorNative()) {
+    const token = getAccessToken();
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers["Authorization"] = `Bearer ${token}`;
+    }
+    // Don't send cookies on native (they won't work due to proxy CORS)
+    config.withCredentials = false;
+  }
+  return config;
+});
 
-// Axios interceptor: auto-refresh on 401
 let isRefreshing = false;
 let refreshQueue = [];
 
@@ -30,13 +43,22 @@ axios.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
+        const refreshPayload = isCapacitorNative()
+          ? { refresh_token: getRefreshToken() }
+          : {};
+        const { data } = await axios.post(`${API}/auth/refresh`, refreshPayload, {
+          withCredentials: !isCapacitorNative(),
+        });
+        if (data.access_token) {
+          setTokens(data.access_token, getRefreshToken());
+        }
         refreshQueue.forEach((p) => p.resolve());
         refreshQueue = [];
         return axios(original);
       } catch {
         refreshQueue.forEach((p) => p.reject(error));
         refreshQueue = [];
+        clearTokens();
         return Promise.reject(error);
       } finally {
         isRefreshing = false;
@@ -52,7 +74,9 @@ export function AuthProvider({ children }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API}/auth/me`, { withCredentials: true });
+      const { data } = await axios.get(`${API}/auth/me`, {
+        withCredentials: !isCapacitorNative(),
+      });
       setUser(data);
       return data;
     } catch {
@@ -66,19 +90,35 @@ export function AuthProvider({ children }) {
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
   const login = useCallback(async (email, password) => {
-    const { data } = await axios.post(`${API}/auth/login`, { email, password }, { withCredentials: true });
+    const { data } = await axios.post(`${API}/auth/login`, { email, password }, {
+      withCredentials: !isCapacitorNative(),
+    });
+    // Store tokens for native
+    if (data.access_token) {
+      setTokens(data.access_token, data.refresh_token);
+    }
     setUser(data);
     return data;
   }, []);
 
   const register = useCallback(async (email, password, username) => {
-    const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, { withCredentials: true });
+    const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, {
+      withCredentials: !isCapacitorNative(),
+    });
+    if (data.access_token) {
+      setTokens(data.access_token, data.refresh_token);
+    }
     setUser(data);
     return data;
   }, []);
 
   const logout = useCallback(async () => {
-    await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
+    try {
+      await axios.post(`${API}/auth/logout`, {}, {
+        withCredentials: !isCapacitorNative(),
+      });
+    } catch { /* ignore */ }
+    clearTokens();
     setUser(false);
   }, []);
 
