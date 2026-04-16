@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 
-const API = process.env.REACT_APP_BACKEND_URL + "/api";
+const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
 
 function TrustBar({ score }) {
   const color = score >= 80 ? "#66BB6A" : score >= 50 ? "#42A5F5" : score >= 20 ? "#FFA726" : "#FF5252";

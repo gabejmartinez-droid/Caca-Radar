@@ -18,7 +18,7 @@ import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { HeatmapLayer } from "../components/HeatmapLayer";
 
-const API = process.env.REACT_APP_BACKEND_URL + "/api";
+const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 

@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API = process.env.REACT_APP_BACKEND_URL + "/api";
+const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
 
 function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
   return (
