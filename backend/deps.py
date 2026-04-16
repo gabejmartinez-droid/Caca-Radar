@@ -39,7 +39,7 @@ def get_jwt_secret() -> str:
     return os.environ["JWT_SECRET"]
 
 def create_access_token(user_id: str, email: str, role: str = "user") -> str:
-    payload = {"sub": user_id, "email": email, "role": role, "exp": datetime.now(timezone.utc) + timedelta(minutes=15), "type": "access"}
+    payload = {"sub": user_id, "email": email, "role": role, "exp": datetime.now(timezone.utc) + timedelta(hours=1), "type": "access"}
     return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
 
 def create_refresh_token(user_id: str) -> str:

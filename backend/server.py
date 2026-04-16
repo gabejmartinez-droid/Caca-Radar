@@ -274,7 +274,7 @@ async def register(data: UserRegister, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
     
     return {
@@ -315,7 +315,7 @@ async def login(data: UserLogin, request: Request, response: Response):
     access_token = create_access_token(user_id, email, role)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
     
     return {
@@ -361,7 +361,7 @@ async def refresh_token_endpoint(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         access_token = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
         return {"message": "Token refreshed"}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
@@ -1194,7 +1194,7 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     access_token = create_access_token(user_id, email, "municipality")
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
     
     return {
@@ -1618,7 +1618,7 @@ async def admin_login_step2(request: Request, response: Response):
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email, "admin")
     refresh_token = create_refresh_token(user_id)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=900, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
 
     return {"message": "Acceso admin verificado", "role": "admin"}

@@ -1,9 +1,50 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from "react";
 import axios from "axios";
 
 const AuthContext = createContext(null);
 
 const API = process.env.REACT_APP_BACKEND_URL + "/api";
+
+// Axios interceptor: auto-refresh on 401
+let isRefreshing = false;
+let refreshQueue = [];
+
+axios.interceptors.response.use(
+  (res) => res,
+  async (error) => {
+    const original = error.config;
+    if (
+      error.response?.status === 401 &&
+      !original._retry &&
+      !original.url?.includes("/auth/login") &&
+      !original.url?.includes("/auth/register") &&
+      !original.url?.includes("/auth/refresh")
+    ) {
+      original._retry = true;
+
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          refreshQueue.push({ resolve, reject });
+        }).then(() => axios(original));
+      }
+
+      isRefreshing = true;
+      try {
+        await axios.post(`${API}/auth/refresh`, {}, { withCredentials: true });
+        refreshQueue.forEach((p) => p.resolve());
+        refreshQueue = [];
+        return axios(original);
+      } catch {
+        refreshQueue.forEach((p) => p.reject(error));
+        refreshQueue = [];
+        return Promise.reject(error);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    return Promise.reject(error);
+  }
+);
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
