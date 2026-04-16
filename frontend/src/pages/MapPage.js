@@ -280,7 +280,7 @@ export default function MapPage() {
   };
 
   return (
-    <div className={`h-full w-full relative ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
+    <div className={`h-screen w-full relative overflow-hidden ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <LocationFinder onLocationFound={setUserLocation} allowMapClick={true} t={t} />
