@@ -8,7 +8,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 
-const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
+const API = "/api";
 
 export default function DashboardLogin() {
   const { login } = useAuth();

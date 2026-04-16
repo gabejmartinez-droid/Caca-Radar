@@ -3,7 +3,7 @@ import axios from "axios";
 
 const AuthContext = createContext(null);
 
-const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
+const API = "/api";
 
 // Axios interceptor: auto-refresh on 401
 let isRefreshing = false;

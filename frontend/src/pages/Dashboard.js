@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs"
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 
-const API = (process.env.REACT_APP_BACKEND_URL || "") + "/api";
+const API = "/api";
 
 const FLAG_REASON_LABELS = {
   license_plate: "Matrícula visible",
