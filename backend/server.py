@@ -579,14 +579,45 @@ async def create_report(request: Request, data: ReportCreate, response: Response
 
     await validate_report_input(db, data, user, user_id)
 
-    is_duplicate = await check_proximity_duplicate(db, data.latitude, data.longitude)
+    nearby_report = await check_proximity_duplicate(db, data.latitude, data.longitude)
+    
+    # If within 1 meter of an existing report, convert to a "still there" confirmation
+    if nearby_report:
+        existing_id = nearby_report["id"]
+        # Check if user already confirmed this report
+        existing_vote = await db.votes.find_one({"report_id": existing_id, "user_id": user_id})
+        if not existing_vote:
+            await db.votes.insert_one({
+                "report_id": existing_id, "user_id": user_id,
+                "vote_type": "still_there",
+                "created_at": datetime.now(timezone.utc).isoformat()
+            })
+            await db.reports.update_one(
+                {"id": existing_id},
+                {"$inc": {"still_there_count": 1, "validation_count": 1, "status_score": 1}}
+            )
+        # Award reduced points for confirmation
+        await db.users.update_one(
+            {"_id": ObjectId(user_id)},
+            {"$inc": {"vote_count": 1, "total_score": 5}}
+        )
+        # Return the confirmed report
+        confirmed = await db.reports.find_one({"id": existing_id}, {"_id": 0})
+        if confirmed:
+            confirmed["freshness"] = get_freshness_label(confirmed.get("created_at", ""))
+            confirmed["converted_to_confirmation"] = True
+            confirmed["points_earned"] = 5
+            confirmed["points_breakdown"] = {"confirmation": 5}
+            return confirmed
+        # Fallback — shouldn't happen but create normally if report vanished
+    
     geo = reverse_geocode(data.latitude, data.longitude)
     report_id = str(uuid.uuid4())
 
-    report_doc = build_report_doc(report_id, data, user_id, user, geo, is_duplicate)
+    report_doc = build_report_doc(report_id, data, user_id, user, geo, False)
     await db.reports.insert_one(report_doc)
 
-    points_result = await process_report_scoring(db, user, user_id, data, is_duplicate)
+    points_result = await process_report_scoring(db, user, user_id, data, False)
     await upsert_municipality(db, geo)
 
     report_doc.pop("_id", None)
@@ -603,7 +634,7 @@ async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str
     if not await check_gps_plausible(data.latitude, data.longitude):
         raise HTTPException(status_code=400, detail="Ubicación fuera de España")
     if user is not None and await check_cooldown(db, user_id):
-        raise HTTPException(status_code=429, detail="Espera al menos 60 segundos entre reportes")
+        raise HTTPException(status_code=429, detail="Espera al menos 30 segundos entre reportes")
     if user is not None:
         tier = get_trust_tier(user.get("trust_score", 50))
         if tier == "restricted":

@@ -16,9 +16,9 @@ TRUST_FALSE_REPORT = -10
 TRUST_SPAM_BEHAVIOR = -15
 
 # Rate limits
-COOLDOWN_SECONDS = 60
+COOLDOWN_SECONDS = 30
 MAX_REPORTS_PER_DAY = 5
-PROXIMITY_METERS = 5
+PROXIMITY_METERS = 1
 GPS_ACCURACY_METERS = 30
 
 # Trust tiers
@@ -85,9 +85,10 @@ async def check_cooldown(db, user_id: str) -> bool:
     return diff < COOLDOWN_SECONDS
 
 
-async def check_proximity_duplicate(db, lat: float, lon: float, exclude_id: str = None) -> bool:
-    """Check if there's an active report within PROXIMITY_METERS."""
-    recent_cutoff = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+async def check_proximity_duplicate(db, lat: float, lon: float, exclude_id: str = None):
+    """Check if there's an active report within PROXIMITY_METERS.
+    Returns the nearby report dict if found, None otherwise."""
+    recent_cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     query = {
         "archived": {"$ne": True},
         "flagged": {"$ne": True},
@@ -96,13 +97,13 @@ async def check_proximity_duplicate(db, lat: float, lon: float, exclude_id: str 
     if exclude_id:
         query["id"] = {"$ne": exclude_id}
 
-    nearby_reports = await db.reports.find(query, {"_id": 0, "latitude": 1, "longitude": 1}).to_list(500)
+    nearby_reports = await db.reports.find(query, {"_id": 0, "id": 1, "latitude": 1, "longitude": 1}).to_list(500)
 
     for r in nearby_reports:
         dist = haversine_meters(lat, lon, r["latitude"], r["longitude"])
         if dist < PROXIMITY_METERS:
-            return True
-    return False
+            return r
+    return None
 
 
 async def check_gps_plausible(lat: float, lon: float) -> bool:
