@@ -221,6 +221,7 @@ class MunicipalityLogin(BaseModel):
 
 class MunicipalityRegister(BaseModel):
     name: str
+    municipality_name: str
     province: str
     email: EmailStr
     password: str

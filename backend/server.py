@@ -532,7 +532,13 @@ async def get_reports(
     if confirmed_only:
         query["status"] = "verified"
 
-    reports = await db.reports.find(query, {"_id": 0}).to_list(2000)
+    reports = await db.reports.find(query, {
+        "_id": 0, "id": 1, "latitude": 1, "longitude": 1, "category": 1,
+        "status": 1, "created_at": 1, "upvotes": 1, "downvotes": 1,
+        "contributor_name": 1, "contributor_rank": 1, "municipality": 1,
+        "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
+        "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1,
+    }).to_list(2000)
 
     # Add freshness labels and confidence scores
     for r in reports:
