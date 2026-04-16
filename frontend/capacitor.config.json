@@ -1,0 +1,6 @@
+{
+  "appId": "com.jefe.cacaradar",
+  "appName": "Caca Radar",
+  "webDir": "build",
+  "bundledWebRuntime": false
+}

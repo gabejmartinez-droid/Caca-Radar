@@ -8,7 +8,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 export default function DashboardLogin() {
   const { login } = useAuth();

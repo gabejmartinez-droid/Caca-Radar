@@ -7,7 +7,7 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import axios from "axios";
 import { toast } from "sonner";
 
-const API = "/api";
+import { API } from "../config";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();

@@ -8,7 +8,7 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 function CityRankingCard({ city, index, type }) {
   const isClean = type === "cleanest";

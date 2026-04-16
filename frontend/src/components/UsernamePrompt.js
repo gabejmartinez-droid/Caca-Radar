@@ -6,7 +6,7 @@ import { Input } from "./ui/input";
 import { useLanguage } from "../contexts/LanguageContext";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 export default function UsernamePrompt({ onComplete }) {
   const { t } = useLanguage();

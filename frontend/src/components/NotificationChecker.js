@@ -3,7 +3,7 @@ import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 export default function NotificationChecker() {
   const { user } = useAuth();

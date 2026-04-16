@@ -10,7 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 
-const API = "/api";
+import { API } from "../config";
 
 function RankIcon({ position }) {
   if (position === 1) return <Crown className="w-6 h-6 text-yellow-500" />;

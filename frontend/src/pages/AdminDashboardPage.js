@@ -6,7 +6,7 @@ import { Input } from "../components/ui/input";
 import { toast } from "sonner";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
   return (

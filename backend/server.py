@@ -275,8 +275,8 @@ async def register(data: UserRegister, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
     
     return {
         "id": user_id, "email": email, "name": user_doc["name"],
@@ -328,8 +328,8 @@ async def login(data: UserLogin, request: Request, response: Response):
     access_token = create_access_token(user_id, email, role)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
     
     return {
         "id": user_id, "email": email, "name": user.get("name", ""),
@@ -374,7 +374,7 @@ async def refresh_token_endpoint(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         access_token = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
-        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
+        response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
         return {"message": "Token refreshed"}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
@@ -860,7 +860,7 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
         await db.reports.update_one({"id": report_id}, {"$set": {"archived": True}})
     
     if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
     
     return {"message": "Voto registrado", "vote_type": data.vote_type}
 
@@ -901,7 +901,7 @@ async def validate_report(report_id: str, data: ValidationCreate, request: Reque
     result = await process_validation(db, report_id, user_id, data.vote, is_sub)
 
     if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
 
     return result
 
@@ -967,7 +967,7 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
         pass
 
     if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
 
     return {"message": "Voto registrado", "vote_type": vote_type}
 
@@ -1055,7 +1055,7 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
         await db.reports.update_one({"id": report_id}, {"$set": {"flag_count": flag_count}})
     
     if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
     
     return {"message": "Reporte marcado"}
 
@@ -1245,8 +1245,8 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     access_token = create_access_token(user_id, email, "municipality")
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
     
     return {
         "id": user_id, "email": email, "name": data.name,
@@ -1669,8 +1669,8 @@ async def admin_login_step2(request: Request, response: Response):
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email, "admin")
     refresh_token = create_refresh_token(user_id)
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="lax", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="lax", max_age=604800, path="/")
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
 
     return {"message": "Acceso admin verificado", "role": "admin"}
 
@@ -1900,7 +1900,7 @@ async def subscribe_push(data: PushSubscriptionCreate, request: Request, respons
     )
 
     if not user:
-        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="lax", max_age=86400*365, path="/")
+        response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
 
     return {"message": "Suscripción push activada"}
 
@@ -2058,10 +2058,17 @@ async def health():
 # Include router
 app.include_router(api_router)
 
-# CORS — allow any origin so deploy/preview/custom-domain all work
+# CORS — explicit origins for Capacitor native + web
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "http://localhost:3000",
+        "http://localhost",
+        "https://caca-radar.preview.emergentagent.com",
+        "capacitor://localhost",
+        "ionic://localhost",
+    ],
+    allow_origin_regex=r"https://.*\.emergentagent\.com",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

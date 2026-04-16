@@ -3,7 +3,7 @@ import axios from "axios";
 
 const AuthContext = createContext(null);
 
-const API = "/api";
+import { API } from "../config";
 
 // Axios interceptor: auto-refresh on 401
 let isRefreshing = false;

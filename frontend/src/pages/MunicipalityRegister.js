@@ -7,7 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import axios from "axios";
 
-const API = "/api";
+import { API } from "../config";
 
 export default function MunicipalityRegister() {
   const navigate = useNavigate();

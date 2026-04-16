@@ -10,7 +10,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
 } from "recharts";
 
-const API = "/api";
+import { API } from "../config";
 const COLORS = ["#FF6B6B", "#FFA726", "#66BB6A", "#42A5F5", "#AB47BC", "#26C6DA"];
 const TICK_STYLE = { fontSize: 11 };
 const GRID_DASH = "3 3";
