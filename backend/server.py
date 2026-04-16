@@ -2105,12 +2105,10 @@ async def cors_middleware(request: Request, call_next):
 
     return response
 
-# Startup
-@app.on_event("startup")
-async def startup():
-    init_storage()
-    
-    # Create indexes
+# Startup helpers
+
+async def init_database():
+    """Create MongoDB indexes."""
     await db.users.create_index("email", unique=True)
     await db.users.create_index("username", sparse=True)
     await db.reports.create_index("id", unique=True)
@@ -2133,15 +2131,15 @@ async def startup():
     await db.barrio_cache.create_index([("lat", 1), ("lng", 1)], unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.admin_codes.create_index("email", unique=True)
-    
-    # Seed admin
+
+async def seed_users():
+    """Create admin and demo municipality accounts if missing."""
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Cacaradar123$")
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
-        hashed = hash_password(admin_password)
         await db.users.insert_one({
-            "email": admin_email, "password_hash": hashed,
+            "email": admin_email, "password_hash": hash_password(admin_password),
             "name": "El Jefe", "username": "el_jefe", "role": "admin",
             "subscription_active": True, "subscription_type": "annual",
             "total_score": 0, "trust_score": 100, "rank": "Admin", "level": 10,
@@ -2151,34 +2149,31 @@ async def startup():
         logger.info("Admin user created")
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
-    
-    # Seed demo municipality
+
     demo_muni_email = os.environ.get("DEMO_MUNI_EMAIL", "madrid@cacaradar.es")
     demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD", "madrid123")
-    existing_muni = await db.users.find_one({"email": demo_muni_email})
-    if not existing_muni:
-        hashed = hash_password(demo_muni_password)
+    if not await db.users.find_one({"email": demo_muni_email}):
         await db.users.insert_one({
-            "email": demo_muni_email, "password_hash": hashed,
+            "email": demo_muni_email, "password_hash": hash_password(demo_muni_password),
             "name": "Ayuntamiento de Madrid", "role": "municipality",
             "municipality_name": "Madrid", "municipality_province": "Madrid",
-            "municipality_subscription_active": True,
-            "municipality_subscription_type": "annual",
+            "municipality_subscription_active": True, "municipality_subscription_type": "annual",
             "created_at": datetime.now(timezone.utc)
         })
         logger.info("Demo municipality user created")
-    
-    # Archive old reports (30 days)
+    return admin_email, admin_password, demo_muni_email, demo_muni_password
+
+async def run_maintenance():
+    """Archive old reports, deactivate expired subscriptions, recalculate ranks."""
+    # Archive reports older than 30 days
     cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
     await db.reports.update_many(
         {"created_at": {"$lt": cutoff}, "archived": {"$ne": True}},
         {"$set": {"archived": True}}
     )
-    
-    # Reset daily report counts
     await reset_daily_counts(db)
-    
-    # Check and deactivate expired subscriptions (skip VIP/lifetime users)
+
+    # Deactivate expired subscriptions (skip VIP/lifetime)
     now_iso = datetime.now(timezone.utc).isoformat()
     expired = await db.users.update_many(
         {"subscription_active": True, "subscription_expires": {"$lt": now_iso, "$ne": None}, "subscription_type": {"$ne": "lifetime"}},
@@ -2186,22 +2181,26 @@ async def startup():
     )
     if expired.modified_count > 0:
         logger.info(f"Deactivated {expired.modified_count} expired subscriptions")
-    
-    # Recalculate ranks
+
+    # Recalculate ranks and store notifications
     rank_count, rank_changes = await recalculate_all_ranks(db)
-    # Store rank change notifications
     for rc in rank_changes:
         await db.notifications.insert_one({
-            "user_id": rc["user_id"],
-            "type": "rank_change",
-            "old_rank": rc["old_rank"],
-            "new_rank": rc["new_rank"],
-            "read": False,
-            "created_at": datetime.now(timezone.utc).isoformat()
+            "user_id": rc["user_id"], "type": "rank_change",
+            "old_rank": rc["old_rank"], "new_rank": rc["new_rank"],
+            "read": False, "created_at": datetime.now(timezone.utc).isoformat()
         })
     logger.info(f"Ranks recalculated for {rank_count} users, {len(rank_changes)} changes")
-    
-    # Write test credentials (non-critical, skip if path not writable)
+
+# Startup
+@app.on_event("startup")
+async def startup():
+    init_storage()
+    await init_database()
+    admin_email, admin_password, demo_muni_email, demo_muni_password = await seed_users()
+    await run_maintenance()
+
+    # Write test credentials (non-critical)
     try:
         os.makedirs("/app/memory", exist_ok=True)
         with open("/app/memory/test_credentials.md", "w") as f:
@@ -2221,7 +2220,7 @@ async def startup():
             f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
     except Exception:
         logger.warning("Could not write test_credentials.md (non-critical)")
-    
+
     logger.info("Startup complete")
 
 @app.on_event("shutdown")

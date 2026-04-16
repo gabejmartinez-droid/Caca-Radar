@@ -130,7 +130,7 @@ export default function MapPage() {
         const addr = data.address || {};
         const city = addr.city || addr.town || addr.village || addr.municipality || "";
         if (city) setUserCity(city);
-      } catch {}
+      } catch (err) { console.error("City detection failed:", err); }
     };
     detectCity();
   }, [userLocation]);
@@ -147,7 +147,8 @@ export default function MapPage() {
       setSelectedReport(detailRes.data);
       setMyVote(voteRes.data.vote?.vote_type || null);
       setMyValidation(valRes.data.validation?.vote || null);
-    } catch {
+    } catch (err) {
+      console.error("Failed to load report details:", err);
       setMyVote(null);
       setMyValidation(null);
     }

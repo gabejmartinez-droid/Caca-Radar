@@ -3,6 +3,7 @@ import os
 import json
 import base64
 import logging
+import uuid
 from datetime import datetime, timezone, timedelta
 
 logger = logging.getLogger(__name__)
@@ -44,12 +45,10 @@ async def process_apple_notification(db, signed_payload: str) -> dict:
 
     if APPLE_BUNDLE_ID:
         try:
-            from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier
-            from appstoreserverlibrary.models.Environment import Environment
+            from appstoreserverlibrary.signed_data_verifier import SignedDataVerifier  # noqa: F401
+            from appstoreserverlibrary.models.Environment import Environment  # noqa: F401
 
-            env = Environment.PRODUCTION if APPLE_ENVIRONMENT_STR == "Production" else Environment.SANDBOX
-            # Note: In production, load Apple root certificates here
-            # For now, we'll fall through to unverified decode
+            # Note: In production, use SignedDataVerifier with Apple root certs
         except ImportError:
             logger.warning("app-store-server-library not available for full verification")
 
@@ -103,7 +102,7 @@ async def process_apple_notification(db, signed_payload: str) -> dict:
 
     # Store notification
     await db.webhook_notifications.insert_one({
-        "id": str(__import__('uuid').uuid4()),
+        "id": str(uuid.uuid4()),
         "store": "apple",
         "notification_type": notif_type,
         "subtype": subtype,
@@ -172,7 +171,7 @@ async def process_google_notification(db, message_data: str) -> dict:
     if not sub_notification:
         # Could be a one-time product notification or test
         await db.webhook_notifications.insert_one({
-            "id": str(__import__('uuid').uuid4()),
+            "id": str(uuid.uuid4()),
             "store": "google",
             "notification_type": "non_subscription",
             "raw_data": notification,
@@ -188,7 +187,7 @@ async def process_google_notification(db, message_data: str) -> dict:
 
     # Store notification
     await db.webhook_notifications.insert_one({
-        "id": str(__import__('uuid').uuid4()),
+        "id": str(uuid.uuid4()),
         "store": "google",
         "notification_type": event,
         "notification_type_code": notif_type_code,

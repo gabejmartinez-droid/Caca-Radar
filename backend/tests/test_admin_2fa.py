@@ -21,13 +21,13 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 MONGO_URL = os.environ.get('MONGO_URL')
 DB_NAME = os.environ.get('DB_NAME')
 
-# Admin credentials from test_credentials.md
-ADMIN_EMAIL = "jefe@cacaradar.es"
-ADMIN_PASSWORD = "Cacaradar123$"
+# Admin credentials - loaded from environment or test_credentials.md defaults
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "jefe@cacaradar.es")
+ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "Cacaradar123$")
 
 # Free user (should get 403 on admin endpoints)
-FREE_USER_EMAIL = "corstest@test.com"
-FREE_USER_PASSWORD = "Test123!"
+FREE_USER_EMAIL = os.environ.get("TEST_FREE_EMAIL", "corstest@test.com")
+FREE_USER_PASSWORD = os.environ.get("TEST_FREE_PASSWORD", "Test123!")
 
 
 @pytest.fixture(scope="module")

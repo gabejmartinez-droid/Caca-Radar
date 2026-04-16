@@ -29,8 +29,8 @@ export default function NotificationChecker() {
         if (data.length > 0) {
           await axios.post(`${API}/notifications/read`, {}, { withCredentials: true });
         }
-      } catch {
-        // silently fail
+      } catch (err) {
+        console.error("Failed to check notifications:", err);
       }
     };
 

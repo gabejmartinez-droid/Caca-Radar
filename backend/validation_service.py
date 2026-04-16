@@ -1,5 +1,7 @@
 """Validation Service — Consensus logic, report verification/rejection, weighted votes."""
+import uuid
 from datetime import datetime, timezone
+from bson import ObjectId
 from antispam_service import get_validation_weight, update_trust_score, TRUST_CORRECT_VALIDATION, TRUST_VERIFIED_REPORT, TRUST_FALSE_REPORT
 from scoring_service import calc_validation_points, calc_verified_bonus
 
@@ -9,7 +11,6 @@ NET_VOTE_THRESHOLD = 0  # Positive net score needed
 
 async def process_validation(db, report_id: str, user_id: str, vote: str, is_subscriber: bool):
     """Process a validation vote and check if report reaches consensus."""
-    from bson import ObjectId
 
     report = await db.reports.find_one({"id": report_id})
     if not report:
@@ -32,7 +33,7 @@ async def process_validation(db, report_id: str, user_id: str, vote: str, is_sub
 
     # Store validation
     validation_doc = {
-        "id": str(__import__('uuid').uuid4()),
+        "id": str(uuid.uuid4()),
         "user_id": user_id,
         "report_id": report_id,
         "vote": vote,
@@ -60,7 +61,6 @@ async def process_validation(db, report_id: str, user_id: str, vote: str, is_sub
 
 async def check_consensus(db, report: dict, validator_count: int) -> dict:
     """Check if a report has reached consensus for verification or rejection."""
-    from bson import ObjectId
 
     report_id = report["id"]
     upvotes = report.get("upvotes", 0)
@@ -125,7 +125,6 @@ async def check_consensus(db, report: dict, validator_count: int) -> dict:
 
 async def reward_validators(db, report_id: str, winning_vote: str):
     """Reward validators who voted with consensus, penalize those against."""
-    from bson import ObjectId
 
     validations = await db.validations.find({"report_id": report_id}).to_list(100)
 

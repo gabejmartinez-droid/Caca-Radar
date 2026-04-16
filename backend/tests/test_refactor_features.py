@@ -19,13 +19,13 @@ import uuid
 
 BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://caca-radar.preview.emergentagent.com').rstrip('/')
 
-# Test credentials from test_credentials.md
-ADMIN_EMAIL = "admin@cacaradar.es"
-ADMIN_PASSWORD = "admin123"
-FREE_USER_EMAIL = "corstest@test.com"
-FREE_USER_PASSWORD = "Test123!"
-MUNICIPALITY_EMAIL = "madrid@cacaradar.es"
-MUNICIPALITY_PASSWORD = "madrid123"
+# Test credentials - loaded from environment or test_credentials.md defaults
+ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "admin@cacaradar.es")
+ADMIN_PASSWORD = os.environ.get("TEST_ADMIN_PASSWORD", "admin123")
+FREE_USER_EMAIL = os.environ.get("TEST_FREE_EMAIL", "corstest@test.com")
+FREE_USER_PASSWORD = os.environ.get("TEST_FREE_PASSWORD", "Test123!")
+MUNICIPALITY_EMAIL = os.environ.get("TEST_MUNI_EMAIL", "madrid@cacaradar.es")
+MUNICIPALITY_PASSWORD = os.environ.get("TEST_MUNI_PASSWORD", "madrid123")
 
 
 class TestHealthAndRefactor:

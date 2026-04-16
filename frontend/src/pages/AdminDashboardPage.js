@@ -223,7 +223,7 @@ export default function AdminDashboardPage() {
             <p className="text-xs text-[#8D99AE] mb-3">{violationTotal} violaciones de foto pendientes</p>
             <div className="space-y-3">
               {violations.map((v, i) => (
-                <div key={i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`violation-${i}`}>
+                <div key={v.report_id || i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`violation-${i}`}>
                   <div className="flex items-start gap-3 mb-3">
                     {v.report?.photo_url ? (
                       <img src={`${API}/files/${v.report.photo_url}`} alt="Foto" className="w-16 h-16 object-cover rounded-lg" />
