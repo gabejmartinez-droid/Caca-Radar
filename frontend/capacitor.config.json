@@ -2,5 +2,19 @@
   "appId": "com.jefe.cacaradar",
   "appName": "Caca Radar",
   "webDir": "build",
-  "bundledWebRuntime": false
+  "bundledWebRuntime": false,
+  "server": {
+    "allowNavigation": [
+      "caca-radar.preview.emergentagent.com",
+      "*.emergentagent.com"
+    ]
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "CapacitorCookies": {
+      "enabled": true
+    }
+  }
 }

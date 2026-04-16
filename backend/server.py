@@ -3,7 +3,6 @@ load_dotenv()
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends
 from fastapi.responses import JSONResponse
-from starlette.middleware.cors import CORSMiddleware
 from bson import ObjectId
 import os
 import logging
@@ -2058,21 +2057,53 @@ async def health():
 # Include router
 app.include_router(api_router)
 
-# CORS — explicit origins for Capacitor native + web
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://localhost",
-        "https://caca-radar.preview.emergentagent.com",
-        "capacitor://localhost",
-        "ionic://localhost",
-    ],
-    allow_origin_regex=r"https://.*\.emergentagent\.com",
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS — custom middleware to handle Capacitor + web origins.
+# The Kubernetes ingress proxy overwrites CORS headers with wildcard.
+# We set Vary: Origin to signal the proxy not to cache/override,
+# and include our headers so they take precedence where possible.
+
+ALLOWED_ORIGINS = {
+    "http://localhost:3000",
+    "http://localhost",
+    "https://caca-radar.preview.emergentagent.com",
+    "capacitor://localhost",
+    "ionic://localhost",
+}
+ALLOWED_ORIGIN_REGEX = re.compile(r"https://.*\.emergentagent\.com")
+
+@app.middleware("http")
+async def cors_middleware(request: Request, call_next):
+    origin = request.headers.get("origin", "")
+    is_allowed = origin in ALLOWED_ORIGINS or (origin and ALLOWED_ORIGIN_REGEX.fullmatch(origin))
+
+    # Handle preflight OPTIONS
+    if request.method == "OPTIONS":
+        headers = {
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH",
+            "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+            "Access-Control-Max-Age": "600",
+            "Vary": "Origin",
+        }
+        if is_allowed and origin:
+            headers["Access-Control-Allow-Origin"] = origin
+            headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            headers["Access-Control-Allow-Origin"] = "*"
+        return Response(status_code=200, headers=headers)
+
+    response = await call_next(request)
+
+    # Set CORS on all responses
+    if is_allowed and origin:
+        response.headers["Access-Control-Allow-Origin"] = origin
+        response.headers["Access-Control-Allow-Credentials"] = "true"
+    else:
+        response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Vary"] = "Origin"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+
+    return response
 
 # Startup
 @app.on_event("startup")
