@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -58,13 +58,15 @@ function MapMarkers({ reports, onMarkerClick }) {
   return null;
 }
 
-function LocationFinder({ onLocationFound, allowMapClick, t }) {
+function LocationFinder({ onLocationFound, mapRef }) {
   const map = useMapEvents({
     locationfound(e) { map.flyTo(e.latlng, 16); onLocationFound(e.latlng); },
-    locationerror() { toast.error(t("locationError")); },
-    click(e) { if (allowMapClick) { onLocationFound(e.latlng); toast.success(t("locationSelected")); } }
+    locationerror() { /* handled by caller */ },
   });
-  useEffect(() => { map.locate({ enableHighAccuracy: true }); }, [map]);
+  useEffect(() => {
+    mapRef.current = map;
+    map.locate({ enableHighAccuracy: true });
+  }, [map, mapRef]);
   return null;
 }
 
@@ -95,6 +97,30 @@ export default function MapPage() {
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [userCity, setUserCity] = useState(null);
   const fileInputRef = useRef(null);
+  const mapRef = useRef(null);
+
+  // Re-center map on current GPS location
+  const recenterMap = useCallback(() => {
+    if (mapRef.current) {
+      mapRef.current.locate({ enableHighAccuracy: true });
+    }
+  }, []);
+
+  // Get fresh GPS position (returns a promise)
+  const getFreshLocation = useCallback(() => {
+    return new Promise((resolve, reject) => {
+      if (!navigator.geolocation) { reject(new Error("No geolocation")); return; }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const loc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+          setUserLocation(loc);
+          resolve(loc);
+        },
+        (err) => reject(err),
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 5000 }
+      );
+    });
+  }, []);
 
   // Check push notification status
   useEffect(() => {
@@ -165,16 +191,24 @@ export default function MapPage() {
 
   const handleSubmitReport = async () => {
     if (!user) { toast.error("Regístrate gratis para reportar"); navigate("/register"); return; }
-    if (!userLocation) { toast.error(t("locationError")); return; }
     setLoading(true);
     try {
-      const { data: report } = await axios.post(`${API}/reports`, { latitude: userLocation.lat, longitude: userLocation.lng, description: description || null }, { withCredentials: true });
+      // Always get fresh GPS for the report
+      let loc;
+      try {
+        loc = await getFreshLocation();
+      } catch {
+        loc = userLocation;
+      }
+      if (!loc) { toast.error(t("locationError")); setLoading(false); return; }
+
+      const { data: report } = await axios.post(`${API}/reports`, { latitude: loc.lat, longitude: loc.lng, description: description || null }, { withCredentials: true });
       if (photoFile) {
         const formData = new FormData();
         formData.append("file", photoFile);
         await axios.post(`${API}/reports/${report.id}/photo`, formData, { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } });
       }
-      toast.success(t("reportSuccess"));
+      toast.success(report.converted_to_confirmation ? t("reportConfirmed") : t("reportSuccess"));
       setShowReportDrawer(false);
       setPhotoFile(null);
       setPhotoPreview(null);
@@ -299,7 +333,7 @@ export default function MapPage() {
     <div className={`h-screen w-full relative overflow-hidden ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <LocationFinder onLocationFound={setUserLocation} allowMapClick={true} t={t} />
+        <LocationFinder onLocationFound={setUserLocation} mapRef={mapRef} />
         <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />
         {showHeatmap && <HeatmapLayer reports={reports} visible={showHeatmap} />}
       </MapContainer>
@@ -472,7 +506,10 @@ export default function MapPage() {
         </div>
       )}
 
-      {/* FAB */}
+      {/* Re-center + FAB */}
+      <button onClick={recenterMap} className="fixed right-4 z-[1000] w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }} data-testid="recenter-btn" title="Re-center map">
+        <Crosshair className="w-5 h-5 text-[#2B2D42]" />
+      </button>
       <button onClick={() => setShowReportDrawer(true)} className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200" style={{ fontFamily: 'Nunito, sans-serif', bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)" }} data-testid="report-btn">
         <Plus className="w-5 h-5" />{t("report")}
       </button>
@@ -523,7 +560,7 @@ export default function MapPage() {
             )}
           </div>
           <DrawerFooter className="pt-0">
-            <Button onClick={handleSubmitReport} disabled={loading || !userLocation} className="w-full bg-[#FF6B6B] hover:bg-[#FF5252] text-white py-6 rounded-xl text-lg font-bold" style={{ fontFamily: 'Nunito, sans-serif' }} data-testid="submit-report-btn">
+            <Button onClick={handleSubmitReport} disabled={loading} className="w-full bg-[#FF6B6B] hover:bg-[#FF5252] text-white py-6 rounded-xl text-lg font-bold" style={{ fontFamily: 'Nunito, sans-serif' }} data-testid="submit-report-btn">
               {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("submitReport")}
             </Button>
             <DrawerClose asChild><Button variant="ghost" className="text-[#8D99AE]">{t("cancel")}</Button></DrawerClose>
