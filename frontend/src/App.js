@@ -18,7 +18,11 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import GoogleCallbackPage from "./pages/GoogleCallbackPage";
+import { setupNativePushListeners } from "./utils/pushManager";
 import "./App.css";
+
+// Initialize native push listeners for Capacitor
+setupNativePushListeners();
 
 function UsernameGate({ children }) {
   const { user, checkAuth } = useAuth();

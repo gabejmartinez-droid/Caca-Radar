@@ -2066,6 +2066,17 @@ async def unsubscribe_push(request: Request):
         await db.push_subscriptions.update_one({"user_id": user_id}, {"$set": {"active": False}})
     return {"message": "Suscripción push desactivada"}
 
+@api_router.get("/push/status")
+async def get_push_status(request: Request):
+    """Check if current user has an active push subscription."""
+    user = await get_current_user(request)
+    if not user:
+        return {"subscribed": False}
+    sub = await db.push_subscriptions.find_one(
+        {"user_id": user["_id"], "active": True}, {"_id": 0}
+    )
+    return {"subscribed": bool(sub)}
+
 # ==================== SOCIAL SHARING ====================
 
 @api_router.get("/reports/{report_id}/share")

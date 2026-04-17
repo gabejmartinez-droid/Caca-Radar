@@ -1,4 +1,4 @@
-"""Push Notification Service — Web Push for nearby report alerts."""
+"""Push Notification Service — Web Push + Native (FCM) for nearby report alerts."""
 import os
 import json
 import logging
@@ -11,6 +11,9 @@ VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY", "")
 VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY", "")
 VAPID_CLAIMS_EMAIL = os.environ.get("VAPID_CLAIMS_EMAIL", "mailto:no-reply@cacaradar.es")
 
+# FCM for native Capacitor push (optional)
+FCM_SERVER_KEY = os.environ.get("FCM_SERVER_KEY", "")
+
 NEARBY_RADIUS_METERS = 500  # Notify users within 500m
 
 
@@ -18,13 +21,22 @@ def is_configured() -> bool:
     return bool(VAPID_PRIVATE_KEY and VAPID_PUBLIC_KEY)
 
 
-async def send_push(subscription_info: dict, title: str, body: str, url: str = "/") -> bool:
-    """Send a push notification to a single subscription."""
+def is_native_subscription(subscription: dict) -> bool:
+    """Check if this is a native (FCM) push subscription vs Web Push."""
+    return subscription.get("platform") == "native" or "token" in subscription
+
+
+async def send_web_push(subscription_info: dict, title: str, body: str, url: str = "/") -> bool:
+    """Send a Web Push notification."""
     if not is_configured():
-        logger.warning(f"[PUSH MOCK] {title}: {body}")
+        logger.warning(f"[PUSH MOCK] Web: {title}: {body}")
         return False
 
-    payload = json.dumps({"title": title, "body": body, "url": url, "icon": "/icon-192.png", "badge": "/icon-192.png"})
+    payload = json.dumps({
+        "title": title, "body": body, "url": url,
+        "icon": "/icon-192.png", "badge": "/icon-192.png",
+        "tag": "caca-radar-nearby"
+    })
 
     try:
         webpush(
@@ -35,18 +47,57 @@ async def send_push(subscription_info: dict, title: str, body: str, url: str = "
         )
         return True
     except WebPushException as e:
-        logger.error(f"Push failed: {e}")
+        logger.error(f"Web push failed: {e}")
         if e.response and e.response.status_code in (404, 410):
-            return False  # Subscription expired — caller should remove it
+            return False
         return False
     except Exception as e:
-        logger.error(f"Push error: {e}")
+        logger.error(f"Web push error: {e}")
         return False
+
+
+async def send_native_push(token: str, title: str, body: str, url: str = "/") -> bool:
+    """Send a native push notification via FCM."""
+    if not FCM_SERVER_KEY:
+        logger.warning(f"[PUSH MOCK] Native: {title}: {body}")
+        return False
+
+    import httpx
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://fcm.googleapis.com/fcm/send",
+                headers={
+                    "Authorization": f"key={FCM_SERVER_KEY}",
+                    "Content-Type": "application/json",
+                },
+                json={
+                    "to": token,
+                    "notification": {"title": title, "body": body},
+                    "data": {"url": url, "title": title, "body": body},
+                },
+                timeout=10,
+            )
+            if response.status_code == 200:
+                result = response.json()
+                return result.get("success", 0) > 0
+            logger.error(f"FCM response {response.status_code}: {response.text}")
+            return False
+    except Exception as e:
+        logger.error(f"Native push error: {e}")
+        return False
+
+
+async def send_push(subscription_info: dict, title: str, body: str, url: str = "/") -> bool:
+    """Route to web or native push based on subscription type."""
+    if is_native_subscription(subscription_info):
+        token = subscription_info.get("token", "")
+        return await send_native_push(token, title, body, url)
+    return await send_web_push(subscription_info, title, body, url)
 
 
 async def notify_nearby_users(db, report_lat: float, report_lon: float, report_id: str, municipality: str):
     """Send push notifications to users subscribed to alerts near a new report."""
-    # Find active push subscriptions
     subs = await db.push_subscriptions.find(
         {"active": True, "latitude": {"$exists": True}},
         {"_id": 0}
@@ -70,15 +121,15 @@ async def notify_nearby_users(db, report_lat: float, report_lon: float, report_i
             )
             if success:
                 sent_count += 1
-            elif not success and is_configured():
-                expired.append(sub.get("id"))
+            elif not success and (is_configured() or FCM_SERVER_KEY):
+                expired.append(sub.get("user_id"))
 
-    # Remove expired subscriptions
+    # Deactivate expired subscriptions
     if expired:
         await db.push_subscriptions.update_many(
-            {"id": {"$in": expired}},
+            {"user_id": {"$in": expired}},
             {"$set": {"active": False}}
         )
 
-    logger.info(f"Push notifications sent to {sent_count} nearby users for report {report_id}")
+    logger.info(f"Push notifications sent to {sent_count}/{len(subs)} nearby users for report {report_id}")
     return sent_count

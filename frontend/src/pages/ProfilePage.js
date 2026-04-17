@@ -9,6 +9,7 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushPermissionState } from "../utils/pushManager";
 
 import { API } from "../config";
 
@@ -54,6 +55,11 @@ export default function ProfilePage() {
       const { data } = await axios.get(`${API}/users/profile`, { withCredentials: true });
       setProfile(data);
       setNewUsername(data.username || "");
+      // Check actual push subscription status
+      try {
+        const { data: pushStatus } = await axios.get(`${API}/push/status`, { withCredentials: true });
+        setNotificationsOn(pushStatus.subscribed);
+      } catch { /* ignore */ }
     } catch { navigate("/login"); }
     finally { setLoading(false); }
   };
@@ -71,11 +77,29 @@ export default function ProfilePage() {
     finally { setSaving(false); }
   };
 
-  const handleToggleNotifications = () => {
-    const newVal = !notificationsOn;
-    setNotificationsOn(newVal);
-    localStorage.setItem("caca_notifications", newVal ? "on" : "off");
-    toast.success(newVal ? "Notificaciones activadas" : "Notificaciones desactivadas");
+  const handleToggleNotifications = async () => {
+    const supported = await isPushSupported();
+    if (!supported) {
+      toast.error("Tu navegador no soporta notificaciones push");
+      return;
+    }
+    if (notificationsOn) {
+      await unsubscribeFromPush();
+      setNotificationsOn(false);
+      toast.success("Notificaciones desactivadas");
+    } else {
+      try {
+        await subscribeToPush(null);
+        setNotificationsOn(true);
+        toast.success("Notificaciones activadas");
+      } catch (err) {
+        if (err.message === "permission_denied") {
+          toast.error("Permiso de notificaciones denegado en el navegador");
+        } else {
+          toast.error("Error activando notificaciones");
+        }
+      }
+    }
   };
 
   const handleShareProfile = async () => {

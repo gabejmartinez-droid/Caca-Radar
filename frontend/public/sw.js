@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'caca-radar-v1';
+const CACHE_NAME = 'caca-radar-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
@@ -12,9 +12,7 @@ const STATIC_ASSETS = [
 // Install — cache static shell
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
+    caches.open(CACHE_NAME).then((cache) => cache.addAll(STATIC_ASSETS))
   );
   self.skipWaiting();
 });
@@ -25,6 +23,13 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
+          .filter((name) => name !== CACHE_NAME && name !== 'map-tiles-v1')
+          .map((name) => caches.delete(name))
+      );
+    })
+  );
+  self.clients.claim();
+});
 
 // Push notification handler
 self.addEventListener('push', (event) => {
@@ -37,6 +42,8 @@ self.addEventListener('push', (event) => {
       icon: data.icon || '/icon-192.png',
       badge: data.badge || '/icon-192.png',
       vibrate: [200, 100, 200],
+      tag: data.tag || 'caca-radar-notification',
+      renotify: true,
       data: { url: data.url || '/' },
       actions: [
         { action: 'view', title: 'Ver reporte' },
@@ -48,7 +55,6 @@ self.addEventListener('push', (event) => {
       self.registration.showNotification(data.title || 'Caca Radar', options)
     );
   } catch (e) {
-    // Fallback for non-JSON payloads
     event.waitUntil(
       self.registration.showNotification('Caca Radar', {
         body: event.data.text(),
@@ -76,14 +82,6 @@ self.addEventListener('notificationclick', (event) => {
       return self.clients.openWindow(url);
     })
   );
-});
-
-          .filter((name) => name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
-      );
-    })
-  );
-  self.clients.claim();
 });
 
 // Fetch — network first, fallback to cache for navigation

@@ -21,6 +21,8 @@ import { API } from "../config";
 import FeedbackDrawer from "../components/FeedbackDrawer";
 import ActivityBanner from "../components/ActivityBanner";
 import PointsPopup from "../components/PointsPopup";
+import StreakFlame from "../components/StreakFlame";
+import { subscribeToPush, unsubscribeFromPush, isPushSupported } from "../utils/pushManager";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -128,12 +130,17 @@ export default function MapPage() {
     });
   }, []);
 
-  // Check push notification status
+  // Check push notification status from backend
   useEffect(() => {
-    if ('Notification' in window && Notification.permission === 'granted') {
-      setPushEnabled(true);
-    }
-  }, []);
+    if (!user) return;
+    const checkPush = async () => {
+      try {
+        const { data } = await axios.get(`${API}/push/status`, { withCredentials: true });
+        setPushEnabled(data.subscribed);
+      } catch { /* ignore */ }
+    };
+    checkPush();
+  }, [user]);
 
   const fetchReports = async () => {
     try {
@@ -301,34 +308,31 @@ export default function MapPage() {
   };
 
   const togglePush = async () => {
-    if (!user?.subscription_active) { navigate("/subscribe"); return; }
-    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+    if (!user) { navigate("/login"); return; }
+    const supported = await isPushSupported();
+    if (!supported) {
       toast.error("Tu navegador no soporta notificaciones push");
       return;
     }
     if (pushEnabled) {
-      await axios.post(`${API}/push/unsubscribe`, {}, { withCredentials: true });
-      setPushEnabled(false);
-      toast.success("Notificaciones desactivadas");
+      const ok = await unsubscribeFromPush();
+      if (ok) {
+        setPushEnabled(false);
+        toast.success("Notificaciones desactivadas");
+      }
       return;
     }
     try {
-      const permission = await Notification.requestPermission();
-      if (permission !== 'granted') { toast.error("Permiso de notificaciones denegado"); return; }
-      const { data: vapidData } = await axios.get(`${API}/push/vapid-key`);
-      const reg = await navigator.serviceWorker.ready;
-      const subscription = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: vapidData.vapid_public_key
-      });
-      await axios.post(`${API}/push/subscribe`, {
-        subscription: subscription.toJSON(),
-        latitude: userLocation?.lat,
-        longitude: userLocation?.lng
-      }, { withCredentials: true });
+      await subscribeToPush(userLocation);
       setPushEnabled(true);
       toast.success("Notificaciones activadas para reportes cercanos");
-    } catch (err) { toast.error("Error activando notificaciones"); }
+    } catch (err) {
+      if (err.message === "permission_denied") {
+        toast.error("Permiso de notificaciones denegado");
+      } else {
+        toast.error("Error activando notificaciones");
+      }
+    }
   };
 
   const formatDate = (dateStr) => {
@@ -428,7 +432,7 @@ export default function MapPage() {
         </DropdownMenu>
         <div className="flex gap-2">
           <LanguageSelector />
-          {user?.subscription_active && (
+          {user && (
             <Button variant="outline" size="sm" onClick={togglePush} className={`backdrop-blur-sm shadow-lg border-0 ${pushEnabled ? 'bg-[#FF6B6B] text-white' : 'bg-white/95'}`} data-testid="push-toggle">
               {pushEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
             </Button>
@@ -526,6 +530,9 @@ export default function MapPage() {
 
       {/* Activity Banner */}
       <ActivityBanner userLocation={userLocation} userCity={userCity} />
+
+      {/* Streak Flame Animation */}
+      <StreakFlame />
 
       {/* Re-center + FAB */}
       <button onClick={recenterMap} className="fixed right-4 z-[1000] w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }} data-testid="recenter-btn" title="Re-center map">
@@ -732,10 +739,14 @@ export default function MapPage() {
             <p className="text-white text-sm font-bold">Activa las notificaciones</p>
             <p className="text-white/60 text-xs">Te avisaremos de reportes cerca de ti</p>
           </div>
-          <button onClick={() => {
-            Notification.requestPermission();
+          <button onClick={async () => {
             localStorage.setItem("notif_prompted", "1");
             setShowNotifPrompt(false);
+            try {
+              await subscribeToPush(userLocation);
+              setPushEnabled(true);
+              toast.success("Notificaciones activadas");
+            } catch { /* user denied or error */ }
           }} className="bg-[#FF6B6B] text-white text-xs font-bold px-3 py-1.5 rounded-lg" data-testid="notif-enable">OK</button>
           <button onClick={() => { localStorage.setItem("notif_prompted", "1"); setShowNotifPrompt(false); }} className="text-white/40 text-xs" data-testid="notif-dismiss">No</button>
         </div>
