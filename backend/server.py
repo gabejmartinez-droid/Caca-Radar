@@ -227,6 +227,96 @@ class SavedLocationCreate(BaseModel):
 app = FastAPI()
 api_router = APIRouter(prefix="/api")
 
+# ==================== GOOGLE / APPLE AUTH ====================
+
+@api_router.post("/auth/google")
+async def google_auth(request: Request, response: Response):
+    """Exchange Emergent Google Auth session_id for app session."""
+    import requests as req
+    body = await request.json()
+    session_id = body.get("session_id")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="Missing session_id")
+
+    # Verify session with Emergent Auth
+    try:
+        r = req.get(
+            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            headers={"X-Session-ID": session_id},
+            timeout=10
+        )
+        r.raise_for_status()
+        google_data = r.json()
+    except Exception as e:
+        logger.error(f"Google auth verification failed: {e}")
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    email = google_data.get("email", "").lower()
+    name = google_data.get("name", "")
+    picture = google_data.get("picture", "")
+
+    if not email:
+        raise HTTPException(status_code=400, detail="No email from Google")
+
+    # Find or create user
+    user = await db.users.find_one({"email": email})
+    is_vip = email in VIP_EMAILS
+
+    if user:
+        # Existing user — update picture if available
+        updates = {}
+        if picture and not user.get("picture"):
+            updates["picture"] = picture
+        if is_vip and not user.get("subscription_active"):
+            updates["subscription_active"] = True
+            updates["subscription_type"] = "lifetime"
+        if user.get("trust_score", 50) < 50 and is_vip:
+            updates["trust_score"] = 50
+        if updates:
+            await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+        user_id = str(user["_id"])
+        role = user.get("role", "user")
+        username = user.get("username")
+        needs_username = not bool(username)
+    else:
+        # New user — auto-generate username from email
+        base_username = email.split("@")[0].lower().replace(".", "_").replace("-", "_")
+        base_username = ''.join(c for c in base_username if c.isalnum() or c == '_')[:15]
+        username = base_username
+        # Ensure unique
+        attempt = 0
+        while await db.users.find_one({"username": username}):
+            attempt += 1
+            username = f"{base_username}{attempt}"
+
+        user_doc = {
+            "email": email, "password_hash": "",
+            "name": name, "username": username, "picture": picture,
+            "role": "user", "auth_provider": "google",
+            "subscription_active": is_vip, "subscription_type": "lifetime" if is_vip else None,
+            "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
+            "report_count": 0, "vote_count": 0, "streak_days": 0,
+            "created_at": datetime.now(timezone.utc)
+        }
+        result = await db.users.insert_one(user_doc)
+        user_id = str(result.inserted_id)
+        role = "user"
+        needs_username = False
+
+    access_token = create_access_token(user_id, email, role)
+    refresh_token = create_refresh_token(user_id)
+    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+
+    return {
+        "id": user_id, "email": email, "name": name,
+        "username": username, "role": role,
+        "subscription_active": is_vip,
+        "needs_username": needs_username,
+        "access_token": access_token, "refresh_token": refresh_token,
+        "auth_provider": "google",
+    }
+
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
@@ -1499,6 +1589,61 @@ async def preview_digest(request: Request):
     user = await require_municipality(request)
     digest = await generate_municipality_digest(db, user.get("municipality_name", ""))
     return digest
+
+# ==================== FEEDBACK ====================
+
+@api_router.post("/feedback")
+async def submit_feedback(request: Request):
+    """Submit user feedback, bug reports, or suggestions."""
+    body = await request.json()
+    user = await get_current_user(request)
+    await db.feedback.insert_one({
+        "category": body.get("category", "other"),
+        "message": body.get("message", ""),
+        "user_id": user["_id"] if user else None,
+        "user_email": body.get("user_email") or (user.get("email") if user else None),
+        "username": body.get("username") or (user.get("username") if user else None),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+        "status": "new",
+    })
+    return {"message": "Feedback recibido"}
+
+# ==================== ACTIVITY STATS ====================
+
+@api_router.get("/stats/activity")
+async def get_activity_stats(request: Request, lat: float = None, lng: float = None, radius: float = 5000):
+    """Get activity stats for the homepage banner."""
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0).isoformat()
+    total_today = await db.reports.count_documents({"created_at": {"$gte": today_start}})
+    nearby_today = 0
+    active_zones = 0
+    if lat and lng:
+        all_today = await db.reports.find(
+            {"created_at": {"$gte": today_start}, "archived": {"$ne": True}},
+            {"_id": 0, "latitude": 1, "longitude": 1}
+        ).to_list(1000)
+        from antispam_service import haversine_meters
+        for r in all_today:
+            if haversine_meters(lat, lng, r["latitude"], r["longitude"]) < radius:
+                nearby_today += 1
+        recent = await db.reports.find(
+            {"archived": {"$ne": True}, "flagged": {"$ne": True}},
+            {"_id": 0, "latitude": 1, "longitude": 1}
+        ).to_list(2000)
+        from collections import defaultdict
+        grid = defaultdict(int)
+        for r in recent:
+            cell = (round(r["latitude"] * 200) / 200, round(r["longitude"] * 200) / 200)
+            if haversine_meters(lat, lng, r["latitude"], r["longitude"]) < radius:
+                grid[cell] += 1
+        active_zones = sum(1 for c in grid.values() if c >= 2)
+    user_rank = None
+    user = await get_current_user(request)
+    if user:
+        higher = await db.users.count_documents({"role": "user", "total_score": {"$gt": user.get("total_score", 0)}})
+        user_rank = higher + 1
+    return {"total_today": total_today, "nearby_today": nearby_today, "active_zones": active_zones, "user_rank": user_rank}
 
 # ==================== SOCIAL SHARING ====================
 

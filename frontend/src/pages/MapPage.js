@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair, MessageSquare } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -18,6 +18,9 @@ import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { HeatmapLayer } from "../components/HeatmapLayer";
 import { API } from "../config";
+import FeedbackDrawer from "../components/FeedbackDrawer";
+import ActivityBanner from "../components/ActivityBanner";
+import PointsPopup from "../components/PointsPopup";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -98,6 +101,9 @@ export default function MapPage() {
   const [userCity, setUserCity] = useState(null);
   const fileInputRef = useRef(null);
   const mapRef = useRef(null);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const [pointsEarned, setPointsEarned] = useState(null);
+  const [showNotifPrompt, setShowNotifPrompt] = useState(false);
 
   // Re-center map on current GPS location
   const recenterMap = useCallback(() => {
@@ -209,6 +215,13 @@ export default function MapPage() {
         await axios.post(`${API}/reports/${report.id}/photo`, formData, { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } });
       }
       toast.success(report.converted_to_confirmation ? t("reportConfirmed") : t("reportSuccess"));
+      if (report.points_earned) {
+        setPointsEarned({ points: report.points_earned, breakdown: report.points_breakdown });
+      }
+      // Smart notification prompt — after first successful report
+      if ("Notification" in window && Notification.permission === "default" && !localStorage.getItem("notif_prompted")) {
+        setTimeout(() => setShowNotifPrompt(true), 2000);
+      }
       setShowReportDrawer(false);
       setPhotoFile(null);
       setPhotoPreview(null);
@@ -406,6 +419,11 @@ export default function MapPage() {
               <Star className="w-4 h-4 text-amber-500" />
               <span className="flex-1 font-bold text-amber-600">{t("goPremium")}</span>
             </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer gap-2" data-testid="menu-feedback">
+              <MessageSquare className="w-4 h-4 text-[#8D99AE]" />
+              <span className="flex-1">Feedback</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex gap-2">
@@ -505,6 +523,9 @@ export default function MapPage() {
           </div>
         </div>
       )}
+
+      {/* Activity Banner */}
+      <ActivityBanner userLocation={userLocation} userCity={userCity} />
 
       {/* Re-center + FAB */}
       <button onClick={recenterMap} className="fixed right-4 z-[1000] w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }} data-testid="recenter-btn" title="Re-center map">
@@ -694,6 +715,31 @@ export default function MapPage() {
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
+
+      {/* Feedback Drawer */}
+      <FeedbackDrawer open={showFeedback} onClose={() => setShowFeedback(false)} />
+
+      {/* Points Popup */}
+      {pointsEarned && (
+        <PointsPopup points={pointsEarned.points} breakdown={pointsEarned.breakdown} onDone={() => setPointsEarned(null)} />
+      )}
+
+      {/* Smart Notification Prompt */}
+      {showNotifPrompt && (
+        <div className="fixed bottom-24 left-4 right-4 z-[2000] bg-[#2B2D42] rounded-xl p-4 shadow-xl flex items-center gap-3" data-testid="notif-prompt">
+          <Bell className="w-5 h-5 text-[#FF6B6B] shrink-0" />
+          <div className="flex-1">
+            <p className="text-white text-sm font-bold">Activa las notificaciones</p>
+            <p className="text-white/60 text-xs">Te avisaremos de reportes cerca de ti</p>
+          </div>
+          <button onClick={() => {
+            Notification.requestPermission();
+            localStorage.setItem("notif_prompted", "1");
+            setShowNotifPrompt(false);
+          }} className="bg-[#FF6B6B] text-white text-xs font-bold px-3 py-1.5 rounded-lg" data-testid="notif-enable">OK</button>
+          <button onClick={() => { localStorage.setItem("notif_prompted", "1"); setShowNotifPrompt(false); }} className="text-white/40 text-xs" data-testid="notif-dismiss">No</button>
+        </div>
+      )}
     </div>
   );
 }
