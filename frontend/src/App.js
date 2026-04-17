@@ -17,6 +17,7 @@ import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
+import GoogleCallbackPage from "./pages/GoogleCallbackPage";
 import "./App.css";
 
 function UsernameGate({ children }) {
@@ -52,6 +53,7 @@ function App() {
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
+              <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
             </Routes>
           </UsernameGate>
           <NotificationChecker />

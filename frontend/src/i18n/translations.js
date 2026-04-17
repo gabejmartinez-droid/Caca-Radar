@@ -2,6 +2,7 @@ export const translations = {
   es: {
     // App
     appName: "Caca Radar",
+    appTagline: "Juntos por calles más limpias",
     
     // Map Page
     report: "Reportar",
@@ -14,14 +15,14 @@ export const translations = {
     },
     
     // Report Drawer
-    reportTitle: "Reportar caca de perro",
-    reportDesc: "Tu ubicación se añadirá automáticamente",
+    reportTitle: "Ayuda a tu barrio",
+    reportDesc: "Señala y juntos mantenemos las calles limpias",
     gettingLocation: "Obteniendo ubicación...",
     addPhoto: "Añadir foto (opcional)",
-    submitReport: "Enviar reporte",
+    submitReport: "Contribuir al mapa",
     cancel: "Cancelar",
-    reportSuccess: "Reporte enviado correctamente",
-    reportConfirmed: "Reporte confirmado como 'sigue ahí'",
+    reportSuccess: "¡Gracias! Tu comunidad te lo agradece",
+    reportConfirmed: "¡Confirmado! Cada voto cuenta para mantener tu barrio limpio",
     reportError: "Error al enviar el reporte",
     locationError: "No se pudo obtener tu ubicación. Haz clic en el mapa para seleccionar manualmente.",
     locationSelected: "Ubicación seleccionada",
@@ -90,6 +91,15 @@ export const translations = {
     registerLink: "Regístrate",
     loginLink: "Inicia sesión",
     useWithoutAccount: "También puedes usar la app sin cuenta",
+    continueWithGoogle: "Continuar con Google",
+    
+    // Social/Community Messaging
+    communityWelcome: "¡Bienvenido! Juntos hacemos nuestras calles más limpias.",
+    reportEncouragement: "Cada reporte ayuda a tu vecindario. ¡Tú marcas la diferencia!",
+    streakMessage: "¡{n} días seguidos contribuyendo! Eres increíble.",
+    notificationPrompt: "¿Quieres saber cuando reportan cerca de ti?",
+    notificationEnabled: "Notificaciones activadas",
+    notificationDisabled: "Notificaciones desactivadas",
     loginSuccess: "Sesión iniciada correctamente",
     registerSuccess: "Cuenta creada correctamente",
     passwordTooShort: "La contraseña debe tener al menos 6 caracteres",
@@ -123,6 +133,7 @@ export const translations = {
   
   en: {
     appName: "Poop Radar",
+    appTagline: "Together for cleaner streets",
     report: "Report",
     enter: "Login",
     logout: "Logout",
@@ -131,14 +142,14 @@ export const translations = {
       moderate: "2-6 days",
       old: ">6 days"
     },
-    reportTitle: "Report dog poop",
-    reportDesc: "Your location will be added automatically",
+    reportTitle: "Help your neighborhood",
+    reportDesc: "Mark it and together we keep streets clean",
     gettingLocation: "Getting location...",
     addPhoto: "Add photo (optional)",
-    submitReport: "Submit report",
+    submitReport: "Contribute to the map",
     cancel: "Cancel",
-    reportSuccess: "Report submitted successfully",
-    reportConfirmed: "Report confirmed as 'still there'",
+    reportSuccess: "Thank you! Your community appreciates it",
+    reportConfirmed: "Confirmed! Every vote helps keep your area clean",
     reportError: "Error submitting report",
     locationError: "Could not get your location. Click on the map to select manually.",
     locationSelected: "Location selected",
@@ -182,6 +193,15 @@ export const translations = {
     registerLink: "Sign up",
     loginLink: "Login",
     useWithoutAccount: "You can also use the app without an account",
+    continueWithGoogle: "Continue with Google",
+    
+    // Social/Community Messaging
+    communityWelcome: "Welcome! Together we make our streets cleaner.",
+    reportEncouragement: "Every report helps your neighborhood. You make the difference!",
+    streakMessage: "{n} days in a row contributing! You're amazing.",
+    notificationPrompt: "Want to know when reports appear near you?",
+    notificationEnabled: "Notifications enabled",
+    notificationDisabled: "Notifications disabled",
     loginSuccess: "Logged in successfully",
     registerSuccess: "Account created successfully",
     passwordTooShort: "Password must be at least 6 characters",

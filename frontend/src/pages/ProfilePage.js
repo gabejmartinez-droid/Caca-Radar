@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2 } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -41,6 +41,7 @@ export default function ProfilePage() {
   const [editingUsername, setEditingUsername] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [saving, setSaving] = useState(false);
+  const [notificationsOn, setNotificationsOn] = useState(() => localStorage.getItem("caca_notifications") !== "off");
 
   useEffect(() => {
     if (!user) { navigate("/login"); return; }
@@ -68,6 +69,13 @@ export default function ProfilePage() {
       fetchProfile();
     } catch (err) { toast.error(err.response?.data?.detail || "Error"); }
     finally { setSaving(false); }
+  };
+
+  const handleToggleNotifications = () => {
+    const newVal = !notificationsOn;
+    setNotificationsOn(newVal);
+    localStorage.setItem("caca_notifications", newVal ? "on" : "off");
+    toast.success(newVal ? "Notificaciones activadas" : "Notificaciones desactivadas");
   };
 
   const handleShareProfile = async () => {
@@ -115,9 +123,7 @@ export default function ProfilePage() {
           ) : (
             <div className="flex items-center gap-2 justify-center mb-1">
               <h1 className="text-xl font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{profile?.username || profile?.name || "Usuario"}</h1>
-              {user?.subscription_active && (
-                <button onClick={() => setEditingUsername(true)} className="text-[#8D99AE] hover:text-[#FF6B6B]" data-testid="edit-username-btn"><Edit3 className="w-4 h-4" /></button>
-              )}
+              <button onClick={() => setEditingUsername(true)} className="text-[#8D99AE] hover:text-[#FF6B6B]" data-testid="edit-username-btn"><Edit3 className="w-4 h-4" /></button>
             </div>
           )}
 
@@ -213,6 +219,24 @@ export default function ProfilePage() {
               </div>
             ))}
           </div>
+        </div>
+
+        {/* Notification Settings */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="w-5 h-5 text-[#42A5F5]" />
+              <span className="font-bold text-[#2B2D42]">Notificaciones</span>
+            </div>
+            <button
+              onClick={handleToggleNotifications}
+              className={`relative w-12 h-6 rounded-full transition-colors ${notificationsOn ? "bg-[#66BB6A]" : "bg-[#8D99AE]/30"}`}
+              data-testid="notification-toggle"
+            >
+              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notificationsOn ? "translate-x-6" : "translate-x-0.5"}`} />
+            </button>
+          </div>
+          <p className="text-xs text-[#8D99AE] mt-2">Recibe avisos cuando se reporten cacas cerca de tus ubicaciones guardadas.</p>
         </div>
 
         {/* How scoring works */}
