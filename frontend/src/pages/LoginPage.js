@@ -140,6 +140,12 @@ export default function LoginPage() {
             </Button>
           </form>
 
+          <div className="text-center mt-3">
+            <Link to="/forgot-password" className="text-sm text-[#8D99AE] hover:text-[#FF6B6B] transition-colors" data-testid="forgot-password-link">
+              ¿Olvidaste tu contraseña?
+            </Link>
+          </div>
+
           {/* Social Sign-In */}
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 my-3">

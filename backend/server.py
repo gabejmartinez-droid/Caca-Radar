@@ -438,6 +438,94 @@ async def login(data: UserLogin, request: Request, response: Response):
         "access_token": access_token, "refresh_token": refresh_token
     }
 
+@api_router.post("/auth/forgot-password")
+async def forgot_password(request: Request):
+    """Send a password reset link to the user's email."""
+    body = await request.json()
+    email = body.get("email", "").lower().strip()
+    if not email:
+        raise HTTPException(status_code=400, detail="Email requerido")
+
+    user = await db.users.find_one({"email": email})
+    # Always return success to prevent email enumeration
+    if not user:
+        return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
+
+    # Google-auth users can't reset password
+    if user.get("auth_provider") == "google" and not user.get("password_hash"):
+        return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
+
+    # Generate a time-limited reset token (1 hour)
+    reset_token = str(uuid.uuid4())
+    await db.password_resets.update_one(
+        {"email": email},
+        {"$set": {
+            "email": email,
+            "token": reset_token,
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
+            "used": False,
+        }},
+        upsert=True,
+    )
+
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+    reset_link = f"{frontend_url}/reset-password?token={reset_token}"
+
+    html = f"""
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+      <h2 style="color:#2B2D42;">Restablecer contraseña</h2>
+      <p>Hemos recibido una solicitud para restablecer tu contraseña en <strong>Caca Radar</strong>.</p>
+      <p>Haz clic en el siguiente enlace para crear una nueva contraseña:</p>
+      <a href="{reset_link}" style="display:inline-block;background:#FF6B6B;color:white;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;margin:16px 0;">Restablecer contraseña</a>
+      <p style="color:#8D99AE;font-size:13px;">Este enlace expira en 1 hora. Si no solicitaste este cambio, ignora este email.</p>
+    </div>
+    """
+
+    from email_service import send_email
+    result = await send_email(email, "Caca Radar — Restablecer contraseña", html)
+    logger.info(f"Password reset for {email}: token={reset_token}, email_result={result.get('status')}")
+
+    return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
+
+
+@api_router.post("/auth/reset-password")
+async def reset_password(request: Request):
+    """Reset password using a valid reset token."""
+    body = await request.json()
+    token = body.get("token", "").strip()
+    new_password = body.get("password", "")
+
+    if not token:
+        raise HTTPException(status_code=400, detail="Token requerido")
+    if len(new_password) < 6:
+        raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
+
+    reset_doc = await db.password_resets.find_one({"token": token, "used": False})
+    if not reset_doc:
+        raise HTTPException(status_code=400, detail="Enlace inválido o ya utilizado")
+
+    # Check expiry
+    expires = reset_doc.get("expires_at", "")
+    if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="El enlace ha expirado. Solicita uno nuevo.")
+
+    email = reset_doc["email"]
+    user = await db.users.find_one({"email": email})
+    if not user:
+        raise HTTPException(status_code=400, detail="Usuario no encontrado")
+
+    # Update password
+    hashed = hash_password(new_password)
+    await db.users.update_one({"email": email}, {"$set": {"password_hash": hashed}})
+
+    # Mark token as used
+    await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
+
+    logger.info(f"Password reset completed for {email}")
+    return {"message": "Contraseña actualizada correctamente. Ya puedes iniciar sesión."}
+
+
 @api_router.post("/auth/logout")
 async def logout(response: Response):
     response.delete_cookie("access_token", path="/")
@@ -2389,6 +2477,8 @@ async def init_database():
     await db.barrio_cache.create_index([("lat", 1), ("lng", 1)], unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.admin_codes.create_index("email", unique=True)
+    await db.password_resets.create_index("token", unique=True)
+    await db.password_resets.create_index("email")
 
 async def seed_users():
     """Create admin and demo municipality accounts if missing."""
