@@ -1096,6 +1096,99 @@ async def get_user_profile(request: Request):
         "trial_used": user.get("trial_used", False)
     }
 
+@api_router.get("/users/impact")
+async def get_user_impact(request: Request):
+    """Get Community Impact data — user's contribution map + stats."""
+    user = await require_auth(request)
+    user_id = user["_id"]
+
+    # User's reports (all, including archived/cleaned)
+    user_reports = await db.reports.find(
+        {"user_id": user_id},
+        {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "status": 1,
+         "created_at": 1, "archived": 1, "cleaned_count": 1,
+         "still_there_count": 1, "upvotes": 1, "downvotes": 1,
+         "municipality": 1, "barrio": 1, "validation_count": 1}
+    ).to_list(500)
+
+    # User's votes/validations on OTHER people's reports
+    user_votes = await db.votes.find({"user_id": user_id}, {"_id": 0, "report_id": 1}).to_list(500)
+    user_validations = await db.validations.find({"user_id": user_id}, {"_id": 0, "report_id": 1}).to_list(500)
+    voted_ids = {v["report_id"] for v in user_votes} | {v["report_id"] for v in user_validations}
+
+    # Fetch those reports to show on map
+    confirmed_reports = []
+    if voted_ids:
+        confirmed_reports = await db.reports.find(
+            {"id": {"$in": list(voted_ids)}},
+            {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "status": 1,
+             "created_at": 1, "archived": 1, "municipality": 1}
+        ).to_list(500)
+
+    # Compute stats
+    total_reports = len(user_reports)
+    cleaned_reports = sum(1 for r in user_reports if r.get("archived") or r.get("cleaned_count", 0) >= 3)
+    active_reports = sum(1 for r in user_reports if not r.get("archived"))
+    total_confirmations = len(voted_ids)
+    total_upvotes_received = sum(r.get("upvotes", 0) for r in user_reports)
+
+    # Unique municipalities and barrios helped
+    municipalities = list({r.get("municipality", "") for r in user_reports if r.get("municipality")})
+    barrios = list({r.get("barrio", "") for r in user_reports if r.get("barrio")})
+
+    # Timeline: reports per month
+    from collections import defaultdict
+    monthly = defaultdict(int)
+    for r in user_reports:
+        try:
+            month = r["created_at"][:7]  # "2026-04"
+            monthly[month] += 1
+        except Exception:
+            pass
+    timeline = [{"month": k, "count": v} for k, v in sorted(monthly.items())]
+
+    # Impact score calculation
+    impact_score = (total_reports * 10) + (cleaned_reports * 20) + (total_confirmations * 5) + (total_upvotes_received * 2)
+
+    # Mark each report with its type for the map
+    map_points = []
+    for r in user_reports:
+        is_cleaned = r.get("archived") or r.get("cleaned_count", 0) >= 3
+        map_points.append({
+            "id": r["id"], "lat": r["latitude"], "lng": r["longitude"],
+            "type": "cleaned" if is_cleaned else "active",
+            "created_at": r.get("created_at", ""),
+            "municipality": r.get("municipality", ""),
+        })
+    for r in confirmed_reports:
+        map_points.append({
+            "id": r["id"], "lat": r["latitude"], "lng": r["longitude"],
+            "type": "confirmed",
+            "created_at": r.get("created_at", ""),
+            "municipality": r.get("municipality", ""),
+        })
+
+    return {
+        "username": user.get("username") or user.get("name", "Usuario"),
+        "rank": user.get("rank", "Aspirante Cagón"),
+        "total_score": user.get("total_score", 0),
+        "streak_days": user.get("streak_days", 0),
+        "stats": {
+            "total_reports": total_reports,
+            "cleaned_reports": cleaned_reports,
+            "active_reports": active_reports,
+            "total_confirmations": total_confirmations,
+            "upvotes_received": total_upvotes_received,
+            "impact_score": impact_score,
+            "municipalities_helped": len(municipalities),
+            "barrios_helped": len(barrios),
+        },
+        "municipalities": municipalities[:10],
+        "barrios": barrios[:20],
+        "timeline": timeline,
+        "map_points": map_points,
+    }
+
 @api_router.post("/admin/recalculate-ranks")
 async def admin_recalculate_ranks(request: Request):
     """Admin endpoint to trigger rank recalculation."""

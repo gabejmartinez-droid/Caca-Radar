@@ -18,6 +18,7 @@ import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
 import GoogleCallbackPage from "./pages/GoogleCallbackPage";
+import ImpactPage from "./pages/ImpactPage";
 import { setupNativePushListeners } from "./utils/pushManager";
 import "./App.css";
 
@@ -58,6 +59,7 @@ function App() {
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
+              <Route path="/impact" element={<ImpactPage />} />
             </Routes>
           </UsernameGate>
           <NotificationChecker />

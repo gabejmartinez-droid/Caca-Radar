@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -169,6 +169,9 @@ export default function ProfilePage() {
 
           <Button size="sm" variant="ghost" onClick={handleShareProfile} className="mt-2 text-[#42A5F5]" data-testid="share-profile-btn">
             <Share2 className="w-4 h-4 mr-1" />Compartir perfil
+          </Button>
+          <Button size="sm" variant="ghost" onClick={() => navigate("/impact")} className="mt-1 text-[#66BB6A]" data-testid="view-impact-btn">
+            <Heart className="w-4 h-4 mr-1" />Mi Impacto Comunitario
           </Button>
         </div>
 
