@@ -5,18 +5,19 @@ Mobile-first web app for Spain — report dog feces, view on map, gamification, 
 
 ## Pages
 - / (Map), /login, /register, /profile, /subscribe, /leaderboard, /rankings
-- /impact (Community Impact Map — NEW)
+- /impact (Community Impact Map)
 - /dashboard/login, /dashboard/register, /dashboard, /dashboard/analytics
 - /admin/login (2FA), /admin (owner dashboard)
 - /auth/google/callback (Google OAuth callback handler)
 
-## Architecture
-- `server.py` — Routes + startup | `deps.py` — Shared DB/auth/models
-- `*_service.py` — Gamification, email, rankings, clean route, webhooks, push, etc.
-- `config.js` — API URL (relative `/api` for web, full URL for Capacitor native)
-- `tokenManager.js` — Bearer token vs HttpOnly cookie hybrid auth
-- `AuthContext.js` — Auth state + axios interceptors for token refresh
-- `pushManager.js` — Web Push + Capacitor native push utility
+## Dual-Auth Architecture (PERMANENT)
+The Emergent/Kubernetes/Cloudflare proxy ALWAYS returns `access-control-allow-origin: *` for all responses. This is platform infrastructure and CANNOT be changed. Cookie-based auth breaks for cross-origin Capacitor requests.
+
+**Solution (DO NOT CHANGE):**
+- **Web**: Relative `/api` paths → same-origin → no CORS. Cookies (httponly, secure, samesite=none) work normally.
+- **Capacitor Native**: Full hosted URL (cross-origin). Auth via `Authorization: Bearer <token>`. `withCredentials` forced to `false`. Tokens persisted in localStorage (survives app restart). Axios interceptor in `AuthContext.js` enforces this on every request.
+
+Key files: `tokenManager.js`, `config.js`, `AuthContext.js` (interceptor)
 
 ## Implemented
 - Map with color-coded pins, heatmaps, PWA, 11 languages with SVG flag icons
@@ -24,31 +25,14 @@ Mobile-first web app for Spain — report dog feces, view on map, gamification, 
 - Municipality dashboard (€50/month) with analytics, moderation
 - City/Barrio rankings (premium), Clean Route, rank notifications
 - Username system (editable by all users), photo uploads, 30-day archive, Resend emails
-- Admin panel (jefe@cacaradar.es) with 2FA, global stats, user management, photo moderation
+- Admin panel with 2FA, global stats, user management, photo moderation
 - Real receipt verification: Apple App Store Server API v2 + Google Play Developer API
-- Custom app icon (favicon + PWA + headers)
-- Capacitor Native Projects for iOS & Android
-- Bearer token fallback for Capacitor to bypass Proxy CORS
-- Report cooldown (30s) and 1m proximity duplicate confirmation
-- GPS Re-center button and forced fresh GPS grab on report submission
-- VIP Account configuration (gabejmartinez@gmail.com)
-- Google Auth: Login/Register with Google via Emergent Managed Auth
-- Activity Banner, Feedback Drawer, Points Popup
+- Capacitor Native Projects for iOS & Android with Bearer token auth
+- Google Auth: Login/Register via Emergent Managed Auth (redirect fix for native)
+- Activity Banner, Feedback Drawer, Points Popup, Streak Flame Animation
+- Web Push Notifications (VAPID) + Capacitor Native Push (FCM)
+- Community Impact Map with shareable impact card
 - Emotional/Social Messaging in translations
-- Web Push Notifications (VAPID) for all logged-in users
-- Capacitor Native Push (FCM) integration
-- Streak Flame Animation (3+ day streaks on map)
-
-### Community Impact Map (2026-04-17)
-- **New page at /impact**: Personal contribution map showing user's reports, cleaned zones, confirmations
-- **Backend `/api/users/impact`**: Aggregates reports, votes, validations into impact stats
-- **Interactive map**: CircleMarkers color-coded (green=cleaned, red=active, blue=confirmed)
-- **Stats grid**: Total reports, cleaned zones, confirmations, municipalities helped
-- **Activity timeline**: Monthly bar chart of contributions
-- **Areas helped**: Municipalities and barrios tags
-- **Share impact**: Generates shareable text with impact stats for social media
-- **Empty state**: CTA to start contributing when user has no activity
-- **Access**: Profile page button + MapPage user dropdown menu
 
 ## Backlog (P0-P2)
 - P0: Full `yarn build` production build test
