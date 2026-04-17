@@ -8,7 +8,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
-import { API } from "../config";
+import { API, HOSTED_WEB_URL } from "../config";
 import { setTokens, isCapacitorNative } from "../tokenManager";
 import axios from "axios";
 
@@ -48,7 +48,8 @@ export default function LoginPage() {
   };
 
   const handleGoogleLogin = () => {
-    const redirectUrl = encodeURIComponent(window.location.origin + "/auth/google/callback");
+    const webOrigin = isCapacitorNative() ? HOSTED_WEB_URL : window.location.origin;
+    const redirectUrl = encodeURIComponent(webOrigin + "/auth/google/callback");
     window.location.href = `https://demobackend.emergentagent.com/auth/v1/env/oauth/google?redirect_url=${redirectUrl}`;
   };
 
