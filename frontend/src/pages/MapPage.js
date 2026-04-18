@@ -13,6 +13,7 @@ import {
 } from "../components/ui/drawer";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
@@ -22,7 +23,7 @@ import FeedbackDrawer from "../components/FeedbackDrawer";
 import ActivityBanner from "../components/ActivityBanner";
 import PointsPopup from "../components/PointsPopup";
 import StreakFlame from "../components/StreakFlame";
-import { subscribeToPush, unsubscribeFromPush, isPushSupported } from "../utils/pushManager";
+import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -77,6 +78,19 @@ function LocationFinder({ onLocationFound, mapRef }) {
 
 const FLAG_REASON_KEYS = ["licensePlate", "face", "name", "personalInfo", "inappropriate", "spam", "other"];
 const FLAG_REASON_VALUES = ["license_plate", "face", "name", "personal_info", "inappropriate", "spam", "other"];
+const FRESHNESS_FILTERS = [
+  { value: null, labelKey: "mapUi.filters.all" },
+  { value: "Fresca", labelKey: "mapUi.filters.fresh" },
+  { value: "En proceso", labelKey: "mapUi.filters.moderate" },
+  { value: "Fósil", labelKey: "mapUi.filters.old" },
+  { value: "verified", labelKey: "mapUi.filters.verified" },
+];
+const FRESHNESS_LABEL_KEYS = {
+  "Fresca": "mapUi.filters.fresh",
+  "En proceso": "mapUi.filters.moderate",
+  "Fósil": "mapUi.filters.old",
+};
+const ACTION_PROXIMITY_METERS = 5;
 
 export default function MapPage() {
   const { user, logout } = useAuth();
@@ -106,6 +120,9 @@ export default function MapPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const tf = (key, values = {}) => formatTranslation(t, key, values);
+  const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
+  const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
 
   // Re-center map on current GPS location
   const recenterMap = useCallback(() => {
@@ -129,6 +146,36 @@ export default function MapPage() {
       );
     });
   }, []);
+
+  const getActionLocation = useCallback(async () => {
+    try {
+      return await getFreshLocation();
+    } catch (error) {
+      if (userLocation) {
+        return userLocation;
+      }
+      throw error;
+    }
+  }, [getFreshLocation, userLocation]);
+
+  const getActionErrorMessage = useCallback((error, fallbackKey) => {
+    const detail = error?.response?.data?.detail;
+    if (detail && typeof detail === "object") {
+      if (detail.code === "outside_proximity") {
+        return tf("mapUi.tooFarFromReport", {
+          distance: Math.round(detail.distance_meters || 0),
+          meters: detail.max_meters || ACTION_PROXIMITY_METERS,
+        });
+      }
+      if (detail.code === "still_there_removed") {
+        return t("mapUi.useValidationToConfirm");
+      }
+    }
+    if (typeof detail === "string") {
+      return detail;
+    }
+    return t(fallbackKey);
+  }, [t, tf]);
 
   // Check push notification status from backend
   useEffect(() => {
@@ -203,7 +250,7 @@ export default function MapPage() {
   };
 
   const handleSubmitReport = async () => {
-    if (!user) { toast.error("Regístrate gratis para reportar"); navigate("/register"); return; }
+    if (!user) { toast.error(t("mapUi.registerToReport")); navigate("/register"); return; }
     setLoading(true);
     try {
       // Always get fresh GPS for the report
@@ -239,17 +286,28 @@ export default function MapPage() {
   };
 
   const handleVote = async (voteType) => {
-    if (!user) { toast.error("Regístrate gratis para votar"); navigate("/register"); return; }
+    if (!user) { toast.error(t("mapUi.registerToVote")); navigate("/register"); return; }
     if (!selectedReport) return;
     setLoading(true);
     try {
-      await axios.post(`${API}/reports/${selectedReport.id}/vote`, { vote_type: voteType }, { withCredentials: true });
+      const location = await getActionLocation();
+      await axios.post(
+        `${API}/reports/${selectedReport.id}/vote`,
+        { vote_type: voteType, latitude: location.lat, longitude: location.lng },
+        { withCredentials: true }
+      );
       setMyVote(voteType);
-      toast.success(voteType === "still_there" ? t("voteSuccess.stillThere") : t("voteSuccess.cleaned"));
+      toast.success(t("mapUi.voteSuccess.noLongerHere"));
       fetchReports();
       const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
       setSelectedReport(data);
-    } catch (error) { toast.error(error.response?.data?.detail || t("voteError")); }
+    } catch (error) {
+      if (!error?.response && !userLocation) {
+        toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
+      } else {
+        toast.error(getActionErrorMessage(error, "mapUi.voteError"));
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -267,17 +325,28 @@ export default function MapPage() {
   };
 
   const handleValidation = async (vote) => {
-    if (!user) { toast.error("Regístrate gratis para validar"); navigate("/register"); return; }
+    if (!user) { toast.error(t("mapUi.registerToValidate")); navigate("/register"); return; }
     if (!selectedReport) return;
     setLoading(true);
     try {
-      await axios.post(`${API}/reports/${selectedReport.id}/validate`, { vote }, { withCredentials: true });
+      const location = await getActionLocation();
+      await axios.post(
+        `${API}/reports/${selectedReport.id}/validate`,
+        { vote, latitude: location.lat, longitude: location.lng },
+        { withCredentials: true }
+      );
       setMyValidation(vote);
-      toast.success(vote === "confirm" ? "Confirmado" : "Rechazado");
+      toast.success(vote === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected"));
       fetchReports();
       const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
       setSelectedReport(data);
-    } catch (error) { toast.error(error.response?.data?.detail || "Error al validar"); }
+    } catch (error) {
+      if (!error?.response && !userLocation) {
+        toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
+      } else {
+        toast.error(getActionErrorMessage(error, "mapUi.validationError"));
+      }
+    }
     finally { setLoading(false); }
   };
 
@@ -300,10 +369,10 @@ export default function MapPage() {
         await navigator.share({ title: data.title, text: data.text, url: data.url });
       } else {
         await navigator.clipboard.writeText(data.url);
-        toast.success("Enlace copiado al portapapeles");
+        toast.success(t("mapUi.linkCopied"));
       }
     } catch (err) {
-      if (err.name !== "AbortError") toast.error("Error al compartir");
+      if (err.name !== "AbortError") toast.error(t("mapUi.shareError"));
     }
   };
 
@@ -311,26 +380,28 @@ export default function MapPage() {
     if (!user) { navigate("/login"); return; }
     const supported = await isPushSupported();
     if (!supported) {
-      toast.error("Tu navegador no soporta notificaciones push");
+      toast.error(t(getPushUnavailableReasonKey()));
       return;
     }
     if (pushEnabled) {
       const ok = await unsubscribeFromPush();
       if (ok) {
         setPushEnabled(false);
-        toast.success("Notificaciones desactivadas");
+        toast.success(t("mapUi.pushDisabled"));
       }
       return;
     }
     try {
       await subscribeToPush(userLocation);
       setPushEnabled(true);
-      toast.success("Notificaciones activadas para reportes cercanos");
+      toast.success(t("mapUi.pushEnabledNearby"));
     } catch (err) {
       if (err.message === "permission_denied") {
-        toast.error("Permiso de notificaciones denegado");
+        toast.error(t("mapUi.pushPermissionDenied"));
+      } else if (err.message === "native_push_disabled_for_build") {
+        toast.error(t(getPushUnavailableReasonKey()));
       } else {
-        toast.error("Error activando notificaciones");
+        toast.error(t("mapUi.pushError"));
       }
     }
   };
@@ -356,7 +427,7 @@ export default function MapPage() {
       </MapContainer>
 
       {/* Header */}
-      <div className="absolute left-4 right-4 z-[1000] flex justify-between items-center" style={{ top: "calc(env(safe-area-inset-top, 0px) + 16px)" }}>
+      <div className="absolute left-4 right-4 z-[1000] flex justify-between items-center ios-safe-top">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2 hover:shadow-xl transition-shadow" data-testid="app-menu-btn">
@@ -426,7 +497,7 @@ export default function MapPage() {
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer gap-2" data-testid="menu-feedback">
               <MessageSquare className="w-4 h-4 text-[#8D99AE]" />
-              <span className="flex-1">Feedback</span>
+              <span className="flex-1">{t("mapUi.feedback")}</span>
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -442,26 +513,26 @@ export default function MapPage() {
               <DropdownMenuTrigger asChild>
                 <Button variant="outline" size="sm" className="bg-white/95 backdrop-blur-sm shadow-lg border-0 gap-1.5" data-testid="user-menu-btn">
                   <User className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs max-w-[80px] truncate">{user.username || user.name || "Usuario"}</span>
+                  <span className="hidden sm:inline text-xs max-w-[80px] truncate">{user.username || user.name || t("mapUi.userFallback")}</span>
                   {user.total_score > 0 && <span className="text-xs text-[#FF6B6B] font-bold">{user.total_score}</span>}
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">
                 <div className="px-3 py-2">
                   <p className="font-bold text-[#2B2D42] text-sm">{user.username || user.name}</p>
-                  <p className="text-xs text-[#FF6B6B] font-medium">{user.rank || "Aspirante Cagón"}</p>
+                  <p className="text-xs text-[#FF6B6B] font-medium leading-tight">{getRankLabel(user.rank_key || user.rank, t)}</p>
                   <div className="flex gap-3 mt-1 text-xs text-[#8D99AE]">
-                    <span>{user.total_score || 0} pts</span>
-                    <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{user.streak_days || 0}d</span>
+                    <span>{user.total_score || 0} {t("mapUi.pointsShort")}</span>
+                    <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{user.streak_days || 0}{t("mapUi.dayShort")}</span>
                     <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" />{user.trust_score || 50}</span>
                   </div>
                 </div>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer" data-testid="menu-profile">
-                  <User className="w-4 h-4 mr-2" />Mi Perfil
+                  <User className="w-4 h-4 mr-2" />{t("mapUi.myProfile")}
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/impact")} className="cursor-pointer" data-testid="menu-impact">
-                  <Heart className="w-4 h-4 mr-2 text-[#66BB6A]" />Mi Impacto
+                  <Heart className="w-4 h-4 mr-2 text-[#66BB6A]" />{t("mapUi.myImpact")}
                 </DropdownMenuItem>
                 {user.subscription_active && (
                   <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
@@ -480,7 +551,7 @@ export default function MapPage() {
                 )}
                 <DropdownMenuSeparator />
                 <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-500" data-testid="menu-logout">
-                  <LogOut className="w-4 h-4 mr-2" />Salir
+                  <LogOut className="w-4 h-4 mr-2" />{t("logout")}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -494,29 +565,17 @@ export default function MapPage() {
 
       {/* Filter Bar */}
       {showFilterBar && (
-        <div className="absolute left-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3" style={{ top: "calc(env(safe-area-inset-top, 0px) + 64px)" }}>
+        <div className="absolute left-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3" style={{ top: "calc(env(safe-area-inset-top, 0px) + 88px)" }}>
           <div className="flex gap-2 flex-wrap">
-            {[null, "Fresca", "En proceso", "Fósil", "verified"].map((f) => (
-              <button key={f || "all"} onClick={() => { setActiveFilter(f); if (!user?.subscription_active && f) { navigate("/subscribe"); return; } }}
-                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${activeFilter === f ? 'bg-[#FF6B6B] text-white' : 'bg-[#F8F9FA] text-[#8D99AE] hover:bg-[#FF6B6B]/10'}`}
-                data-testid={`filter-${f || 'all'}`}>
-                {f === null ? "Todos" : f === "verified" ? "Verificados" : f}
-                {f && !user?.subscription_active && <Lock className="w-3 h-3 ml-1 inline" />}
+            {FRESHNESS_FILTERS.map(({ value, labelKey }) => (
+              <button key={value || "all"} onClick={() => { setActiveFilter(value); if (!user?.subscription_active && value) { navigate("/subscribe"); return; } }}
+                className={`text-xs px-3 py-1.5 rounded-full font-medium transition-colors ${activeFilter === value ? 'bg-[#FF6B6B] text-white' : 'bg-[#F8F9FA] text-[#8D99AE] hover:bg-[#FF6B6B]/10'}`}
+                data-testid={`filter-${value || 'all'}`}>
+                {t(labelKey)}
+                {value && !user?.subscription_active && <Lock className="w-3 h-3 ml-1 inline" />}
               </button>
             ))}
           </div>
-        </div>
-      )}
-
-      {/* Heatmap toggle - subscriber only */}
-      {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
-        <div className="absolute bottom-28 right-4 z-[999] flex flex-col gap-2">
-          <button onClick={() => setShowHeatmap(!showHeatmap)} className={`p-3 rounded-xl shadow-lg transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`} data-testid="heatmap-toggle">
-            <Layers className="w-5 h-5" />
-          </button>
-          <button onClick={() => setShowFilterBar(!showFilterBar)} className={`p-3 rounded-xl shadow-lg transition-all ${showFilterBar ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`} data-testid="filter-toggle">
-            <Filter className="w-5 h-5" />
-          </button>
         </div>
       )}
 
@@ -537,10 +596,42 @@ export default function MapPage() {
       {/* Streak Flame Animation */}
       <StreakFlame />
 
-      {/* Re-center + FAB */}
-      <button onClick={recenterMap} className="fixed right-4 z-[1000] w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors" style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }} data-testid="recenter-btn" title="Re-center map">
-        <Crosshair className="w-5 h-5 text-[#2B2D42]" />
-      </button>
+      {/* Lower-right map controls */}
+      <div
+        className="fixed right-4 z-[1000] flex flex-col items-end gap-3"
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }}
+      >
+        {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+          <>
+            <button
+              onClick={() => setShowHeatmap(!showHeatmap)}
+              className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
+              data-testid="heatmap-toggle"
+              title={t("heatmap")}
+            >
+              <Layers className="w-5 h-5" />
+            </button>
+            <button
+              onClick={() => setShowFilterBar(!showFilterBar)}
+              className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center transition-all ${showFilterBar ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
+              data-testid="filter-toggle"
+              title={t("advancedFilters")}
+            >
+              <Filter className="w-5 h-5" />
+            </button>
+          </>
+        )}
+
+        <button
+          onClick={recenterMap}
+          className="w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors"
+          data-testid="recenter-btn"
+          title={t("mapUi.recenterMap")}
+        >
+          <Crosshair className="w-5 h-5 text-[#2B2D42]" />
+        </button>
+      </div>
+
       <button onClick={() => setShowReportDrawer(true)} className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200" style={{ fontFamily: 'Nunito, sans-serif', bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)" }} data-testid="report-btn">
         <Plus className="w-5 h-5" />{t("report")}
       </button>
@@ -573,7 +664,7 @@ export default function MapPage() {
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Descripción opcional..."
+              placeholder={t("mapUi.descriptionPlaceholder")}
               className="w-full p-3 border border-[#8D99AE]/20 rounded-xl text-sm resize-none bg-[#F8F9FA] text-[#2B2D42] placeholder-[#8D99AE] mb-4 focus:outline-none focus:border-[#FF6B6B]"
               rows={2}
               maxLength={200}
@@ -609,7 +700,7 @@ export default function MapPage() {
             <div className="px-4 pb-4">
               {selectedReport.photo_url && (
                 <div className="mb-4 rounded-xl overflow-hidden">
-                  <img src={`${API}/files/${selectedReport.photo_url}`} alt="Foto" className="w-full h-48 object-cover" data-testid="report-photo" />
+                  <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full h-48 object-cover" data-testid="report-photo" />
                 </div>
               )}
               {selectedReport.description && (
@@ -618,9 +709,9 @@ export default function MapPage() {
               {/* Contributor */}
               <div className="flex items-center gap-2 mb-3">
                 <User className="w-4 h-4 text-[#8D99AE]" />
-                <span className="text-sm text-[#2B2D42] font-medium">{selectedReport.contributor_name || "Anónimo"}</span>
+                <span className="text-sm text-[#2B2D42] font-medium">{selectedReport.contributor_name || t("mapUi.anonymous")}</span>
                 {selectedReport.contributor_rank && (
-                  <span className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-0.5 rounded-full">{selectedReport.contributor_rank}</span>
+                  <span className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-0.5 rounded-full max-w-[190px] truncate">{getRankLabel(selectedReport.contributor_rank_key || selectedReport.contributor_rank, t)}</span>
                 )}
               </div>
               <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4">
@@ -630,30 +721,34 @@ export default function MapPage() {
                 </div>
                 <div className="flex items-center gap-2 mb-2">
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : selectedReport.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {selectedReport.status === 'verified' ? 'Verificado' : selectedReport.status === 'rejected' ? 'Rechazado' : 'Pendiente'}
+                    {statusLabel(selectedReport.status)}
                   </span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {selectedReport.freshness || "Fósil"}
+                    {freshnessLabel(selectedReport.freshness)}
                   </span>
                   {selectedReport.confidence !== undefined && (
-                    <span className="text-xs text-[#8D99AE]">Confianza: {selectedReport.confidence}%</span>
+                    <span className="text-xs text-[#8D99AE]">{tf("mapUi.confidence", { value: selectedReport.confidence })}</span>
                   )}
-                  <span className="text-xs text-[#8D99AE]">{selectedReport.validation_count || 0} validaciones</span>
+                  <span className="text-xs text-[#8D99AE]">{tf("mapUi.validations", { count: selectedReport.validation_count || 0 })}</span>
                 </div>
                 <div className="flex gap-4">
                   <div className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.upvotes || 0}</span></div>
                   <div className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-[#FF5252]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.downvotes || 0}</span></div>
-                  <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.still_there_count || 0} {t("stillThereCount")}</span></div>
+                  <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.cleaned_count || 0} {t("mapUi.noLongerHereCount")}</span></div>
                 </div>
+              </div>
+
+              <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
+                {tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS })}
               </div>
 
               {/* Upvote / Downvote */}
               <div className="flex gap-2 mb-4">
                 <Button size="sm" variant="outline" onClick={() => handleReportVote("upvote")} className="flex-1 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" data-testid="upvote-btn">
-                  <ThumbsUp className="w-4 h-4 mr-1" /> Útil
+                  <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
                 </Button>
                 <Button size="sm" variant="outline" onClick={() => handleReportVote("downvote")} className="flex-1 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10" data-testid="downvote-btn">
-                  <ThumbsDown className="w-4 h-4 mr-1" /> No útil
+                  <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}
                 </Button>
               </div>
 
@@ -661,31 +756,28 @@ export default function MapPage() {
               {!myValidation && selectedReport.status === 'pending' ? (
                 <div className="flex gap-3 mb-4">
                   <Button onClick={() => handleValidation("confirm")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="validate-confirm-btn">
-                    <CheckCircle className="w-5 h-5 mr-2" /> Confirmar
+                    <CheckCircle className="w-5 h-5 mr-2" /> {t("mapUi.confirm")}
                   </Button>
                   <Button onClick={() => handleValidation("reject")} disabled={loading} className="flex-1 bg-[#FF5252] hover:bg-[#E53935] text-white py-5 rounded-xl" data-testid="validate-reject-btn">
-                    <X className="w-5 h-5 mr-2" /> Rechazar
+                    <X className="w-5 h-5 mr-2" /> {t("mapUi.reject")}
                   </Button>
                 </div>
               ) : myValidation ? (
                 <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
-                  Tu validación: {myValidation === "confirm" ? "Confirmado" : "Rechazado"}
+                  {tf("mapUi.yourValidation", { value: myValidation === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected") })}
                 </div>
               ) : null}
 
-              {/* Still there / Cleaned (legacy) */}
+              {/* No longer here */}
               {!myVote ? (
-                <div className="flex gap-3 mb-4">
-                  <Button onClick={() => handleVote("still_there")} disabled={loading} className="flex-1 bg-[#FFA726] hover:bg-[#F57C00] text-white py-5 rounded-xl" data-testid="vote-still-there-btn"><ThumbsUp className="w-5 h-5 mr-2" />{t("stillThere")}</Button>
-                  <Button onClick={() => handleVote("cleaned")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-5 h-5 mr-2" />{t("cleaned")}</Button>
-                </div>
+                <Button onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-4 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-5 h-5 mr-2" />{t("mapUi.noLongerHere")}</Button>
               ) : (
-                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">{t("alreadyVoted")}: {myVote === "still_there" ? t("stillThere") : t("cleaned")}</div>
+                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
               )}
 
               <div className="flex gap-2 mb-2">
                 <Button variant="ghost" onClick={handleShare} className="flex-1 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
-                  <Share2 className="w-4 h-4 mr-2" />Compartir
+                  <Share2 className="w-4 h-4 mr-2" />{t("mapUi.share")}
                 </Button>
                 <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="flex-1 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
                   <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
@@ -739,8 +831,8 @@ export default function MapPage() {
         <div className="fixed bottom-24 left-4 right-4 z-[2000] bg-[#2B2D42] rounded-xl p-4 shadow-xl flex items-center gap-3" data-testid="notif-prompt">
           <Bell className="w-5 h-5 text-[#FF6B6B] shrink-0" />
           <div className="flex-1">
-            <p className="text-white text-sm font-bold">Activa las notificaciones</p>
-            <p className="text-white/60 text-xs">Te avisaremos de reportes cerca de ti</p>
+            <p className="text-white text-sm font-bold">{t("mapUi.notificationTitle")}</p>
+            <p className="text-white/60 text-xs">{t("mapUi.notificationBody")}</p>
           </div>
           <button onClick={async () => {
             localStorage.setItem("notif_prompted", "1");
@@ -748,10 +840,14 @@ export default function MapPage() {
             try {
               await subscribeToPush(userLocation);
               setPushEnabled(true);
-              toast.success("Notificaciones activadas");
-            } catch { /* user denied or error */ }
+              toast.success(t("mapUi.pushEnabled"));
+            } catch (err) {
+              if (err?.message === "native_push_disabled_for_build") {
+                toast.error(t(getPushUnavailableReasonKey()));
+              }
+            }
           }} className="bg-[#FF6B6B] text-white text-xs font-bold px-3 py-1.5 rounded-lg" data-testid="notif-enable">OK</button>
-          <button onClick={() => { localStorage.setItem("notif_prompted", "1"); setShowNotifPrompt(false); }} className="text-white/40 text-xs" data-testid="notif-dismiss">No</button>
+          <button onClick={() => { localStorage.setItem("notif_prompted", "1"); setShowNotifPrompt(false); }} className="text-white/40 text-xs" data-testid="notif-dismiss">{t("mapUi.notificationNo")}</button>
         </div>
       )}
     </div>

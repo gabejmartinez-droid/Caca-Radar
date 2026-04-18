@@ -1,29 +1,6 @@
 """Ranking Service — Percentile-based rank assignment, weekly recalculation."""
-from datetime import datetime, timezone
 import math
-
-# Rank definitions (percentile thresholds, cumulative from top)
-RANKS = [
-    (1,   "Director General de la Cagada Nacional"),
-    (3,   "Comisario Principal del Apocalipsis Canino"),
-    (6,   "Comisario de Heces Urbanas"),
-    (11,  "Inspector Jefe del Marrón"),
-    (18,  "Inspector de Truños"),
-    (28,  "Subinspector del Mojón"),
-    (40,  "Oficial de Deposiciones"),
-    (55,  "Policía de la Caca"),
-    (75,  "Agente de Excrementos"),
-    (100, "Aspirante Cagón"),
-]
-
-
-def get_rank_for_percentile(percentile: float) -> str:
-    """Given a percentile (0–100, 100 = top), return the rank title."""
-    inverse = 100 - percentile  # Convert to "top X%"
-    for threshold, title in RANKS:
-        if inverse <= threshold:
-            return title
-    return RANKS[-1][1]
+from rank_metadata import DEFAULT_RANK_NAME, get_rank_for_percentile, get_rank_key
 
 
 async def recalculate_all_ranks(db):
@@ -46,17 +23,19 @@ async def recalculate_all_ranks(db):
         rank = get_rank_for_percentile(percentile)
         level = max(1, math.ceil(percentile / 10))  # 1–10
 
-        old_rank = user.get("rank", "Aspirante Cagón")
+        old_rank = user.get("rank", DEFAULT_RANK_NAME)
         if old_rank != rank:
             rank_changes.append({
                 "user_id": str(user["_id"]),
                 "old_rank": old_rank,
                 "new_rank": rank,
+                "old_rank_key": get_rank_key(old_rank),
+                "new_rank_key": get_rank_key(rank),
             })
 
         updates.append({
             "filter": {"_id": user["_id"]},
-            "update": {"$set": {"rank": rank, "level": level, "rank_percentile": round(percentile, 1)}}
+            "update": {"$set": {"rank": rank, "rank_key": get_rank_key(rank), "level": level, "rank_percentile": round(percentile, 1)}}
         })
 
     # Batch update
@@ -76,7 +55,8 @@ async def get_user_rank_info(db, user_id: str) -> dict:
 
     return {
         "total_score": user.get("total_score", 0),
-        "rank": user.get("rank", "Aspirante Cagón"),
+        "rank": user.get("rank", DEFAULT_RANK_NAME),
+        "rank_key": user.get("rank_key", get_rank_key(user.get("rank", DEFAULT_RANK_NAME))),
         "level": user.get("level", 1),
         "trust_score": user.get("trust_score", 50),
         "streak_days": user.get("streak_days", 0),

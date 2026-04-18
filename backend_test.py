@@ -13,7 +13,7 @@ import sys
 import os
 
 class CacaRadarAPITester:
-    def __init__(self, base_url="https://caca-radar.preview.emergentagent.com"):
+    def __init__(self, base_url="https://caca-radar.emergent.host"):
         self.base_url = base_url
         self.session = requests.Session()
         self.admin_token = None

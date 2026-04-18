@@ -1,0 +1,137 @@
+const BADGE_TRANSLATIONS = {
+  es: {
+    first_report: { name: "Primera Caca", description: "Tu primer reporte" },
+    reporter_10: { name: "Patrullero", description: "10 reportes realizados" },
+    reporter_50: { name: "Detective Marron", description: "50 reportes realizados" },
+    reporter_100: { name: "Comisario de Campo", description: "100 reportes realizados" },
+    confirmer_10: { name: "Testigo Ocular", description: "10 confirmaciones" },
+    confirmer_50: { name: "Validador Oficial", description: "50 confirmaciones" },
+    streak_3: { name: "Constante", description: "3 dias de racha" },
+    streak_7: { name: "Dedicado", description: "7 dias de racha" },
+    streak_30: { name: "Imparable", description: "30 dias de racha" },
+    trusted: { name: "Fuente Fiable", description: "Nivel de confianza 80+" },
+  },
+  en: {
+    first_report: { name: "First Poop", description: "Your first report" },
+    reporter_10: { name: "Patroller", description: "10 reports submitted" },
+    reporter_50: { name: "Brown Detective", description: "50 reports submitted" },
+    reporter_100: { name: "Field Commissioner", description: "100 reports submitted" },
+    confirmer_10: { name: "Eyewitness", description: "10 confirmations" },
+    confirmer_50: { name: "Official Validator", description: "50 confirmations" },
+    streak_3: { name: "Steady", description: "3-day streak" },
+    streak_7: { name: "Dedicated", description: "7-day streak" },
+    streak_30: { name: "Unstoppable", description: "30-day streak" },
+    trusted: { name: "Trusted Source", description: "Trust level 80+" },
+  },
+  de: {
+    first_report: { name: "Erster Haufen", description: "Deine erste Meldung" },
+    reporter_10: { name: "Streifenposten", description: "10 Meldungen eingereicht" },
+    reporter_50: { name: "Brauner Detektiv", description: "50 Meldungen eingereicht" },
+    reporter_100: { name: "Einsatzkommissar", description: "100 Meldungen eingereicht" },
+    confirmer_10: { name: "Augenzeuge", description: "10 Bestatigungen" },
+    confirmer_50: { name: "Offizieller Pruefer", description: "50 Bestatigungen" },
+    streak_3: { name: "Bestaendig", description: "3 Tage Serie" },
+    streak_7: { name: "Engagiert", description: "7 Tage Serie" },
+    streak_30: { name: "Unaufhaltsam", description: "30 Tage Serie" },
+    trusted: { name: "Vertrauensquelle", description: "Vertrauensniveau 80+" },
+  },
+  nl: {
+    first_report: { name: "Eerste Hoop", description: "Je eerste melding" },
+    reporter_10: { name: "Patrouilleur", description: "10 meldingen gedaan" },
+    reporter_50: { name: "Bruine Detective", description: "50 meldingen gedaan" },
+    reporter_100: { name: "Veldcommissaris", description: "100 meldingen gedaan" },
+    confirmer_10: { name: "Ooggetuige", description: "10 bevestigingen" },
+    confirmer_50: { name: "Officiele Validator", description: "50 bevestigingen" },
+    streak_3: { name: "Standvastig", description: "3 dagen streak" },
+    streak_7: { name: "Toegewijd", description: "7 dagen streak" },
+    streak_30: { name: "Niet te Stoppen", description: "30 dagen streak" },
+    trusted: { name: "Betrouwbare Bron", description: "Vertrouwensniveau 80+" },
+  },
+  pl: {
+    first_report: { name: "Pierwsza Kupa", description: "Twoje pierwsze zgloszenie" },
+    reporter_10: { name: "Patrolowiec", description: "10 wyslanych zgloszen" },
+    reporter_50: { name: "Brazowy Detektyw", description: "50 wyslanych zgloszen" },
+    reporter_100: { name: "Komisarz Terenowy", description: "100 wyslanych zgloszen" },
+    confirmer_10: { name: "Swiadek Naoczny", description: "10 potwierdzen" },
+    confirmer_50: { name: "Oficjalny Weryfikator", description: "50 potwierdzen" },
+    streak_3: { name: "Systematyczny", description: "Passa 3 dni" },
+    streak_7: { name: "Oddany", description: "Passa 7 dni" },
+    streak_30: { name: "Nie do Zatrzymania", description: "Passa 30 dni" },
+    trusted: { name: "Zaufane Zrodlo", description: "Poziom zaufania 80+" },
+  },
+  uk: {
+    first_report: { name: "Persha Kupka", description: "Tvii pershyi zvit" },
+    reporter_10: { name: "Patrulnyi", description: "10 nadislanykh zvitiv" },
+    reporter_50: { name: "Korichnevyi Detektyv", description: "50 nadislanykh zvitiv" },
+    reporter_100: { name: "Polovyi Komisar", description: "100 nadislanykh zvitiv" },
+    confirmer_10: { name: "Ochevydets", description: "10 pidtverdzhen" },
+    confirmer_50: { name: "Ofitsiinyi Perevirnyk", description: "50 pidtverdzhen" },
+    streak_3: { name: "Stalyi", description: "Seriia 3 dni" },
+    streak_7: { name: "Viddanyi", description: "Seriia 7 dniv" },
+    streak_30: { name: "Nezupynnyi", description: "Seriia 30 dniv" },
+    trusted: { name: "Nadiine Dzherelo", description: "Riven doviry 80+" },
+  },
+  ru: {
+    first_report: { name: "Pervaya Kucha", description: "Vash pervyi raport" },
+    reporter_10: { name: "Patrulnyi", description: "10 otpravlennykh raportov" },
+    reporter_50: { name: "Korichnevyi Detektiv", description: "50 otpravlennykh raportov" },
+    reporter_100: { name: "Polevoi Komissar", description: "100 otpravlennykh raportov" },
+    confirmer_10: { name: "Ochevidets", description: "10 podtverzhdenii" },
+    confirmer_50: { name: "Ofitsialnyi Validator", description: "50 podtverzhdenii" },
+    streak_3: { name: "Postoyannyi", description: "Seriya 3 dnya" },
+    streak_7: { name: "Predannyi", description: "Seriya 7 dnei" },
+    streak_30: { name: "Neuderzhimyi", description: "Seriya 30 dnei" },
+    trusted: { name: "Nadezhnyi Istochnik", description: "Uroven doveriya 80+" },
+  },
+  eu: {
+    first_report: { name: "Lehen Kaka", description: "Zure lehen txostena" },
+    reporter_10: { name: "Patruilaria", description: "10 txosten bidalita" },
+    reporter_50: { name: "Detektibe Marroia", description: "50 txosten bidalita" },
+    reporter_100: { name: "Zelaiko Komisarioa", description: "100 txosten bidalita" },
+    confirmer_10: { name: "Lekuko Zuzena", description: "10 baieztapen" },
+    confirmer_50: { name: "Balidatzaile Ofiziala", description: "50 baieztapen" },
+    streak_3: { name: "Iraunkorra", description: "3 eguneko segida" },
+    streak_7: { name: "Konprometitua", description: "7 eguneko segida" },
+    streak_30: { name: "Geldiezina", description: "30 eguneko segida" },
+    trusted: { name: "Iturri Fidagarria", description: "80+ konfiantza maila" },
+  },
+  ca: {
+    first_report: { name: "Primera Caca", description: "El teu primer report" },
+    reporter_10: { name: "Patruller", description: "10 reports enviats" },
+    reporter_50: { name: "Detectiu Marro", description: "50 reports enviats" },
+    reporter_100: { name: "Comissari de Camp", description: "100 reports enviats" },
+    confirmer_10: { name: "Testimoni Ocular", description: "10 confirmacions" },
+    confirmer_50: { name: "Validador Oficial", description: "50 confirmacions" },
+    streak_3: { name: "Constant", description: "Ratxa de 3 dies" },
+    streak_7: { name: "Dedicat", description: "Ratxa de 7 dies" },
+    streak_30: { name: "Imparable", description: "Ratxa de 30 dies" },
+    trusted: { name: "Font Fiable", description: "Nivell de confianca 80+" },
+  },
+  val: {
+    first_report: { name: "Primera Caca", description: "El teu primer report" },
+    reporter_10: { name: "Patruller", description: "10 reports enviats" },
+    reporter_50: { name: "Detectiu Marro", description: "50 reports enviats" },
+    reporter_100: { name: "Comissari de Camp", description: "100 reports enviats" },
+    confirmer_10: { name: "Testimoni Ocular", description: "10 confirmacions" },
+    confirmer_50: { name: "Validador Oficial", description: "50 confirmacions" },
+    streak_3: { name: "Constant", description: "Ratxa de 3 dies" },
+    streak_7: { name: "Dedicat", description: "Ratxa de 7 dies" },
+    streak_30: { name: "Imparable", description: "Ratxa de 30 dies" },
+    trusted: { name: "Font Fiable", description: "Nivell de confianca 80+" },
+  },
+};
+
+function getBadgeTranslation(language, badgeId) {
+  return BADGE_TRANSLATIONS[language]?.[badgeId]
+    || BADGE_TRANSLATIONS.en[badgeId]
+    || BADGE_TRANSLATIONS.es[badgeId]
+    || null;
+}
+
+export function getBadgeName(badge, language) {
+  return getBadgeTranslation(language, badge.id)?.name || badge.name;
+}
+
+export function getBadgeDescription(badge, language) {
+  return getBadgeTranslation(language, badge.id)?.description || badge.description;
+}

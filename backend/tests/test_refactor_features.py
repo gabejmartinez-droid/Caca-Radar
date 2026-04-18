@@ -17,7 +17,7 @@ import requests
 import os
 import uuid
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://caca-radar.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://caca-radar.emergent.host').rstrip('/')
 
 # Test credentials - loaded from environment or test_credentials.md defaults
 ADMIN_EMAIL = os.environ.get("TEST_ADMIN_EMAIL", "admin@cacaradar.es")

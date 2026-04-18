@@ -10,7 +10,7 @@ When updating the web app, ensure these Capacitor/mobile compatibility fixes are
 
 ## Frontend Config (src/config.js)
 - [ ] API must use `DEFAULT_BACKEND_URL` fallback, NOT relative `/api`
-- [ ] `const DEFAULT_BACKEND_URL = "https://caca-radar.preview.emergentagent.com"`
+- [ ] `const DEFAULT_BACKEND_URL = "https://caca-radar.emergent.host"`
 - [ ] `export const API = (process.env.REACT_APP_BACKEND_URL || DEFAULT_BACKEND_URL) + "/api"`
 
 ## Frontend API Imports

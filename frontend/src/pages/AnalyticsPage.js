@@ -5,6 +5,8 @@ import { Loader2, ArrowLeft, BarChart3, TrendingUp, MapPin, Clock, Flag, CheckCi
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { formatTranslation } from "../utils/ranks";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   LineChart, Line, PieChart, Pie, Cell, AreaChart, Area
@@ -20,6 +22,7 @@ const BAR_RADIUS = [4, 4, 0, 0];
 
 export default function AnalyticsPage() {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -46,14 +49,14 @@ export default function AnalyticsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="analytics-page">
-      <div className="bg-[#2B2D42] text-white px-4 sm:px-6 py-4">
+      <div className="ios-safe-header bg-[#2B2D42] text-white px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex items-center gap-3">
           <Button variant="ghost" onClick={() => navigate("/dashboard")} className="text-white/80 hover:text-white hover:bg-white/10 px-2">
             <ArrowLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="font-bold text-lg" style={{ fontFamily: 'Nunito, sans-serif' }}>Analíticas — {analytics.municipality}</h1>
-            <p className="text-white/60 text-xs">Datos de los últimos 30 días</p>
+            <h1 className="font-bold text-lg" style={{ fontFamily: 'Nunito, sans-serif' }}>{formatTranslation(t, "analyticsUi.title", { municipality: analytics.municipality })}</h1>
+            <p className="text-white/60 text-xs">{t("analyticsUi.last30Days")}</p>
           </div>
         </div>
       </div>
@@ -62,10 +65,10 @@ export default function AnalyticsPage() {
         {/* Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { label: "Reportes (30d)", value: analytics.summary.reports_30d, icon: MapPin, color: "#FF6B6B", delta: analytics.summary.reports_trend },
-            { label: "Verificados", value: analytics.summary.verified, icon: CheckCircle, color: "#66BB6A" },
-            { label: "Tiempo medio resolución", value: analytics.summary.avg_resolution_hours ? `${analytics.summary.avg_resolution_hours}h` : "—", icon: Clock, color: "#42A5F5" },
-            { label: "Tasa de flags", value: `${analytics.summary.flag_rate}%`, icon: Flag, color: "#FFA726" }
+            { label: t("analyticsUi.reports30d"), value: analytics.summary.reports_30d, icon: MapPin, color: "#FF6B6B", delta: analytics.summary.reports_trend },
+            { label: t("analyticsUi.verified"), value: analytics.summary.verified, icon: CheckCircle, color: "#66BB6A" },
+            { label: t("analyticsUi.avgResolution"), value: analytics.summary.avg_resolution_hours ? `${analytics.summary.avg_resolution_hours}h` : "—", icon: Clock, color: "#42A5F5" },
+            { label: t("analyticsUi.flagRate"), value: `${analytics.summary.flag_rate}%`, icon: Flag, color: "#FFA726" }
           ].map(({ label, value, icon: Icon, color, delta }) => (
             <div key={label} className="bg-white rounded-xl p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-2">
@@ -75,7 +78,7 @@ export default function AnalyticsPage() {
               <p className="text-2xl font-black text-[#2B2D42]">{value}</p>
               {delta !== undefined && (
                 <p className={`text-xs mt-1 ${delta >= 0 ? 'text-[#FF6B6B]' : 'text-[#66BB6A]'}`}>
-                  <TrendingUp className="w-3 h-3 inline mr-0.5" />{delta >= 0 ? '+' : ''}{delta}% vs mes anterior
+                  <TrendingUp className="w-3 h-3 inline mr-0.5" />{formatTranslation(t, "analyticsUi.vsPreviousMonth", { delta: `${delta >= 0 ? '+' : ''}${delta}` })}
                 </p>
               )}
             </div>
@@ -84,16 +87,16 @@ export default function AnalyticsPage() {
 
         <Tabs defaultValue="timeline" className="w-full">
           <TabsList className="mb-4">
-            <TabsTrigger value="timeline">Evolución</TabsTrigger>
-            <TabsTrigger value="hours">Por Hora</TabsTrigger>
-            <TabsTrigger value="status">Estados</TabsTrigger>
-            <TabsTrigger value="top">Top Zonas</TabsTrigger>
+            <TabsTrigger value="timeline">{t("analyticsUi.timeline")}</TabsTrigger>
+            <TabsTrigger value="hours">{t("analyticsUi.byHour")}</TabsTrigger>
+            <TabsTrigger value="status">{t("analyticsUi.statuses")}</TabsTrigger>
+            <TabsTrigger value="top">{t("analyticsUi.topZones")}</TabsTrigger>
           </TabsList>
 
           {/* Timeline Chart */}
           <TabsContent value="timeline">
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-bold text-[#2B2D42] mb-4">Reportes por día</h3>
+              <h3 className="font-bold text-[#2B2D42] mb-4">{t("analyticsUi.reportsByDay")}</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart data={analytics.daily_reports}>
                   <CartesianGrid strokeDasharray={GRID_DASH} stroke={GRID_COLOR} />
@@ -109,7 +112,7 @@ export default function AnalyticsPage() {
           {/* Hourly Distribution */}
           <TabsContent value="hours">
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-bold text-[#2B2D42] mb-4">Distribución por hora del día</h3>
+              <h3 className="font-bold text-[#2B2D42] mb-4">{t("analyticsUi.hourlyDistribution")}</h3>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={analytics.hourly_distribution}>
                   <CartesianGrid strokeDasharray={GRID_DASH} stroke={GRID_COLOR} />
@@ -125,7 +128,7 @@ export default function AnalyticsPage() {
           {/* Status Pie */}
           <TabsContent value="status">
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-bold text-[#2B2D42] mb-4">Estado de reportes</h3>
+              <h3 className="font-bold text-[#2B2D42] mb-4">{t("analyticsUi.reportStatus")}</h3>
               <div className="flex flex-col sm:flex-row items-center gap-6">
                 <ResponsiveContainer width="100%" height={250}>
                   <PieChart>
@@ -152,9 +155,9 @@ export default function AnalyticsPage() {
           {/* Top Zones */}
           <TabsContent value="top">
             <div className="bg-white rounded-xl shadow-sm p-6">
-              <h3 className="font-bold text-[#2B2D42] mb-4">Zonas con más reportes</h3>
+              <h3 className="font-bold text-[#2B2D42] mb-4">{t("analyticsUi.topReportZones")}</h3>
               {analytics.top_zones.length === 0 ? (
-                <p className="text-center text-[#8D99AE] py-8">No hay suficientes datos</p>
+                <p className="text-center text-[#8D99AE] py-8">{t("analyticsUi.noEnoughData")}</p>
               ) : (
                 <div className="space-y-3">
                   {analytics.top_zones.map((zone, i) => (

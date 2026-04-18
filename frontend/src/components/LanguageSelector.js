@@ -47,14 +47,6 @@ function FlagIcon({ code, className = "w-5 h-3.5" }) {
         <rect y="240" width="640" height="240" fill="#DC143C"/>
       </svg>
     ),
-    ar: (
-      <svg viewBox="0 0 640 480" className={className}>
-        <rect width="640" height="480" fill="#006C35"/>
-        <rect width="640" height="160" fill="#006C35"/>
-        <rect y="160" width="640" height="160" fill="#FFF"/>
-        <rect y="320" width="640" height="160" fill="#000"/>
-      </svg>
-    ),
     uk: (
       <svg viewBox="0 0 640 480" className={className}>
         <rect width="640" height="240" fill="#005BBB"/>
@@ -100,7 +92,6 @@ const languages = [
   { code: "de", name: "Deutsch" },
   { code: "nl", name: "Nederlands" },
   { code: "pl", name: "Polski" },
-  { code: "ar", name: "العربية" },
   { code: "uk", name: "Українська" },
   { code: "ru", name: "Русский" },
   { code: "eu", name: "Euskara" },

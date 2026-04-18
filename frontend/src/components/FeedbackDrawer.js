@@ -4,17 +4,19 @@ import { Button } from "./ui/button";
 import { Input } from "./ui/input";
 import { toast } from "sonner";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { API } from "../config";
 import axios from "axios";
 
 const CATEGORIES = [
-  { id: "bug", label: "Bug / Error", icon: Bug },
-  { id: "suggestion", label: "Sugerencia", icon: Lightbulb },
-  { id: "other", label: "Otro", icon: MessageSquare },
+  { id: "bug", labelKey: "feedbackUi.bug", icon: Bug },
+  { id: "suggestion", labelKey: "feedbackUi.suggestion", icon: Lightbulb },
+  { id: "other", labelKey: "feedbackUi.other", icon: MessageSquare },
 ];
 
 export default function FeedbackDrawer({ open, onClose }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [category, setCategory] = useState("bug");
   const [message, setMessage] = useState("");
   const [loading, setLoading] = useState(false);
@@ -22,7 +24,7 @@ export default function FeedbackDrawer({ open, onClose }) {
   if (!open) return null;
 
   const handleSubmit = async () => {
-    if (!message.trim()) { toast.error("Escribe un mensaje"); return; }
+    if (!message.trim()) { toast.error(t("feedbackUi.messageRequired")); return; }
     setLoading(true);
     try {
       await axios.post(`${API}/feedback`, {
@@ -31,12 +33,12 @@ export default function FeedbackDrawer({ open, onClose }) {
         user_email: user?.email || null,
         username: user?.username || null,
       }, { withCredentials: true });
-      toast.success("Gracias por tu feedback");
+      toast.success(t("feedbackUi.thanks"));
       setMessage("");
       onClose();
     } catch (err) {
       console.error("Feedback submit error:", err);
-      toast.error("Error al enviar. Inténtalo de nuevo.");
+      toast.error(t("feedbackUi.sendError"));
     } finally {
       setLoading(false);
     }
@@ -51,7 +53,7 @@ export default function FeedbackDrawer({ open, onClose }) {
         </div>
 
         <div className="flex gap-2 mb-4">
-          {CATEGORIES.map(({ id, label, icon: Icon }) => (
+          {CATEGORIES.map(({ id, labelKey, icon: Icon }) => (
             <button
               key={id}
               onClick={() => setCategory(id)}
@@ -60,7 +62,7 @@ export default function FeedbackDrawer({ open, onClose }) {
               }`}
               data-testid={`feedback-cat-${id}`}
             >
-              <Icon className="w-3.5 h-3.5" /> {label}
+              <Icon className="w-3.5 h-3.5" /> {t(labelKey)}
             </button>
           ))}
         </div>
@@ -68,7 +70,7 @@ export default function FeedbackDrawer({ open, onClose }) {
         <textarea
           value={message}
           onChange={(e) => setMessage(e.target.value)}
-          placeholder={category === "bug" ? "Describe el problema que encontraste..." : "Cuéntanos tu idea..."}
+          placeholder={category === "bug" ? t("feedbackUi.bugPlaceholder") : t("feedbackUi.ideaPlaceholder")}
           className="w-full border border-[#8D99AE]/20 rounded-xl p-3 text-sm min-h-[100px] resize-none focus:outline-none focus:ring-2 focus:ring-[#FF6B6B]/30 mb-4"
           data-testid="feedback-message"
         />
@@ -79,7 +81,7 @@ export default function FeedbackDrawer({ open, onClose }) {
           className="w-full bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold py-5"
           data-testid="feedback-submit"
         >
-          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4 mr-2" /> Enviar</>}
+          {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><Send className="w-4 h-4 mr-2" /> {t("feedbackUi.send")}</>}
         </Button>
       </div>
     </div>

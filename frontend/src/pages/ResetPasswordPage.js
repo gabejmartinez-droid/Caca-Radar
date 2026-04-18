@@ -27,15 +27,15 @@ export default function ResetPasswordPage() {
     setError("");
 
     if (password.length < 6) {
-      setError("La contraseña debe tener al menos 6 caracteres");
+      setError(t("passwordTooShort"));
       return;
     }
     if (password !== confirmPassword) {
-      setError("Las contraseñas no coinciden");
+      setError(t("authRecovery.passwordsDoNotMatch"));
       return;
     }
     if (!token) {
-      setError("Enlace inválido. Solicita uno nuevo.");
+      setError(t("authRecovery.invalidLink"));
       return;
     }
 
@@ -43,9 +43,9 @@ export default function ResetPasswordPage() {
     try {
       const { data } = await axios.post(`${API}/auth/reset-password`, { token, password });
       setDone(true);
-      toast.success(data.message || "Contraseña actualizada");
+      toast.success(data.message || t("authRecovery.passwordUpdated"));
     } catch (err) {
-      setError(err.response?.data?.detail || "Error al restablecer. El enlace puede haber expirado.");
+      setError(err.response?.data?.detail || t("authRecovery.resetError"));
     } finally {
       setLoading(false);
     }
@@ -53,10 +53,10 @@ export default function ResetPasswordPage() {
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] flex flex-col ${isRtl ? "rtl" : "ltr"}`} data-testid="reset-password-page">
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/login")} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className={`w-4 h-4 ${isRtl ? "ml-2" : "mr-2"}`} />
-          {t("login") || "Iniciar sesión"}
+          {t("login")}
         </Button>
         <LanguageSelector />
       </div>
@@ -74,22 +74,22 @@ export default function ResetPasswordPage() {
             <div className="text-center py-4" data-testid="reset-success">
               <CheckCircle className="w-12 h-12 text-[#66BB6A] mx-auto mb-3" />
               <h2 className="text-lg font-bold text-[#2B2D42] mb-2" style={{ fontFamily: "Nunito, sans-serif" }}>
-                Contraseña actualizada
+                {t("authRecovery.resetSuccessTitle")}
               </h2>
               <p className="text-sm text-[#8D99AE] mb-4">
-                Ya puedes iniciar sesión con tu nueva contraseña.
+                {t("authRecovery.resetSuccessBody")}
               </p>
               <Button onClick={() => navigate("/login")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold" data-testid="go-to-login">
-                Iniciar sesión
+                {t("login")}
               </Button>
             </div>
           ) : (
             <>
               <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: "Nunito, sans-serif" }}>
-                Nueva contraseña
+                {t("authRecovery.newPasswordTitle")}
               </h1>
               <p className="text-sm text-[#8D99AE] text-center mb-6">
-                Introduce tu nueva contraseña.
+                {t("authRecovery.newPasswordDescription")}
               </p>
 
               {error && (
@@ -100,7 +100,7 @@ export default function ResetPasswordPage() {
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="password" className="text-[#2B2D42]">Nueva contraseña</Label>
+                  <Label htmlFor="password" className="text-[#2B2D42]">{t("authRecovery.newPasswordLabel")}</Label>
                   <div className="relative mt-1">
                     <Lock className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                     <Input
@@ -108,7 +108,7 @@ export default function ResetPasswordPage() {
                       type="password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      placeholder="Mínimo 6 caracteres"
+                      placeholder={t("passwordPlaceholder")}
                       className={isRtl ? "pr-10" : "pl-10"}
                       required
                       data-testid="password-input"
@@ -117,7 +117,7 @@ export default function ResetPasswordPage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="confirm" className="text-[#2B2D42]">Confirmar contraseña</Label>
+                  <Label htmlFor="confirm" className="text-[#2B2D42]">{t("authRecovery.confirmPasswordLabel")}</Label>
                   <div className="relative mt-1">
                     <Lock className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                     <Input
@@ -125,7 +125,7 @@ export default function ResetPasswordPage() {
                       type="password"
                       value={confirmPassword}
                       onChange={(e) => setConfirmPassword(e.target.value)}
-                      placeholder="Repite la contraseña"
+                      placeholder={t("authRecovery.repeatPasswordPlaceholder")}
                       className={isRtl ? "pr-10" : "pl-10"}
                       required
                       data-testid="confirm-password-input"
@@ -140,7 +140,7 @@ export default function ResetPasswordPage() {
                   style={{ fontFamily: "Nunito, sans-serif" }}
                   data-testid="submit-btn"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Restablecer contraseña"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("authRecovery.resetPassword")}
                 </Button>
               </form>
             </>
@@ -149,7 +149,7 @@ export default function ResetPasswordPage() {
           {!done && (
             <p className="text-center text-[#8D99AE] text-sm mt-4">
               <Link to="/forgot-password" className="text-[#FF6B6B] font-medium hover:underline">
-                Solicitar nuevo enlace
+                {t("authRecovery.requestNewLink")}
               </Link>
             </p>
           )}

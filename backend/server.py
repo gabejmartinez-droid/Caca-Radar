@@ -36,10 +36,12 @@ from scoring_service import (
 from antispam_service import (
     check_cooldown, check_proximity_duplicate, check_gps_plausible,
     detect_spam_patterns, update_trust_score, is_hot_zone,
-    get_trust_tier, TRUST_SPAM_BEHAVIOR, TRUST_DOWNVOTED_REPORT, TRUST_UPVOTED_REPORT_MIN
+    get_trust_tier, TRUST_SPAM_BEHAVIOR, TRUST_DOWNVOTED_REPORT, TRUST_UPVOTED_REPORT_MIN,
+    haversine_meters,
 )
 from validation_service import process_validation
 from ranking_service import recalculate_all_ranks, get_user_rank_info
+from rank_metadata import DEFAULT_RANK_NAME, get_rank_key
 from email_service import send_verification_code as send_verification_email, is_configured as email_configured, send_admin_verification_code
 from webhook_handlers import process_apple_notification, process_google_notification
 from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
@@ -229,6 +231,27 @@ app = FastAPI()
 app.state.started_at = datetime.now(timezone.utc).isoformat()
 api_router = APIRouter(prefix="/api")
 
+ACTION_PROXIMITY_METERS = 5
+
+
+def require_report_proximity(report: dict, latitude: float, longitude: float) -> float:
+    report_lat = report.get("latitude")
+    report_lon = report.get("longitude")
+    if report_lat is None or report_lon is None:
+        raise HTTPException(status_code=400, detail="El reporte no tiene coordenadas válidas")
+
+    distance_meters = haversine_meters(latitude, longitude, report_lat, report_lon)
+    if distance_meters > ACTION_PROXIMITY_METERS:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "code": "outside_proximity",
+                "max_meters": ACTION_PROXIMITY_METERS,
+                "distance_meters": round(distance_meters, 1),
+            },
+        )
+    return distance_meters
+
 # ==================== GOOGLE / APPLE AUTH ====================
 
 @api_router.post("/auth/google")
@@ -296,7 +319,8 @@ async def google_auth(request: Request, response: Response):
             "name": name, "username": username, "picture": picture,
             "role": "user", "auth_provider": "google",
             "subscription_active": is_vip, "subscription_type": "lifetime" if is_vip else None,
-            "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
+            "total_score": 0, "trust_score": 50,
+            "rank": DEFAULT_RANK_NAME, "rank_key": get_rank_key(DEFAULT_RANK_NAME), "level": 1,
             "report_count": 0, "vote_count": 0, "streak_days": 0,
             "created_at": datetime.now(timezone.utc)
         }
@@ -351,7 +375,8 @@ async def register(data: UserRegister, response: Response):
         "subscription_expires": None,
         "total_score": 0,
         "trust_score": 50,
-        "rank": "Aspirante Cagón",
+        "rank": DEFAULT_RANK_NAME,
+        "rank_key": get_rank_key(DEFAULT_RANK_NAME),
         "level": 1,
         "report_count": 0,
         "vote_count": 0,
@@ -373,7 +398,8 @@ async def register(data: UserRegister, response: Response):
         "id": user_id, "email": email, "name": user_doc["name"],
         "username": user_doc["username"], "role": "user",
         "subscription_active": is_vip, "report_count": 0, "vote_count": 0,
-        "total_score": 0, "trust_score": 50, "rank": "Aspirante Cagón", "level": 1,
+        "total_score": 0, "trust_score": 50,
+        "rank": DEFAULT_RANK_NAME, "rank_key": get_rank_key(DEFAULT_RANK_NAME), "level": 1,
         "streak_days": 0, "needs_username": False,
         "access_token": access_token, "refresh_token": refresh_token
     }
@@ -433,7 +459,8 @@ async def login(data: UserLogin, request: Request, response: Response):
         "municipality_name": user.get("municipality_name"),
         "total_score": user.get("total_score", 0),
         "trust_score": user.get("trust_score", 50),
-        "rank": user.get("rank", "Aspirante Cagón"),
+        "rank": user.get("rank", DEFAULT_RANK_NAME),
+        "rank_key": user.get("rank_key", get_rank_key(user.get("rank", DEFAULT_RANK_NAME))),
         "level": user.get("level", 1),
         "streak_days": user.get("streak_days", 0),
         "needs_username": not bool(user.get("username")),
@@ -471,7 +498,7 @@ async def forgot_password(request: Request):
         upsert=True,
     )
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.emergent.host")
     reset_link = f"{frontend_url}/reset-password?token={reset_token}"
 
     html = f"""
@@ -736,7 +763,7 @@ async def get_reports(
     reports = await db.reports.find(query, {
         "_id": 0, "id": 1, "latitude": 1, "longitude": 1, "category": 1,
         "status": 1, "created_at": 1, "upvotes": 1, "downvotes": 1,
-        "contributor_name": 1, "contributor_rank": 1, "municipality": 1,
+        "contributor_name": 1, "contributor_rank": 1, "contributor_rank_key": 1, "municipality": 1,
         "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
         "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1,
     }).to_list(2000)
@@ -749,6 +776,7 @@ async def get_reports(
         if "contributor_name" not in r:
             r["contributor_name"] = "Anónimo"
             r["contributor_rank"] = None
+            r["contributor_rank_key"] = None
 
     # Filter by freshness if requested
     if freshness:
@@ -936,7 +964,8 @@ def build_report_doc(report_id: str, data: ReportCreate, user_id: str, user: dic
     }
     doc["contributor_name"] = user.get("username") or user.get("name", "Anónimo")
     if user and user.get("subscription_active"):
-        doc["contributor_rank"] = user.get("rank", "Aspirante Cagón")
+        doc["contributor_rank"] = user.get("rank", DEFAULT_RANK_NAME)
+        doc["contributor_rank_key"] = user.get("rank_key", get_rank_key(doc["contributor_rank"]))
     return doc
 
 async def process_report_scoring(db, user: dict, user_id: str, data: ReportCreate, is_duplicate: bool) -> dict:
@@ -1100,6 +1129,11 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    if data.vote_type != "cleaned":
+        raise HTTPException(status_code=400, detail={"code": "still_there_removed"})
+
+    distance_meters = require_report_proximity(report, data.latitude, data.longitude)
     
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
@@ -1114,14 +1148,14 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
         "report_id": report_id,
         "user_id": user_id,
         "vote_type": data.vote_type,
+        "latitude": data.latitude,
+        "longitude": data.longitude,
+        "distance_meters": distance_meters,
         "created_at": datetime.now(timezone.utc).isoformat()
     }
     await db.votes.insert_one(vote_doc)
-    
-    if data.vote_type == "still_there":
-        await db.reports.update_one({"id": report_id}, {"$inc": {"still_there_count": 1, "status_score": 1}})
-    else:
-        await db.reports.update_one({"id": report_id}, {"$inc": {"cleaned_count": 1, "status_score": -1}})
+
+    await db.reports.update_one({"id": report_id}, {"$inc": {"cleaned_count": 1, "status_score": -1}})
     
     # Increment user vote count
     if user:
@@ -1135,7 +1169,7 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
     
-    return {"message": "Voto registrado", "vote_type": data.vote_type}
+    return {"message": "Voto registrado", "vote_type": data.vote_type, "distance_meters": round(distance_meters, 1)}
 
 @api_router.get("/reports/{report_id}/my-vote")
 async def get_my_vote(report_id: str, request: Request):
@@ -1157,6 +1191,8 @@ async def validate_report(report_id: str, data: ValidationCreate, request: Reque
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
+    distance_meters = require_report_proximity(report, data.latitude, data.longitude)
+
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
@@ -1171,7 +1207,16 @@ async def validate_report(report_id: str, data: ValidationCreate, request: Reque
         raise HTTPException(status_code=400, detail="Ya has validado este reporte")
 
     is_sub = user.get("subscription_active", False) if user else False
-    result = await process_validation(db, report_id, user_id, data.vote, is_sub)
+    result = await process_validation(
+        db,
+        report_id,
+        user_id,
+        data.vote,
+        is_sub,
+        latitude=data.latitude,
+        longitude=data.longitude,
+        distance_meters=distance_meters,
+    )
 
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
@@ -1345,7 +1390,8 @@ async def get_user_impact(request: Request):
 
     return {
         "username": user.get("username") or user.get("name", "Usuario"),
-        "rank": user.get("rank", "Aspirante Cagón"),
+        "rank": user.get("rank", DEFAULT_RANK_NAME),
+        "rank_key": user.get("rank_key", get_rank_key(user.get("rank", DEFAULT_RANK_NAME))),
         "total_score": user.get("total_score", 0),
         "streak_days": user.get("streak_days", 0),
         "stats": {
@@ -1378,6 +1424,8 @@ async def admin_recalculate_ranks(request: Request):
             "type": "rank_change",
             "old_rank": rc["old_rank"],
             "new_rank": rc["new_rank"],
+            "old_rank_key": rc.get("old_rank_key"),
+            "new_rank_key": rc.get("new_rank_key"),
             "read": False,
             "created_at": datetime.now(timezone.utc).isoformat()
         })
@@ -1497,7 +1545,7 @@ async def get_national_leaderboard(request: Request):
     top_users = await db.users.find(
         {"role": "user", "total_score": {"$gt": 0}},
         {"_id": 0, "username": 1, "name": 1, "total_score": 1, "report_count": 1, "vote_count": 1,
-         "rank": 1, "level": 1, "trust_score": 1, "streak_days": 1, "subscription_active": 1}
+         "rank": 1, "rank_key": 1, "level": 1, "trust_score": 1, "streak_days": 1, "subscription_active": 1}
     ).sort("total_score", -1).to_list(50)
     
     for i, u in enumerate(top_users):
@@ -1919,7 +1967,7 @@ async def get_activity_stats(request: Request, lat: float = None, lng: float = N
 async def get_user_share_data(user_id_param: str):
     """Get shareable profile data for social media."""
     try:
-        u = await db.users.find_one({"_id": ObjectId(user_id_param)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "total_score": 1, "report_count": 1, "badges": 1})
+        u = await db.users.find_one({"_id": ObjectId(user_id_param)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "rank_key": 1, "total_score": 1, "report_count": 1, "badges": 1})
     except Exception:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
     if not u:
@@ -1927,11 +1975,16 @@ async def get_user_share_data(user_id_param: str):
 
     display_name = u.get("username") or u.get("name", "Usuario")
     badge_count = len(u.get("badges", []))
-    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.emergent.host")
 
     return {
         "title": f"{display_name} en Caca Radar",
-        "text": f"{display_name} es {u.get('rank', 'Aspirante Cagón')} con {u.get('total_score', 0)} puntos y {u.get('report_count', 0)} reportes. {badge_count} insignias. ¡Únete a mantener tu ciudad limpia!",
+        "text": f"{display_name} es {u.get('rank', DEFAULT_RANK_NAME)} con {u.get('total_score', 0)} puntos y {u.get('report_count', 0)} reportes. {badge_count} insignias. ¡Únete a mantener tu ciudad limpia!",
+        "rank": u.get("rank", DEFAULT_RANK_NAME),
+        "rank_key": u.get("rank_key", get_rank_key(u.get("rank", DEFAULT_RANK_NAME))),
+        "total_score": u.get("total_score", 0),
+        "report_count": u.get("report_count", 0),
+        "badge_count": badge_count,
         "url": f"{frontend_url}/profile",
         "app_store_url": APP_STORE_URL,
         "play_store_url": PLAY_STORE_URL,
@@ -1977,7 +2030,7 @@ async def get_weekly_leaderboard(request: Request):
     for i, entry in enumerate(weekly_agg):
         uid = entry["_id"]
         try:
-            u = await db.users.find_one({"_id": ObjectId(uid)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "subscription_active": 1})
+            u = await db.users.find_one({"_id": ObjectId(uid)}, {"_id": 0, "username": 1, "name": 1, "rank": 1, "rank_key": 1, "subscription_active": 1})
         except Exception:
             u = None
         display_name = (u.get("username") or u.get("name", "Anónimo")) if u else "Anónimo"
@@ -1985,6 +2038,7 @@ async def get_weekly_leaderboard(request: Request):
             "position": i + 1,
             "display_name": display_name,
             "rank": u.get("rank") if u else None,
+            "rank_key": u.get("rank_key") if u else None,
             "weekly_reports": entry["weekly_reports"],
             "is_subscriber": u.get("subscription_active", False) if u else False
         })
@@ -2354,7 +2408,7 @@ async def get_share_data(report_id: str, request: Request):
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.preview.emergentagent.com")
+    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.emergent.host")
     share_url = f"{frontend_url}/?report={report_id}"
     municipality = report.get("municipality", "España")
     created = report.get("created_at", "")
@@ -2655,7 +2709,8 @@ app.include_router(api_router)
 ALLOWED_ORIGINS = {
     "http://localhost:3000",
     "http://localhost",
-    "https://caca-radar.preview.emergentagent.com",
+    "https://caca-radar.emergent.host",
+    "https://cacaradar.es",
     "capacitor://localhost",
     "ionic://localhost",
 }
@@ -2786,6 +2841,7 @@ async def run_maintenance():
         await db.notifications.insert_one({
             "user_id": rc["user_id"], "type": "rank_change",
             "old_rank": rc["old_rank"], "new_rank": rc["new_rank"],
+            "old_rank_key": rc.get("old_rank_key"), "new_rank_key": rc.get("new_rank_key"),
             "read": False, "created_at": datetime.now(timezone.utc).isoformat()
         })
     logger.info(f"Ranks recalculated for {rank_count} users, {len(rank_changes)} changes")

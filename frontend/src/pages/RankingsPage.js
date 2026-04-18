@@ -7,6 +7,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { toast } from "sonner";
 import axios from "axios";
+import { formatTranslation } from "../utils/ranks";
 
 import { API } from "../config";
 
@@ -114,7 +115,7 @@ export default function RankingsPage() {
   if (!isPremium) {
     return (
       <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="rankings-page">
-        <div className="p-4 flex justify-between items-center">
+        <div className="ios-safe-header p-4 flex justify-between items-center">
           <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn">
             <ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}
           </Button>
@@ -136,7 +137,7 @@ export default function RankingsPage() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="rankings-page">
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}
         </Button>
@@ -156,14 +157,14 @@ export default function RankingsPage() {
             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === "cities" ? "bg-[#FF6B6B] text-white" : "bg-white text-[#8D99AE] border border-[#8D99AE]/20"}`}
             data-testid="tab-cities"
           >
-            <Building2 className="w-4 h-4 inline mr-1" /> Ciudades
+            <Building2 className="w-4 h-4 inline mr-1" /> {t("rankingUi.cities")}
           </button>
           <button
             onClick={() => setTab("barrios")}
             className={`flex-1 py-2.5 rounded-xl font-bold text-sm transition-colors ${tab === "barrios" ? "bg-[#FF6B6B] text-white" : "bg-white text-[#8D99AE] border border-[#8D99AE]/20"}`}
             data-testid="tab-barrios"
           >
-            <MapPin className="w-4 h-4 inline mr-1" /> Barrios
+            <MapPin className="w-4 h-4 inline mr-1" /> {t("rankingUi.neighborhoods")}
           </button>
         </div>
 
@@ -178,19 +179,19 @@ export default function RankingsPage() {
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${listType === "dirtiest" ? "bg-red-100 text-red-700" : "bg-white text-[#8D99AE]"}`}
                 data-testid="toggle-dirtiest"
               >
-                Más sucias
+                {t("rankingUi.dirtiest")}
               </button>
               <button
                 onClick={() => setListType("cleanest")}
                 className={`flex-1 py-2 rounded-lg text-xs font-bold transition-colors ${listType === "cleanest" ? "bg-emerald-100 text-emerald-700" : "bg-white text-[#8D99AE]"}`}
                 data-testid="toggle-cleanest"
               >
-                Más limpias
+                {t("rankingUi.cleanest")}
               </button>
             </div>
 
             <p className="text-xs text-[#8D99AE] mb-3 text-center">
-              {cityData?.total_cities || 0} ciudades con reportes activos. Ordenadas por reportes / 10.000 hab.
+              {formatTranslation(t, "rankingUi.citySummary", { count: cityData?.total_cities || 0 })}
             </p>
 
             <div className="space-y-2 mb-4">
@@ -198,7 +199,7 @@ export default function RankingsPage() {
                 <CityRankingCard key={city.city} city={city} index={i} type={listType} />
               ))}
               {currentList.length === 0 && (
-                <p className="text-center text-[#8D99AE] py-8">No hay datos suficientes</p>
+                <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noEnoughData")}</p>
               )}
             </div>
 

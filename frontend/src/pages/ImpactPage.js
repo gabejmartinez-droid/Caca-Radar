@@ -159,7 +159,7 @@ export default function ImpactPage() {
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="impact-page">
       {/* Header */}
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/profile")} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className="w-4 h-4 mr-2" />Perfil
         </Button>

@@ -247,12 +247,16 @@ class ReportCreate(BaseModel):
 
 class VoteCreate(BaseModel):
     vote_type: Literal["still_there", "cleaned"]
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 class ReportVote(BaseModel):
     vote_type: Literal["upvote", "downvote"]
 
 class ValidationCreate(BaseModel):
     vote: Literal["confirm", "reject"]
+    latitude: float = Field(..., ge=-90, le=90)
+    longitude: float = Field(..., ge=-180, le=180)
 
 FLAG_REASONS = ["license_plate", "face", "name", "personal_info", "inappropriate", "spam", "other"]
 

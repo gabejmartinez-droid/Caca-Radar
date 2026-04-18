@@ -1,4 +1,4 @@
-import { API } from "../config";
+import { API, NATIVE_PUSH_ENABLED } from "../config";
 import { isCapacitorNative } from "../tokenManager";
 import axios from "axios";
 
@@ -6,8 +6,22 @@ import axios from "axios";
  * Push notification manager — handles Web Push (browser) and Capacitor native push.
  */
 
+export function isNativePushAvailableForThisBuild() {
+  return !isCapacitorNative() || NATIVE_PUSH_ENABLED;
+}
+
+export function getPushUnavailableReasonKey() {
+  if (isCapacitorNative() && !NATIVE_PUSH_ENABLED) {
+    return "mapUi.pushUnavailableOnThisBuild";
+  }
+  return "mapUi.pushUnsupported";
+}
+
 export async function isPushSupported() {
   if (isCapacitorNative()) {
+    if (!NATIVE_PUSH_ENABLED) {
+      return false;
+    }
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
       return !!PushNotifications;
@@ -20,6 +34,9 @@ export async function isPushSupported() {
 
 export async function getPushPermissionState() {
   if (isCapacitorNative()) {
+    if (!NATIVE_PUSH_ENABLED) {
+      return "denied";
+    }
     try {
       const { PushNotifications } = await import("@capacitor/push-notifications");
       const result = await PushNotifications.checkPermissions();
@@ -33,6 +50,9 @@ export async function getPushPermissionState() {
 
 export async function subscribeToPush(userLocation) {
   if (isCapacitorNative()) {
+    if (!NATIVE_PUSH_ENABLED) {
+      throw new Error("native_push_disabled_for_build");
+    }
     return subscribeNativePush(userLocation);
   }
   return subscribeWebPush(userLocation);
@@ -96,30 +116,54 @@ async function subscribeNativePush(userLocation) {
       throw new Error("permission_denied");
     }
 
-    await PushNotifications.register();
-
-    // Listen for the registration token
     return new Promise((resolve, reject) => {
-      PushNotifications.addListener("registration", async (token) => {
-        try {
-          await axios.post(
-            `${API}/push/subscribe`,
-            {
-              subscription: { token: token.value, platform: "native" },
-              latitude: userLocation?.lat || null,
-              longitude: userLocation?.lng || null,
-            },
-            { withCredentials: true }
-          );
-          localStorage.setItem("caca_notifications", "on");
-          resolve(true);
-        } catch (err) {
-          reject(err);
-        }
-      });
+      let settled = false;
+      let registrationListener;
+      let errorListener;
 
-      PushNotifications.addListener("registrationError", (err) => {
-        reject(new Error(err.error || "native_registration_failed"));
+      const cleanup = async () => {
+        try { await registrationListener?.remove?.(); } catch {}
+        try { await errorListener?.remove?.(); } catch {}
+      };
+
+      const finish = async (callback) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeoutId);
+        await cleanup();
+        callback();
+      };
+
+      const timeoutId = setTimeout(() => {
+        finish(() => reject(new Error("native_registration_timeout")));
+      }, 20000);
+
+      (async () => {
+        registrationListener = await PushNotifications.addListener("registration", async (token) => {
+          try {
+            await axios.post(
+              `${API}/push/subscribe`,
+              {
+                subscription: { token: token.value, platform: "native" },
+                latitude: userLocation?.lat || null,
+                longitude: userLocation?.lng || null,
+              },
+              { withCredentials: true }
+            );
+            localStorage.setItem("caca_notifications", "on");
+            finish(() => resolve(true));
+          } catch (err) {
+            finish(() => reject(err));
+          }
+        });
+
+        errorListener = await PushNotifications.addListener("registrationError", (err) => {
+          finish(() => reject(new Error(err.error || "native_registration_failed")));
+        });
+
+        await PushNotifications.register();
+      })().catch((err) => {
+        finish(() => reject(err));
       });
     });
   } catch (err) {
@@ -132,6 +176,7 @@ async function subscribeNativePush(userLocation) {
 // ---- Listeners for native push (call once in app init) ----
 export async function setupNativePushListeners() {
   if (!isCapacitorNative()) return;
+  if (!NATIVE_PUSH_ENABLED) return;
 
   try {
     const { PushNotifications } = await import("@capacitor/push-notifications");

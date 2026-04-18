@@ -1,11 +1,14 @@
 import { useState, useEffect } from "react";
 import { Flame, AlertTriangle, Trophy } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { formatTranslation } from "../utils/ranks";
 import { API } from "../config";
 import axios from "axios";
 
 export default function ActivityBanner({ userLocation, userCity }) {
   const { user } = useAuth();
+  const { t } = useLanguage();
   const [stats, setStats] = useState(null);
   const [idx, setIdx] = useState(0);
 
@@ -29,15 +32,29 @@ export default function ActivityBanner({ userLocation, userCity }) {
   const items = [];
   if (stats) {
     if (stats.nearby_today > 0) {
-      items.push({ icon: Flame, text: `${stats.nearby_today} reportes nuevos cerca de ti hoy`, color: "#FF6B6B" });
+      items.push({ icon: Flame, text: formatTranslation(t, "activityUi.nearbyReportsToday", { count: stats.nearby_today }), color: "#FF6B6B" });
     } else if (stats.total_today > 0) {
-      items.push({ icon: Flame, text: `${stats.total_today} reportes nuevos en España hoy`, color: "#FF6B6B" });
+      items.push({ icon: Flame, text: formatTranslation(t, "activityUi.spainReportsToday", { count: stats.total_today }), color: "#FF6B6B" });
     }
     if (stats.active_zones > 0) {
-      items.push({ icon: AlertTriangle, text: `${stats.active_zones} zonas activas${userCity ? ` en ${userCity}` : ""}`, color: "#FFA726" });
+      items.push({
+        icon: AlertTriangle,
+        text: formatTranslation(t, userCity ? "activityUi.activeZonesInCity" : "activityUi.activeZones", {
+          count: stats.active_zones,
+          city: userCity,
+        }),
+        color: "#FFA726",
+      });
     }
     if (user && stats.user_rank) {
-      items.push({ icon: Trophy, text: `Eres #${stats.user_rank} en ${userCity || "tu ciudad"}`, color: "#66BB6A" });
+      items.push({
+        icon: Trophy,
+        text: formatTranslation(t, "rankUi.cityPosition", {
+          rank: stats.user_rank,
+          city: userCity || t("rankUi.cityFallback"),
+        }),
+        color: "#66BB6A"
+      });
     }
   }
 

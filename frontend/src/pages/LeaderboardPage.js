@@ -9,6 +9,7 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { formatTranslation, getRankLabel } from "../utils/ranks";
 
 import { API } from "../config";
 
@@ -70,7 +71,7 @@ export default function LeaderboardPage() {
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? 'rtl' : 'ltr'}`} data-testid="leaderboard-page">
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn"><ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}</Button>
         <LanguageSelector />
       </div>
@@ -81,19 +82,19 @@ export default function LeaderboardPage() {
           <div className="bg-white rounded-2xl shadow-sm p-5 mb-6 border-l-4 border-[#FF6B6B]" data-testid="my-stats-card">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-xs text-[#8D99AE] uppercase tracking-wider">Tu Rango</p>
-                <p className="text-lg font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{myProfile.rank}</p>
+                <p className="text-xs text-[#8D99AE] uppercase tracking-wider">{t("rankUi.yourRank")}</p>
+                <p className="text-lg font-black text-[#2B2D42] leading-tight" style={{ fontFamily: 'Nunito, sans-serif' }}>{getRankLabel(myProfile.rank_key || myProfile.rank, t)}</p>
               </div>
               <div className="text-right">
                 <p className="text-3xl font-black text-[#FF6B6B]">{myProfile.total_score}</p>
-                <p className="text-xs text-[#8D99AE]">puntos</p>
+                <p className="text-xs text-[#8D99AE]">{t("rankingUi.points")}</p>
               </div>
             </div>
             <div className="flex gap-4 text-xs text-[#8D99AE]">
-              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{myProfile.report_count} reportes</span>
-              <span className="flex items-center gap-1"><Star className="w-3 h-3" />{myProfile.vote_count} votos</span>
-              <span className="flex items-center gap-1"><Flame className="w-3 h-3 text-orange-500" />{myProfile.streak_days}d racha</span>
-              <span className="flex items-center gap-1"><TrustBadge trust={myProfile.trust_score} />Confianza: {myProfile.trust_score}</span>
+              <span className="flex items-center gap-1"><MapPin className="w-3 h-3" />{myProfile.report_count} {t("rankingUi.reports")}</span>
+              <span className="flex items-center gap-1"><Star className="w-3 h-3" />{myProfile.vote_count} {t("rankingUi.votes")}</span>
+              <span className="flex items-center gap-1"><Flame className="w-3 h-3 text-orange-500" />{myProfile.streak_days}{t("mapUi.dayShort")} {t("rankingUi.streak")}</span>
+              <span className="flex items-center gap-1"><TrustBadge trust={myProfile.trust_score} />{formatTranslation(t, "rankingUi.trust", { value: myProfile.trust_score })}</span>
             </div>
           </div>
         )}
@@ -105,14 +106,14 @@ export default function LeaderboardPage() {
 
         <Tabs defaultValue="national" className="w-full">
           <TabsList className="w-full mb-4">
-            <TabsTrigger value="national" className="flex-1" data-testid="tab-national">Nacional</TabsTrigger>
-            <TabsTrigger value="city" className="flex-1" data-testid="tab-city">Por Ciudad</TabsTrigger>
+            <TabsTrigger value="national" className="flex-1" data-testid="tab-national">{t("rankingUi.national")}</TabsTrigger>
+            <TabsTrigger value="city" className="flex-1" data-testid="tab-city">{t("rankingUi.byCity")}</TabsTrigger>
           </TabsList>
 
           <TabsContent value="national">
             <div className="space-y-2">
               {national.length === 0 ? (
-                <p className="text-center text-[#8D99AE] py-8">No hay datos todavía</p>
+                <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noDataYet")}</p>
               ) : national.map((entry) => (
                 <div key={entry.position} className={`flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm ${entry.position <= 3 ? 'border-l-4 border-[#FF6B6B]' : ''}`} data-testid={`national-rank-${entry.position}`}>
                   <RankIcon position={entry.position} />
@@ -122,7 +123,7 @@ export default function LeaderboardPage() {
                       {entry.is_subscriber && <Star className="w-3 h-3 text-[#FF6B6B] fill-[#FF6B6B]" />}
                       <TrustBadge trust={entry.trust_score || 50} />
                     </div>
-                    <p className="text-xs text-[#8D99AE] truncate">{entry.rank}</p>
+                    <p className="text-xs text-[#8D99AE] truncate">{getRankLabel(entry.rank_key || entry.rank, t)}</p>
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-lg font-bold text-[#FF6B6B]">{entry.total_score}</p>
@@ -138,7 +139,7 @@ export default function LeaderboardPage() {
             {!selectedCity ? (
               <div className="space-y-2">
                 {cities.length === 0 ? (
-                  <p className="text-center text-[#8D99AE] py-8">No hay ciudades con reportes</p>
+                  <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noCitiesWithReports")}</p>
                 ) : cities.map((city) => (
                   <button key={city.name} onClick={() => fetchCityLeaderboard(city.name)} className="w-full flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm hover:bg-[#F8F9FA] transition-colors text-left" data-testid={`city-${city.name}`}>
                     <MapPin className="w-5 h-5 text-[#FF6B6B]" />
@@ -152,7 +153,7 @@ export default function LeaderboardPage() {
                 <Button variant="ghost" size="sm" onClick={() => { setSelectedCity(null); setCityLeaderboard([]); }} className="mb-4 text-[#8D99AE]"><ArrowLeft className="w-4 h-4 mr-1" /> {selectedCity}</Button>
                 <div className="space-y-2">
                   {cityLeaderboard.length === 0 ? (
-                    <p className="text-center text-[#8D99AE] py-8">No hay datos</p>
+                    <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noData")}</p>
                   ) : cityLeaderboard.map((entry) => (
                     <div key={entry.rank} className={`flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm ${entry.rank <= 3 ? 'border-l-4 border-[#FF6B6B]' : ''}`}>
                       <RankIcon position={entry.rank} />

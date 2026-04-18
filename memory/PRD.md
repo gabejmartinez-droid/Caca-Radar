@@ -29,5 +29,12 @@ Mobile-first web app for Spain — report dog feces, view on map, gamification, 
 ## Backlog
 - P0: Full yarn build production test
 - P1: Apple Auth integration
+- P1: Apple Developer Program activation for iOS Push Notifications signing/capability
+- P1: Apple production webhook/certificate setup for App Store server notifications
 - P2: Real Apple/Google payment credentials + FCM key
 - P2: Production deployment and custom domain
+
+## Waiting On Apple
+- Enable the paid Apple Developer account so `com.jefe.cacaradar` can use the Push Notifications capability and a provisioning profile with `aps-environment`.
+- Once Apple is active, re-enable iOS push signing in Xcode by restoring the Push Notifications capability and `App/App.entitlements`, then set `REACT_APP_ENABLE_NATIVE_PUSH=true` before the next web/native build.
+- Keep local personal-team builds "dev-safe" until then: the app should compile and run, but native iPhone push remains intentionally disabled.

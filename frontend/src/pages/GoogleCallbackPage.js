@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import { API } from "../config";
 import { setTokens, isCapacitorNative } from "../tokenManager";
 import axios from "axios";
@@ -11,6 +12,7 @@ export default function GoogleCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { checkAuth } = useAuth();
+  const { t } = useLanguage();
   const [error, setError] = useState(null);
 
   useEffect(() => {
@@ -34,10 +36,10 @@ export default function GoogleCallbackPage() {
         }
 
         await checkAuth();
-        toast.success("Sesión iniciada con Google");
+        toast.success(t("loginUi.googleSuccess"));
         navigate("/");
       } catch (err) {
-        const detail = err.response?.data?.detail || "Error al iniciar sesión con Google";
+        const detail = err.response?.data?.detail || t("loginUi.googleError");
         setError(detail);
         toast.error(detail);
         setTimeout(() => navigate("/login"), 3000);
@@ -52,12 +54,12 @@ export default function GoogleCallbackPage() {
       {error ? (
         <div className="text-center">
           <p className="text-red-500 text-sm mb-2">{error}</p>
-          <p className="text-[#8D99AE] text-xs">Redirigiendo...</p>
+          <p className="text-[#8D99AE] text-xs">{t("loginUi.redirecting")}</p>
         </div>
       ) : (
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B] mx-auto mb-3" />
-          <p className="text-[#2B2D42] font-medium">Conectando con Google...</p>
+          <p className="text-[#2B2D42] font-medium">{t("loginUi.connectingGoogle")}</p>
         </div>
       )}
     </div>

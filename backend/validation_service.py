@@ -9,7 +9,16 @@ CONFIRMATIONS_NEEDED = 3
 NET_VOTE_THRESHOLD = 0  # Positive net score needed
 
 
-async def process_validation(db, report_id: str, user_id: str, vote: str, is_subscriber: bool):
+async def process_validation(
+    db,
+    report_id: str,
+    user_id: str,
+    vote: str,
+    is_subscriber: bool,
+    latitude: float | None = None,
+    longitude: float | None = None,
+    distance_meters: float | None = None,
+):
     """Process a validation vote and check if report reaches consensus."""
 
     report = await db.reports.find_one({"id": report_id})
@@ -40,6 +49,11 @@ async def process_validation(db, report_id: str, user_id: str, vote: str, is_sub
         "weight": weight,
         "timestamp": datetime.now(timezone.utc).isoformat()
     }
+    if latitude is not None and longitude is not None:
+        validation_doc["latitude"] = latitude
+        validation_doc["longitude"] = longitude
+    if distance_meters is not None:
+        validation_doc["distance_meters"] = distance_meters
     await db.validations.insert_one(validation_doc)
 
     # Update report counts

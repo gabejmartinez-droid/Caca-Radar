@@ -6,12 +6,14 @@ import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 import axios from "axios";
 
 import { API } from "../config";
 
 export default function DashboardLogin() {
   const { login } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -27,11 +29,11 @@ export default function DashboardLogin() {
       if (result.role === "municipality" || result.role === "admin") {
         navigate("/dashboard");
       } else {
-        setError("Esta cuenta no tiene acceso al panel de municipios.");
+        setError(t("municipalityUi.noDashboardAccess"));
       }
     } catch (err) {
       const detail = err.response?.data?.detail;
-      setError(typeof detail === "string" ? detail : "Credenciales inválidas");
+      setError(typeof detail === "string" ? detail : t("municipalityUi.invalidCredentials"));
     } finally {
       setLoading(false);
     }
@@ -39,9 +41,9 @@ export default function DashboardLogin() {
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="dashboard-login-page">
-      <div className="p-4">
+      <div className="ios-safe-header p-4">
         <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn">
-          <ArrowLeft className="w-4 h-4 mr-2" />Volver al mapa
+          <ArrowLeft className="w-4 h-4 mr-2" />{t("municipalityUi.backToMap")}
         </Button>
       </div>
 
@@ -52,12 +54,12 @@ export default function DashboardLogin() {
           </div>
           <div>
             <span className="text-2xl font-black text-[#2B2D42] block" style={{ fontFamily: 'Nunito, sans-serif' }}>Caca Radar</span>
-            <span className="text-sm text-[#8D99AE]">Panel de Ayuntamiento</span>
+            <span className="text-sm text-[#8D99AE]">{t("municipalityUi.cityPanel")}</span>
           </div>
         </div>
 
         <div className="w-full max-w-sm bg-white rounded-2xl shadow-sm p-6">
-          <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-6" style={{ fontFamily: 'Nunito, sans-serif' }}>Acceso Municipio</h1>
+          <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-6" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.cityAccess")}</h1>
 
           {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4" data-testid="error-message">{error}</div>}
 
@@ -70,20 +72,20 @@ export default function DashboardLogin() {
               </div>
             </div>
             <div>
-              <Label htmlFor="password" className="text-[#2B2D42]">Contraseña</Label>
+              <Label htmlFor="password" className="text-[#2B2D42]">{t("password")}</Label>
               <div className="relative mt-1">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
                 <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" className="pl-10" required data-testid="password-input" />
               </div>
             </div>
             <Button type="submit" disabled={loading} className="w-full bg-[#2B2D42] hover:bg-[#1a1b2e] text-white py-5 rounded-xl font-bold" data-testid="submit-btn">
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Acceder al Panel"}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("municipalityUi.dashboardAccess")}
             </Button>
           </form>
 
           <p className="text-center text-[#8D99AE] text-sm mt-4">
-            ¿Tu municipio no está registrado?{" "}
-            <a href="/dashboard/register" className="text-[#2B2D42] font-medium hover:underline" data-testid="register-municipality-link">Regístrate aquí</a>
+            {t("municipalityUi.notRegistered")}{" "}
+            <a href="/dashboard/register" className="text-[#2B2D42] font-medium hover:underline" data-testid="register-municipality-link">{t("municipalityUi.registerHere")}</a>
           </p>
         </div>
       </div>

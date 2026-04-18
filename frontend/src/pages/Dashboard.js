@@ -7,6 +7,8 @@ import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
+import { getRankLabel } from "../utils/ranks";
 
 import { API } from "../config";
 
@@ -22,6 +24,7 @@ const FLAG_REASON_LABELS = {
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { t } = useLanguage();
   const navigate = useNavigate();
 
   const [stats, setStats] = useState(null);
@@ -90,7 +93,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="dashboard-page">
       {/* Header */}
-      <div className="bg-[#2B2D42] text-white px-4 sm:px-6 py-4">
+      <div className="ios-safe-header bg-[#2B2D42] text-white px-4 sm:px-6 py-4">
         <div className="max-w-6xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Building2 className="w-6 h-6" />
@@ -184,7 +187,7 @@ export default function Dashboard() {
                         <td className="px-4 py-3">
                           <div>
                             <span className="text-xs font-medium text-[#2B2D42]">{r.contributor_name || "Anónimo"}</span>
-                            {r.contributor_rank && <span className="text-xs text-[#FF6B6B] block">{r.contributor_rank}</span>}
+                            {r.contributor_rank && <span className="text-xs text-[#FF6B6B] block max-w-[180px] truncate">{getRankLabel(r.contributor_rank_key || r.contributor_rank, t)}</span>}
                           </div>
                         </td>
                         <td className="px-4 py-3 text-xs text-[#8D99AE]">{new Date(r.created_at).toLocaleDateString("es-ES")}</td>

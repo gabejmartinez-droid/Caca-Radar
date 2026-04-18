@@ -5,12 +5,15 @@ import { Building2, Mail, Lock, MapPin, User, Loader2, ArrowLeft, CheckCircle, A
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
+import { useLanguage } from "../contexts/LanguageContext";
+import { formatTranslation } from "../utils/ranks";
 import axios from "axios";
 
 import { API } from "../config";
 
 export default function MunicipalityRegister() {
   const navigate = useNavigate();
+  const { t } = useLanguage();
   const [step, setStep] = useState(1); // 1=form, 2=verify, 3=done
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -27,7 +30,7 @@ export default function MunicipalityRegister() {
   const handleRegister = async (e) => {
     e.preventDefault();
     setError("");
-    if (password.length < 6) { setError("La contraseña debe tener al menos 6 caracteres"); return; }
+    if (password.length < 6) { setError(t("passwordTooShort")); return; }
     setLoading(true);
     try {
       const { data } = await axios.post(`${API}/municipality/register`, {
@@ -37,7 +40,7 @@ export default function MunicipalityRegister() {
       if (data.verification_required) {
         setPendingEmail(email);
         setStep(2);
-        toast.success("Código de verificación enviado a tu email");
+        toast.success(t("municipalityUi.codeSent"));
       } else {
         setStep(3);
       }
@@ -58,9 +61,9 @@ export default function MunicipalityRegister() {
         email: pendingEmail, code: verificationCode
       }, { withCredentials: true });
       setStep(3);
-      toast.success("Email verificado correctamente");
+      toast.success(t("municipalityUi.emailVerified"));
     } catch (err) {
-      setError(err.response?.data?.detail || "Código inválido");
+      setError(err.response?.data?.detail || t("municipalityUi.invalidCode"));
     } finally {
       setLoading(false);
     }
@@ -69,17 +72,17 @@ export default function MunicipalityRegister() {
   const handleResend = async () => {
     try {
       await axios.post(`${API}/municipality/resend-verification`, { email: pendingEmail }, { withCredentials: true });
-      toast.success("Código reenviado");
+      toast.success(t("municipalityUi.codeResent"));
     } catch {
-      toast.error("Error al reenviar el código");
+      toast.error(t("municipalityUi.resendError"));
     }
   };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="municipality-register-page">
-      <div className="p-4">
+      <div className="ios-safe-header p-4">
         <Button variant="ghost" onClick={() => navigate("/dashboard/login")} className="text-[#8D99AE]" data-testid="back-btn">
-          <ArrowLeft className="w-4 h-4 mr-2" />Volver al login
+          <ArrowLeft className="w-4 h-4 mr-2" />{t("municipalityUi.backToLogin")}
         </Button>
       </div>
 
@@ -90,7 +93,7 @@ export default function MunicipalityRegister() {
           </div>
           <div>
             <span className="text-2xl font-black text-[#2B2D42] block" style={{ fontFamily: 'Nunito, sans-serif' }}>Caca Radar</span>
-            <span className="text-sm text-[#8D99AE]">Registro de Ayuntamiento</span>
+            <span className="text-sm text-[#8D99AE]">{t("municipalityUi.registerTitle")}</span>
           </div>
         </div>
 
@@ -109,50 +112,50 @@ export default function MunicipalityRegister() {
 
           {step === 1 && (
             <>
-              <h1 className="text-xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>Registra tu Ayuntamiento</h1>
-              <p className="text-sm text-[#8D99AE] text-center mb-6">Usa tu email oficial del ayuntamiento para verificar tu identidad.</p>
+              <h1 className="text-xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.registerTitle")}</h1>
+              <p className="text-sm text-[#8D99AE] text-center mb-6">{t("municipalityUi.registerSubtitle")}</p>
 
               {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4" data-testid="error-message">{error}</div>}
 
               <form onSubmit={handleRegister} className="space-y-4">
                 <div>
-                  <Label className="text-[#2B2D42]">Nombre del contacto</Label>
+                  <Label className="text-[#2B2D42]">{t("municipalityUi.contactName")}</Label>
                   <div className="relative mt-1">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre y apellido" className="pl-10" required data-testid="contact-name-input" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder={t("municipalityUi.contactPlaceholder")} className="pl-10" required data-testid="contact-name-input" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[#2B2D42]">Nombre del municipio</Label>
+                  <Label className="text-[#2B2D42]">{t("municipalityUi.municipalityName")}</Label>
                   <div className="relative mt-1">
                     <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
                     <Input value={municipalityName} onChange={(e) => setMunicipalityName(e.target.value)} placeholder="Ej: Alcobendas" className="pl-10" required data-testid="municipality-name-input" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[#2B2D42]">Provincia</Label>
+                  <Label className="text-[#2B2D42]">{t("municipalityUi.province")}</Label>
                   <div className="relative mt-1">
                     <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
                     <Input value={province} onChange={(e) => setProvince(e.target.value)} placeholder="Ej: Madrid" className="pl-10" required data-testid="province-input" />
                   </div>
                 </div>
                 <div>
-                  <Label className="text-[#2B2D42]">Email oficial del ayuntamiento</Label>
+                  <Label className="text-[#2B2D42]">{t("municipalityUi.officialEmail")}</Label>
                   <div className="relative mt-1">
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
                     <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="nombre@ayuntamiento.es" className="pl-10" required data-testid="email-input" />
                   </div>
-                  <p className="text-xs text-[#8D99AE] mt-1">Debe ser un dominio oficial (.es, .gob.es, .org)</p>
+                  <p className="text-xs text-[#8D99AE] mt-1">{t("municipalityUi.officialDomainHint")}</p>
                 </div>
                 <div>
-                  <Label className="text-[#2B2D42]">Contraseña</Label>
+                  <Label className="text-[#2B2D42]">{t("password")}</Label>
                   <div className="relative mt-1">
                     <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
-                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Mínimo 6 caracteres" className="pl-10" required data-testid="password-input" />
+                    <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={t("passwordPlaceholder")} className="pl-10" required data-testid="password-input" />
                   </div>
                 </div>
                 <Button type="submit" disabled={loading} className="w-full bg-[#2B2D42] hover:bg-[#1a1b2e] text-white py-5 rounded-xl font-bold" data-testid="register-submit-btn">
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Registrar Municipio"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("municipalityUi.registerMunicipality")}
                 </Button>
               </form>
             </>
@@ -160,31 +163,31 @@ export default function MunicipalityRegister() {
 
           {step === 2 && (
             <>
-              <h1 className="text-xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>Verifica tu email</h1>
-              <p className="text-sm text-[#8D99AE] text-center mb-6">Hemos enviado un código de 6 dígitos a <strong>{pendingEmail}</strong></p>
+              <h1 className="text-xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.verifyEmail")}</h1>
+              <p className="text-sm text-[#8D99AE] text-center mb-6">{formatTranslation(t, "municipalityUi.codeSentTo", { email: pendingEmail })}</p>
 
               {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4">{error}</div>}
 
               <form onSubmit={handleVerify} className="space-y-4">
                 <div>
-                  <Label className="text-[#2B2D42]">Código de verificación</Label>
+                  <Label className="text-[#2B2D42]">{t("municipalityUi.verificationCode")}</Label>
                   <Input type="text" value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="123456" className="text-center text-2xl tracking-widest" maxLength={6} required data-testid="verification-code-input" />
                 </div>
                 <Button type="submit" disabled={loading} className="w-full bg-[#2B2D42] hover:bg-[#1a1b2e] text-white py-5 rounded-xl font-bold" data-testid="verify-submit-btn">
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Verificar"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("municipalityUi.verify")}
                 </Button>
               </form>
-              <Button variant="ghost" onClick={handleResend} className="w-full text-[#8D99AE] mt-2">Reenviar código</Button>
+              <Button variant="ghost" onClick={handleResend} className="w-full text-[#8D99AE] mt-2">{t("municipalityUi.resendCode")}</Button>
             </>
           )}
 
           {step === 3 && (
             <div className="text-center py-8">
               <CheckCircle className="w-16 h-16 text-[#66BB6A] mx-auto mb-4" />
-              <h1 className="text-xl font-bold text-[#2B2D42] mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>Registro completado</h1>
-              <p className="text-sm text-[#8D99AE] mb-6">Tu cuenta de municipio ha sido creada. Ya puedes acceder al panel de control.</p>
+              <h1 className="text-xl font-bold text-[#2B2D42] mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.completedTitle")}</h1>
+              <p className="text-sm text-[#8D99AE] mb-6">{t("municipalityUi.completedBody")}</p>
               <Button onClick={() => navigate("/dashboard")} className="bg-[#2B2D42] hover:bg-[#1a1b2e] text-white py-5 rounded-xl font-bold px-8" data-testid="go-to-dashboard-btn">
-                Ir al Panel
+                {t("municipalityUi.goToDashboard")}
               </Button>
             </div>
           )}

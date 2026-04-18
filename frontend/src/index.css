@@ -22,6 +22,27 @@ code {
         source-code-pro, Menlo, Monaco, Consolas, "Courier New", monospace;
 }
 
+/* Native iOS safe-area spacing for top navigation controls. */
+:root {
+    --app-safe-top: env(safe-area-inset-top, 0px);
+    --app-safe-bottom: env(safe-area-inset-bottom, 0px);
+    --app-safe-top-gap: 24px;
+    --app-safe-bottom-gap: 16px;
+}
+
+.ios-safe-header {
+    padding-top: calc(var(--app-safe-top) + var(--app-safe-top-gap)) !important;
+}
+
+.ios-safe-page {
+    padding-top: calc(var(--app-safe-top) + var(--app-safe-top-gap)) !important;
+    padding-bottom: calc(var(--app-safe-bottom) + var(--app-safe-bottom-gap));
+}
+
+.ios-safe-top {
+    top: calc(var(--app-safe-top) + var(--app-safe-top-gap)) !important;
+}
+
 /* Leaflet overrides */
 .leaflet-container {
     height: 100%;

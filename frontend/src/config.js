@@ -17,7 +17,7 @@
  * ============================================================
  */
 
-const HOSTED_BACKEND = "https://caca-radar.preview.emergentagent.com";
+const HOSTED_BACKEND = "https://caca-radar.emergent.host";
 
 function getApiUrl() {
   if (typeof window !== "undefined") {
@@ -33,5 +33,6 @@ function getApiUrl() {
 
 export const API = getApiUrl();
 export const HOSTED_WEB_URL = HOSTED_BACKEND;
-export const APP_ENVIRONMENT = API.startsWith("http") ? "native-preview" : "web";
+export const APP_ENVIRONMENT = API.startsWith("http") ? "native-production" : "web";
 export const APP_VERSION = process.env.REACT_APP_VERSION || "dev";
+export const NATIVE_PUSH_ENABLED = process.env.REACT_APP_ENABLE_NATIVE_PUSH === "true";

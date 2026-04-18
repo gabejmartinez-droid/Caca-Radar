@@ -81,6 +81,12 @@ backend/backups/
 memory/test_credentials.md
 
 # Mobile development
+frontend/ios/App/App/public/
+frontend/ios/App/App/capacitor.config.json
+frontend/ios/App/App.xcodeproj/xcuserdata/
+frontend/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
+frontend/ios/App/CapApp-SPM/.swiftpm/
+frontend/ios/capacitor-cordova-ios-plugins/
 android-sdk/frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/1.pack

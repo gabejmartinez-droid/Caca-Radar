@@ -71,7 +71,7 @@ export default function RegisterPage() {
   return (
     <div className={`min-h-screen bg-[#F8F9FA] flex flex-col ${isRtl ? 'rtl' : 'ltr'}`} data-testid="register-page">
       {/* Header */}
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button
           variant="ghost"
           onClick={() => navigate("/")}

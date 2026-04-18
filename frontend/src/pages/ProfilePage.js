@@ -9,7 +9,9 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
-import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushPermissionState } from "../utils/pushManager";
+import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
+import { formatTranslation, getRankLabel } from "../utils/ranks";
+import { getBadgeName, getBadgeDescription } from "../utils/badges";
 
 import { API } from "../config";
 
@@ -34,7 +36,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 
 export default function ProfilePage() {
   const { user, checkAuth } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, language } = useLanguage();
   const navigate = useNavigate();
 
   const [profile, setProfile] = useState(null);
@@ -65,11 +67,11 @@ export default function ProfilePage() {
   };
 
   const handleSaveUsername = async () => {
-    if (!newUsername.trim() || newUsername.length < 3) { toast.error("Mínimo 3 caracteres"); return; }
+    if (!newUsername.trim() || newUsername.length < 3) { toast.error(t("profileUi.usernameTooShort")); return; }
     setSaving(true);
     try {
       await axios.put(`${API}/users/username`, { username: newUsername.trim() }, { withCredentials: true });
-      toast.success("Nombre de usuario actualizado");
+      toast.success(t("profileUi.usernameUpdated"));
       setEditingUsername(false);
       await checkAuth();
       fetchProfile();
@@ -80,23 +82,25 @@ export default function ProfilePage() {
   const handleToggleNotifications = async () => {
     const supported = await isPushSupported();
     if (!supported) {
-      toast.error("Tu navegador no soporta notificaciones push");
+      toast.error(t(getPushUnavailableReasonKey()));
       return;
     }
     if (notificationsOn) {
       await unsubscribeFromPush();
       setNotificationsOn(false);
-      toast.success("Notificaciones desactivadas");
+      toast.success(t("mapUi.pushDisabled"));
     } else {
       try {
         await subscribeToPush(null);
         setNotificationsOn(true);
-        toast.success("Notificaciones activadas");
+        toast.success(t("mapUi.pushEnabled"));
       } catch (err) {
         if (err.message === "permission_denied") {
-          toast.error("Permiso de notificaciones denegado en el navegador");
+          toast.error(t("profileUi.browserPermissionDenied"));
+        } else if (err.message === "native_push_disabled_for_build") {
+          toast.error(t(getPushUnavailableReasonKey()));
         } else {
-          toast.error("Error activando notificaciones");
+          toast.error(t("mapUi.pushError"));
         }
       }
     }
@@ -105,25 +109,49 @@ export default function ProfilePage() {
   const handleShareProfile = async () => {
     try {
       const { data } = await axios.get(`${API}/users/${user._id || user.id}/share`, { withCredentials: true });
-      const shareText = `${data.text}\n\n${data.download_text}`;
+      const displayName = profile?.username || profile?.name || user?.username || user?.name || t("mapUi.userFallback");
+      const shareText = `${formatTranslation(t, "rankUi.profileShareText", {
+        name: displayName,
+        rank: getRankLabel(data.rank_key || data.rank || profile?.rank_key || profile?.rank, t),
+        score: data.total_score ?? profile?.total_score ?? 0,
+        reports: data.report_count ?? profile?.report_count ?? 0,
+        badges: data.badge_count ?? profile?.badges_count ?? 0,
+      })}\n\n${formatTranslation(t, "rankUi.downloadText", {
+        ios: data.app_store_url,
+        android: data.play_store_url,
+      })}`;
+      const title = formatTranslation(t, "rankUi.shareTitle", { name: displayName });
       if (navigator.share) {
-        await navigator.share({ title: data.title, text: shareText, url: data.url });
+        await navigator.share({ title, text: shareText, url: data.url });
       } else {
         await navigator.clipboard.writeText(shareText);
-        toast.success("Perfil copiado al portapapeles");
+        toast.success(t("rankUi.profileCopied"));
       }
     } catch (err) {
-      if (err.name !== "AbortError") toast.error("Error al compartir");
+      if (err.name !== "AbortError") toast.error(t("profileUi.shareError"));
     }
   };
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
 
-  const trustTier = (profile?.trust_score || 50) >= 80 ? "Confiable" : (profile?.trust_score || 50) >= 50 ? "Normal" : (profile?.trust_score || 50) >= 20 ? "Bajo" : "Restringido";
+  const trustTierKey = (profile?.trust_score || 50) >= 80 ? "trusted" : (profile?.trust_score || 50) >= 50 ? "normal" : (profile?.trust_score || 50) >= 20 ? "low" : "restricted";
+  const trustTiers = [
+    { key: "restricted", min: 0, max: 19 },
+    { key: "low", min: 20, max: 49 },
+    { key: "normal", min: 50, max: 79 },
+    { key: "trusted", min: 80, max: 100 },
+  ];
+  const scoreRows = [
+    { action: t("profileUi.scoreReport"), pts: "+10", extra: t("profileUi.scorePhotoDescription") },
+    { action: t("profileUi.scoreCorrectValidation"), pts: "+4", extra: t("profileUi.scoreFirstFive") },
+    { action: t("profileUi.scoreVerifiedReport"), pts: "+5", extra: "" },
+    { action: t("profileUi.scoreUpvoteReceived"), pts: "+2", extra: "" },
+    { action: t("profileUi.scoreStreak"), pts: "+5 / +15 / +50", extra: "" },
+  ];
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? 'rtl' : 'ltr'}`} data-testid="profile-page">
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}
         </Button>
@@ -146,7 +174,7 @@ export default function ProfilePage() {
             </div>
           ) : (
             <div className="flex items-center gap-2 justify-center mb-1">
-              <h1 className="text-xl font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{profile?.username || profile?.name || "Usuario"}</h1>
+              <h1 className="text-xl font-black text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{profile?.username || profile?.name || t("mapUi.userFallback")}</h1>
               <button onClick={() => setEditingUsername(true)} className="text-[#8D99AE] hover:text-[#FF6B6B]" data-testid="edit-username-btn"><Edit3 className="w-4 h-4" /></button>
             </div>
           )}
@@ -154,24 +182,24 @@ export default function ProfilePage() {
           {/* Rank */}
           <div className="flex items-center justify-center gap-2 mb-1">
             <Crown className="w-4 h-4 text-[#FF6B6B]" />
-            <span className="text-sm font-bold text-[#FF6B6B]">{profile?.rank || "Aspirante Cagón"}</span>
+            <span className="text-sm font-bold text-[#FF6B6B] leading-tight max-w-[280px]">{getRankLabel(profile?.rank_key || profile?.rank, t)}</span>
           </div>
-          <p className="text-xs text-[#8D99AE]">Nivel {profile?.level || 1} — Percentil {profile?.rank_percentile || 0}%</p>
+          <p className="text-xs text-[#8D99AE]">{formatTranslation(t, "rankUi.levelPercentile", { level: profile?.level || 1, percentile: profile?.rank_percentile || 0 })}</p>
 
           {/* Subscription badge */}
           {user?.subscription_active ? (
             <Badge className="mt-2 bg-[#FF6B6B]"><Star className="w-3 h-3 mr-1 fill-white" />Premium</Badge>
           ) : (
             <Button size="sm" variant="outline" onClick={() => navigate("/subscribe")} className="mt-2 text-[#FF6B6B] border-[#FF6B6B]" data-testid="upgrade-btn">
-              <Star className="w-3 h-3 mr-1" />Hazte Premium
+              <Star className="w-3 h-3 mr-1" />{t("profileUi.upgradePremium")}
             </Button>
           )}
 
           <Button size="sm" variant="ghost" onClick={handleShareProfile} className="mt-2 text-[#42A5F5]" data-testid="share-profile-btn">
-            <Share2 className="w-4 h-4 mr-1" />Compartir perfil
+            <Share2 className="w-4 h-4 mr-1" />{t("profileUi.shareProfile")}
           </Button>
           <Button size="sm" variant="ghost" onClick={() => navigate("/impact")} className="mt-1 text-[#66BB6A]" data-testid="view-impact-btn">
-            <Heart className="w-4 h-4 mr-1" />Mi Impacto Comunitario
+            <Heart className="w-4 h-4 mr-1" />{t("profileUi.communityImpact")}
           </Button>
         </div>
 
@@ -179,22 +207,22 @@ export default function ProfilePage() {
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
           <div className="text-center mb-4">
             <p className="text-5xl font-black text-[#2B2D42]">{profile?.total_score || 0}</p>
-            <p className="text-sm text-[#8D99AE]">Puntos totales</p>
+            <p className="text-sm text-[#8D99AE]">{t("profileUi.totalPoints")}</p>
           </div>
           <div className="grid grid-cols-3 gap-3">
-            <StatCard icon={MapPin} label="Reportes" value={profile?.report_count || 0} color="#FF6B6B" />
-            <StatCard icon={BarChart3} label="Votos" value={profile?.vote_count || 0} color="#42A5F5" />
-            <StatCard icon={Flame} label="Racha" value={`${profile?.streak_days || 0}d`} color="#FFA726" />
+            <StatCard icon={MapPin} label={t("profileUi.reports")} value={profile?.report_count || 0} color="#FF6B6B" />
+            <StatCard icon={BarChart3} label={t("profileUi.votes")} value={profile?.vote_count || 0} color="#42A5F5" />
+            <StatCard icon={Flame} label={t("profileUi.streak")} value={`${profile?.streak_days || 0}${t("mapUi.dayShort")}`} color="#FFA726" />
           </div>
           {profile?.accuracy_rate !== undefined && (
             <div className="flex gap-3 mt-3">
               <div className="flex-1 bg-[#F8F9FA] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-[#66BB6A]">{profile.accuracy_rate}%</p>
-                <p className="text-xs text-[#8D99AE]">Precisión</p>
+                <p className="text-xs text-[#8D99AE]">{t("profileUi.accuracy")}</p>
               </div>
               <div className="flex-1 bg-[#F8F9FA] rounded-lg p-2 text-center">
                 <p className="text-lg font-bold text-[#42A5F5]">{profile.impact_score || 0}</p>
-                <p className="text-xs text-[#8D99AE]">Impacto</p>
+                <p className="text-xs text-[#8D99AE]">{t("profileUi.impact")}</p>
               </div>
             </div>
           )}
@@ -204,7 +232,7 @@ export default function ProfilePage() {
         {profile?.badges && profile.badges.length > 0 && (
           <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
             <h3 className="font-bold text-[#2B2D42] mb-3 flex items-center gap-2">
-              <Trophy className="w-5 h-5 text-[#FFA726]" />Insignias ({profile.badges_count || 0})
+              <Trophy className="w-5 h-5 text-[#FFA726]" />{t("profileUi.badges")} ({profile.badges_count || 0})
             </h3>
             <div className="grid grid-cols-3 gap-3">
               {profile.badges.map((badge) => (
@@ -212,8 +240,8 @@ export default function ProfilePage() {
                   <div className="w-8 h-8 bg-[#FFA726] rounded-full flex items-center justify-center mx-auto mb-1">
                     <Star className="w-4 h-4 text-white" />
                   </div>
-                  <p className="text-xs font-bold text-[#2B2D42]">{badge.name}</p>
-                  <p className="text-xs text-[#8D99AE]">{badge.description}</p>
+                  <p className="text-xs font-bold text-[#2B2D42]">{getBadgeName(badge, language)}</p>
+                  <p className="text-xs text-[#8D99AE]">{getBadgeDescription(badge, language)}</p>
                 </div>
               ))}
             </div>
@@ -225,7 +253,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <Shield className="w-5 h-5 text-[#42A5F5]" />
-              <span className="font-bold text-[#2B2D42]">Nivel de Confianza</span>
+              <span className="font-bold text-[#2B2D42]">{t("profileUi.trustLevel")}</span>
             </div>
             <div className="text-right">
               <span className="text-lg font-black text-[#2B2D42]">{profile?.trust_score || 50}</span>
@@ -233,16 +261,11 @@ export default function ProfilePage() {
             </div>
           </div>
           <TrustBar score={profile?.trust_score || 50} />
-          <p className="text-xs text-[#8D99AE] mt-2">Estado: <span className="font-medium">{trustTier}</span></p>
+          <p className="text-xs text-[#8D99AE] mt-2">{t("profileUi.status")}: <span className="font-medium">{t(`profileUi.trustTiers.${trustTierKey}`)}</span></p>
           <div className="grid grid-cols-4 gap-1 mt-3">
-            {[
-              { label: "Restringido", min: 0, max: 19 },
-              { label: "Bajo", min: 20, max: 49 },
-              { label: "Normal", min: 50, max: 79 },
-              { label: "Confiable", min: 80, max: 100 },
-            ].map((tier) => (
-              <div key={tier.label} className={`text-center py-1 rounded text-xs ${(profile?.trust_score || 50) >= tier.min && (profile?.trust_score || 50) <= tier.max ? 'bg-[#FF6B6B]/10 text-[#FF6B6B] font-bold' : 'text-[#8D99AE]'}`}>
-                {tier.label}
+            {trustTiers.map((tier) => (
+              <div key={tier.key} className={`text-center py-1 rounded text-xs ${(profile?.trust_score || 50) >= tier.min && (profile?.trust_score || 50) <= tier.max ? 'bg-[#FF6B6B]/10 text-[#FF6B6B] font-bold' : 'text-[#8D99AE]'}`}>
+                {t(`profileUi.trustTiers.${tier.key}`)}
               </div>
             ))}
           </div>
@@ -253,7 +276,7 @@ export default function ProfilePage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Bell className="w-5 h-5 text-[#42A5F5]" />
-              <span className="font-bold text-[#2B2D42]">Notificaciones</span>
+              <span className="font-bold text-[#2B2D42]">{t("profileUi.notifications")}</span>
             </div>
             <button
               onClick={handleToggleNotifications}
@@ -263,20 +286,14 @@ export default function ProfilePage() {
               <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notificationsOn ? "translate-x-6" : "translate-x-0.5"}`} />
             </button>
           </div>
-          <p className="text-xs text-[#8D99AE] mt-2">Recibe avisos cuando se reporten cacas cerca de tus ubicaciones guardadas.</p>
+          <p className="text-xs text-[#8D99AE] mt-2">{t("profileUi.notificationsDesc")}</p>
         </div>
 
         {/* How scoring works */}
         <div className="bg-white rounded-2xl shadow-sm p-6">
-          <h3 className="font-bold text-[#2B2D42] mb-3">Cómo ganar puntos</h3>
+          <h3 className="font-bold text-[#2B2D42] mb-3">{t("profileUi.scoringTitle")}</h3>
           <div className="space-y-2 text-sm">
-            {[
-              { action: "Reportar", pts: "+10", extra: "+5 foto, +3 descripción" },
-              { action: "Validación correcta", pts: "+4", extra: "+5 bonus primeros 5" },
-              { action: "Reporte verificado", pts: "+5", extra: "" },
-              { action: "Voto positivo recibido", pts: "+2", extra: "" },
-              { action: "Racha 3 / 7 / 30 días", pts: "+5 / +15 / +50", extra: "" },
-            ].map(({ action, pts, extra }) => (
+            {scoreRows.map(({ action, pts, extra }) => (
               <div key={action} className="flex justify-between items-center py-1.5 border-b border-[#F8F9FA] last:border-0">
                 <span className="text-[#2B2D42]">{action}</span>
                 <div className="text-right">
@@ -288,7 +305,7 @@ export default function ProfilePage() {
             {user?.subscription_active && (
               <div className="bg-[#FF6B6B]/5 rounded-lg p-2 mt-2 text-center">
                 <Star className="w-4 h-4 text-[#FF6B6B] inline mr-1" />
-                <span className="text-xs text-[#FF6B6B] font-medium">Premium: multiplicador 1.5x en todos los puntos</span>
+                <span className="text-xs text-[#FF6B6B] font-medium">{t("profileUi.premiumMultiplier")}</span>
               </div>
             )}
           </div>

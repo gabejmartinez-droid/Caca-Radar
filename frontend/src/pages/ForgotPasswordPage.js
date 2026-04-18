@@ -7,6 +7,7 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { formatTranslation } from "../utils/ranks";
 import { API } from "../config";
 import axios from "axios";
 
@@ -25,7 +26,7 @@ export default function ForgotPasswordPage() {
       await axios.post(`${API}/auth/forgot-password`, { email: email.trim() });
       setSent(true);
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Error al enviar. Inténtalo de nuevo.");
+      toast.error(err.response?.data?.detail || t("authRecovery.sendError"));
     } finally {
       setLoading(false);
     }
@@ -33,10 +34,10 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] flex flex-col ${isRtl ? "rtl" : "ltr"}`} data-testid="forgot-password-page">
-      <div className="p-4 flex justify-between items-center">
+      <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/login")} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className={`w-4 h-4 ${isRtl ? "ml-2" : "mr-2"}`} />
-          {t("login") || "Iniciar sesión"}
+          {t("login")}
         </Button>
         <LanguageSelector />
       </div>
@@ -54,27 +55,27 @@ export default function ForgotPasswordPage() {
             <div className="text-center py-4" data-testid="forgot-success">
               <CheckCircle className="w-12 h-12 text-[#66BB6A] mx-auto mb-3" />
               <h2 className="text-lg font-bold text-[#2B2D42] mb-2" style={{ fontFamily: "Nunito, sans-serif" }}>
-                Revisa tu email
+                {t("authRecovery.checkEmailTitle")}
               </h2>
               <p className="text-sm text-[#8D99AE] mb-4">
-                Si <strong>{email}</strong> tiene una cuenta, recibirás un enlace para restablecer tu contraseña.
+                {formatTranslation(t, "authRecovery.checkEmailBody", { email })}
               </p>
               <Button variant="outline" onClick={() => navigate("/login")} className="text-[#FF6B6B] border-[#FF6B6B]" data-testid="back-to-login">
-                Volver a iniciar sesión
+                {t("authRecovery.backToLogin")}
               </Button>
             </div>
           ) : (
             <>
               <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: "Nunito, sans-serif" }}>
-                ¿Olvidaste tu contraseña?
+                {t("authRecovery.forgotTitle")}
               </h1>
               <p className="text-sm text-[#8D99AE] text-center mb-6">
-                Introduce tu email y te enviaremos un enlace para restablecerla.
+                {t("authRecovery.forgotDescription")}
               </p>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
-                  <Label htmlFor="email" className="text-[#2B2D42]">{t("email") || "Email"}</Label>
+                  <Label htmlFor="email" className="text-[#2B2D42]">{t("email")}</Label>
                   <div className="relative mt-1">
                     <Mail className={`absolute ${isRtl ? "right-3" : "left-3"} top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]`} />
                     <Input
@@ -82,7 +83,7 @@ export default function ForgotPasswordPage() {
                       type="email"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
-                      placeholder={t("emailPlaceholder") || "tu@email.com"}
+                      placeholder={t("emailPlaceholder")}
                       className={isRtl ? "pr-10" : "pl-10"}
                       required
                       data-testid="email-input"
@@ -97,7 +98,7 @@ export default function ForgotPasswordPage() {
                   style={{ fontFamily: "Nunito, sans-serif" }}
                   data-testid="submit-btn"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Enviar enlace"}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : t("authRecovery.sendLink")}
                 </Button>
               </form>
             </>
@@ -105,7 +106,7 @@ export default function ForgotPasswordPage() {
 
           <p className="text-center text-[#8D99AE] text-sm mt-4">
             <Link to="/login" className="text-[#FF6B6B] font-medium hover:underline">
-              Volver a iniciar sesión
+              {t("authRecovery.backToLogin")}
             </Link>
           </p>
         </div>

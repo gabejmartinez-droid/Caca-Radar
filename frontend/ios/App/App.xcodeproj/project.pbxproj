@@ -25,6 +25,7 @@
 		2FAD9762203C412B000D30F8 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		2FAD976A203C412C000D30F8 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		2FAD976C203C412C000D30F8 /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
+		2FAD9776203C412C000D30F8 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		2FAD976F203C412C000D30F8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A084ECDA28D212A400BDFBA6 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
 		CC0001102AAAAAAA00000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
@@ -71,6 +72,7 @@
 				A084ECDA28D212A400BDFBA6 /* Main.storyboard */,
 				2FAD976A203C412C000D30F8 /* Assets.xcassets */,
 				2FAD976C203C412C000D30F8 /* LaunchScreen.storyboard */,
+				2FAD9776203C412C000D30F8 /* App.entitlements */,
 				2FAD976F203C412C000D30F8 /* Info.plist */,
 				CC0001132AAAAAAA00000003 /* public */,
 				CC0001152AAAAAAA00000005 /* capacitor.config.json */,

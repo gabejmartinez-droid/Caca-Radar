@@ -1,9 +1,11 @@
 import { useState, useEffect } from "react";
 import { Flame } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function StreakFlame() {
   const { user } = useAuth();
+  const { t, tTime } = useLanguage();
   const [show, setShow] = useState(false);
   const [dismissed, setDismissed] = useState(false);
 
@@ -22,12 +24,6 @@ export default function StreakFlame() {
   const flameSize = streak >= 30 ? "large" : streak >= 7 ? "medium" : "small";
   const flameColor = streak >= 30 ? "#FF3D00" : streak >= 7 ? "#FF6B6B" : "#FFA726";
   const flameGlow = streak >= 30 ? "0 0 24px #FF3D00" : streak >= 7 ? "0 0 16px #FF6B6B" : "0 0 10px #FFA726";
-
-  const getMessage = () => {
-    if (streak >= 30) return `${streak} dias seguidos! Leyenda!`;
-    if (streak >= 7) return `${streak} dias de racha! Increible!`;
-    return `${streak} dias seguidos!`;
-  };
 
   return (
     <div
@@ -49,9 +45,9 @@ export default function StreakFlame() {
         </div>
         <div>
           <p className="text-white text-xs font-bold" style={{ fontFamily: "Nunito, sans-serif" }}>
-            {getMessage()}
+            {tTime("streakMessage", streak)}
           </p>
-          <p className="text-white/50 text-[10px]">Tu constancia marca la diferencia</p>
+          <p className="text-white/50 text-[10px]">{t("reportEncouragement")}</p>
         </div>
         <div className="streak-counter" style={{ color: flameColor }}>
           <span className="text-lg font-black">{streak}</span>
