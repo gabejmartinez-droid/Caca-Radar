@@ -3,39 +3,31 @@
 ## Original Problem Statement
 Mobile-first web app for Spain — report dog feces, view on map, gamification, municipality dashboards.
 
-## Pages
-- / (Map), /login, /register, /profile, /subscribe, /leaderboard, /rankings
-- /impact (Community Impact Map)
-- /dashboard/login, /dashboard/register, /dashboard, /dashboard/analytics
-- /admin/login (2FA), /admin (owner dashboard)
-- /auth/google/callback (Google OAuth callback handler)
+## Architecture
+- **Database**: MongoDB Atlas (`cacaradar.ubswhuj.mongodb.net`), DB: `cacaradar_production`
+- **Backend**: FastAPI on port 8001, prefixed `/api`
+- **Frontend**: React on port 3000, relative `/api` for web, full URL for Capacitor
+- **Auth**: Cookies (web) / Bearer tokens (Capacitor native)
+- Production safety guard: refuses startup if MONGO_URL=localhost or DB_NAME=test_database when APP_ENV=production
 
-## Dual-Auth Architecture (PERMANENT)
-The Emergent/Kubernetes/Cloudflare proxy ALWAYS returns `access-control-allow-origin: *` for all responses. This is platform infrastructure and CANNOT be changed. Cookie-based auth breaks for cross-origin Capacitor requests.
+## Key Endpoints Added (Apr 18)
+- `GET /api/version` — environment, db_name, mongo_host, mongo_is_local
+- `GET /api/health/deep` — database connectivity, read access, production safety
+- `GET /api/admin/report-diagnostics` — report counts by city, timestamps, runtime info
+- `report_audit_log` collection — permanent audit trail for every report creation
 
-**Solution (DO NOT CHANGE):**
-- **Web**: Relative `/api` paths → same-origin → no CORS. Cookies (httponly, secure, samesite=none) work normally.
-- **Capacitor Native**: Full hosted URL (cross-origin). Auth via `Authorization: Bearer <token>`. `withCredentials` forced to `false`. Tokens persisted in localStorage (survives app restart). Axios interceptor in `AuthContext.js` enforces this on every request.
-
-Key files: `tokenManager.js`, `config.js`, `AuthContext.js` (interceptor)
-
-## Implemented
-- Map with color-coded pins, heatmaps, PWA, 11 languages with SVG flag icons
+## Implemented Features
+- Map with color-coded pins, heatmaps, PWA, 11 languages with SVG flags
 - Gamification (ranks, badges, leaderboards, streaks), premium/free tiers
-- Municipality dashboard (€50/month) with analytics, moderation
-- City/Barrio rankings (premium), Clean Route, rank notifications
-- Username system (editable by all users), photo uploads, 30-day archive, Resend emails
-- Admin panel with 2FA, global stats, user management, photo moderation
-- Real receipt verification: Apple App Store Server API v2 + Google Play Developer API
-- Capacitor Native Projects for iOS & Android with Bearer token auth
-- Google Auth: Login/Register via Emergent Managed Auth (redirect fix for native)
-- Activity Banner, Feedback Drawer, Points Popup, Streak Flame Animation
-- Web Push Notifications (VAPID) + Capacitor Native Push (FCM)
-- Community Impact Map with shareable impact card
-- Emotional/Social Messaging in translations
+- Municipality dashboard with analytics, moderation
+- Google Auth, Forgot/Reset Password flow
+- Web Push + Capacitor Native Push (FCM)
+- Community Impact Map, Activity Banner, Feedback Drawer, Streak Flame
+- iOS/Android Capacitor native builds with Bearer token auth
+- Report audit logging to `report_audit_log` collection
 
-## Backlog (P0-P2)
-- P0: Full `yarn build` production build test
-- P1: Apple Auth integration (Sign in with Apple)
-- P2: Configure real Apple/Google credentials and FCM key when app is in stores
-- P2: Production deployment and custom domain setup
+## Backlog
+- P0: Full yarn build production test
+- P1: Apple Auth integration
+- P2: Real Apple/Google payment credentials + FCM key
+- P2: Production deployment and custom domain
