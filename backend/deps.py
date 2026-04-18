@@ -171,6 +171,10 @@ def reverse_geocode(lat: float, lon: float) -> dict:
 APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.cacaradar.app"
 
+# ── External Auth ────────────────────────────────────
+GOOGLE_OAUTH_AUTHORIZE_URL = os.environ.get("GOOGLE_OAUTH_AUTHORIZE_URL", "").strip()
+GOOGLE_OAUTH_SESSION_URL = os.environ.get("GOOGLE_OAUTH_SESSION_URL", "").strip()
+
 # ── VIP / Owner emails — permanent premium access ────
 VIP_EMAILS = {"gabejmartinez@gmail.com"}
 

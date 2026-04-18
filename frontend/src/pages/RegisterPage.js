@@ -33,8 +33,9 @@ export default function RegisterPage() {
 
   const handleGoogleLogin = () => {
     const webOrigin = isCapacitorNative() ? HOSTED_WEB_URL : window.location.origin;
-    const redirectUrl = encodeURIComponent(webOrigin + "/auth/google/callback");
-    window.location.href = `https://demobackend.emergentagent.com/auth/v1/env/oauth/google?redirect_url=${redirectUrl}`;
+    const redirectUrl = webOrigin + "/auth/google/callback";
+    const startUrl = `${HOSTED_WEB_URL}/api/auth/google/start?redirect_url=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = startUrl;
   };
 
   const handleSubmit = async (e) => {
@@ -58,7 +59,7 @@ export default function RegisterPage() {
     setLoading(true);
 
     try {
-      await register(email, password, trimmed);
+      await register(email.trim().toLowerCase(), password, trimmed);
       toast.success(t("registerSuccess"));
       navigate("/");
     } catch (err) {
@@ -117,6 +118,10 @@ export default function RegisterPage() {
                   onChange={(e) => setUsername(e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
                   placeholder={t("usernamePlaceholder")}
                   className={isRtl ? 'pr-10' : 'pl-10'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="username"
+                  spellCheck={false}
                   maxLength={20}
                   required
                   data-testid="username-input"
@@ -136,6 +141,10 @@ export default function RegisterPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("emailPlaceholder")}
                   className={isRtl ? 'pr-10' : 'pl-10'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="email"
+                  spellCheck={false}
                   required
                   data-testid="email-input"
                 />
@@ -153,6 +162,10 @@ export default function RegisterPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t("passwordPlaceholder")}
                   className={isRtl ? 'pr-10' : 'pl-10'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="new-password"
+                  spellCheck={false}
                   required
                   data-testid="password-input"
                 />

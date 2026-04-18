@@ -24,6 +24,7 @@ import ActivityBanner from "../components/ActivityBanner";
 import PointsPopup from "../components/PointsPopup";
 import StreakFlame from "../components/StreakFlame";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
+import { compressReportPhoto, REPORT_PHOTO_MAX_BYTES } from "../utils/reportPhoto";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -91,6 +92,10 @@ const FRESHNESS_LABEL_KEYS = {
   "Fósil": "mapUi.filters.old",
 };
 const ACTION_PROXIMITY_METERS = 5;
+const MAP_MODES = {
+  REPORTS: "reports",
+  HEATMAP: "heatmap",
+};
 
 export default function MapPage() {
   const { user, logout } = useAuth();
@@ -110,7 +115,7 @@ export default function MapPage() {
   const [selectedFlagReason, setSelectedFlagReason] = useState(null);
   const [myValidation, setMyValidation] = useState(null);
   const [description, setDescription] = useState("");
-  const [showHeatmap, setShowHeatmap] = useState(false);
+  const [mapMode, setMapMode] = useState(MAP_MODES.REPORTS);
   const [pushEnabled, setPushEnabled] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
   const [showFilterBar, setShowFilterBar] = useState(false);
@@ -120,9 +125,18 @@ export default function MapPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
-  const tf = (key, values = {}) => formatTranslation(t, key, values);
+  const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
+  const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
+
+  const setHeatmapMode = useCallback((nextMode) => {
+    if (nextMode === MAP_MODES.HEATMAP && !user?.subscription_active) {
+      navigate("/subscribe");
+      return;
+    }
+    setMapMode(nextMode);
+  }, [navigate, user?.subscription_active]);
 
   // Re-center map on current GPS location
   const recenterMap = useCallback(() => {
@@ -189,7 +203,7 @@ export default function MapPage() {
     checkPush();
   }, [user]);
 
-  const fetchReports = async () => {
+  const fetchReports = useCallback(async () => {
     try {
       let url = `${API}/reports`;
       const params = [];
@@ -202,9 +216,9 @@ export default function MapPage() {
       const { data } = await axios.get(url, { withCredentials: true });
       setReports(Array.isArray(data) ? data : []);
     } catch (e) { console.error(e); setReports([]); }
-  };
+  }, [activeFilter]);
 
-  useEffect(() => { fetchReports(); }, [activeFilter]);
+  useEffect(() => { fetchReports(); }, [fetchReports]);
 
   // Detect user's city from location
   useEffect(() => {
@@ -240,16 +254,47 @@ export default function MapPage() {
     }
   }, []);
 
-  const handlePhotoSelect = (e) => {
+  useEffect(() => {
+    return () => {
+      if (photoPreview) {
+        URL.revokeObjectURL(photoPreview);
+      }
+    };
+  }, [photoPreview]);
+
+  const clearSelectedPhoto = useCallback(() => {
+    setPhotoFile(null);
+    setPhotoPreview((currentPreview) => {
+      if (currentPreview) {
+        URL.revokeObjectURL(currentPreview);
+      }
+      return null;
+    });
+  }, []);
+
+  const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) { toast.error(t("fileTooLarge")); return; }
-      setPhotoFile(file);
-      setPhotoPreview(URL.createObjectURL(file));
+    e.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    try {
+      const compressedFile = await compressReportPhoto(file);
+      clearSelectedPhoto();
+      setPhotoFile(compressedFile);
+      setPhotoPreview(URL.createObjectURL(compressedFile));
+      if (compressedFile.size > REPORT_PHOTO_MAX_BYTES) {
+        toast.message(t("mapUi.photoCompressedWarning"));
+      }
+    } catch (error) {
+      console.error("Report photo compression failed:", error);
+      clearSelectedPhoto();
+      toast.error(t("mapUi.photoCompressionError"));
     }
   };
 
-  const handleSubmitReport = async () => {
+  const handleSubmitReport = useCallback(async () => {
     if (!user) { toast.error(t("mapUi.registerToReport")); navigate("/register"); return; }
     setLoading(true);
     try {
@@ -277,13 +322,12 @@ export default function MapPage() {
         setTimeout(() => setShowNotifPrompt(true), 2000);
       }
       setShowReportDrawer(false);
-      setPhotoFile(null);
-      setPhotoPreview(null);
+      clearSelectedPhoto();
       setDescription("");
       fetchReports();
     } catch (error) { toast.error(error.response?.data?.detail || t("reportError")); }
     finally { setLoading(false); }
-  };
+  }, [user, navigate, getFreshLocation, userLocation, description, photoFile, fetchReports, t, clearSelectedPhoto]);
 
   const handleVote = async (voteType) => {
     if (!user) { toast.error(t("mapUi.registerToVote")); navigate("/register"); return; }
@@ -422,8 +466,8 @@ export default function MapPage() {
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
         <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
         <LocationFinder onLocationFound={setUserLocation} mapRef={mapRef} />
-        <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />
-        {showHeatmap && <HeatmapLayer reports={reports} visible={showHeatmap} />}
+        {mapMode === MAP_MODES.REPORTS && <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />}
+        <HeatmapLayer reports={reports} visible={isHeatmapMode} />
       </MapContainer>
 
       {/* Header */}
@@ -466,15 +510,14 @@ export default function MapPage() {
             </DropdownMenuItem>
             <DropdownMenuItem
               onClick={() => {
-                if (user?.subscription_active) { setShowHeatmap(h => !h); }
-                else { navigate("/subscribe"); }
+                setHeatmapMode(isHeatmapMode ? MAP_MODES.REPORTS : MAP_MODES.HEATMAP);
               }}
               className="cursor-pointer gap-2"
               data-testid="menu-heatmap"
             >
               <Flame className="w-4 h-4 text-[#FF6B6B]" />
               <span className="flex-1">{t("heatmap")}</span>
-              {user?.subscription_active && showHeatmap && <CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" />}
+              {user?.subscription_active && isHeatmapMode && <CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" />}
               {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
             </DropdownMenuItem>
             <DropdownMenuSeparator />
@@ -582,11 +625,22 @@ export default function MapPage() {
       {/* Legend - hide when drawers open */}
       {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
         <div className="absolute bottom-28 left-4 z-[999] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3">
-          <div className="flex flex-col gap-2 text-xs">
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
-            <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
-          </div>
+          {isHeatmapMode ? (
+            <div className="flex flex-col gap-2 text-xs min-w-[138px]">
+              <span className="font-semibold text-[#2B2D42]">{t("heatmap")}</span>
+              <div className="h-3 rounded-full bg-gradient-to-r from-transparent via-[#42A5F5] via-[#66BB6A] via-[#FFA726] to-[#FF5252]" />
+              <div className="flex justify-between text-[#8D99AE]">
+                <span>0</span>
+                <span>1</span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2 text-xs">
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
+              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
+            </div>
+          )}
         </div>
       )}
 
@@ -603,14 +657,26 @@ export default function MapPage() {
       >
         {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
           <>
-            <button
-              onClick={() => setShowHeatmap(!showHeatmap)}
-              className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center transition-all ${showHeatmap ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
-              data-testid="heatmap-toggle"
-              title={t("heatmap")}
-            >
-              <Layers className="w-5 h-5" />
-            </button>
+            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-1 flex items-center gap-1">
+              <button
+                onClick={() => setHeatmapMode(MAP_MODES.REPORTS)}
+                className={`min-w-[88px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${mapMode === MAP_MODES.REPORTS ? 'bg-[#2B2D42] text-white shadow-sm' : 'text-[#8D99AE]'}`}
+                data-testid="reports-mode-toggle"
+                title={t("profileUi.reports")}
+              >
+                <MapPin className="w-4 h-4" />
+                <span className="truncate">{t("profileUi.reports")}</span>
+              </button>
+              <button
+                onClick={() => setHeatmapMode(MAP_MODES.HEATMAP)}
+                className={`min-w-[104px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${isHeatmapMode ? 'bg-[#FF6B6B] text-white shadow-sm' : 'text-[#8D99AE]'}`}
+                data-testid="heatmap-toggle"
+                title={t("heatmap")}
+              >
+                <Layers className="w-4 h-4" />
+                <span className="truncate">{t("heatmap")}</span>
+              </button>
+            </div>
             <button
               onClick={() => setShowFilterBar(!showFilterBar)}
               className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center transition-all ${showFilterBar ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
@@ -673,7 +739,7 @@ export default function MapPage() {
             {photoPreview ? (
               <div className="relative mb-4">
                 <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
-                <button onClick={() => { setPhotoFile(null); setPhotoPreview(null); }} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white"><X className="w-4 h-4" /></button>
+                <button onClick={clearSelectedPhoto} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white"><X className="w-4 h-4" /></button>
               </div>
             ) : (
               <button onClick={() => fileInputRef.current?.click()} className="w-full p-8 border-2 border-dashed border-[#8D99AE]/30 rounded-xl flex flex-col items-center gap-2 text-[#8D99AE] hover:border-[#FF6B6B] hover:text-[#FF6B6B] transition-colors mb-4" data-testid="add-photo-btn">

@@ -37,7 +37,7 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await login(email, password);
+      await login(email.trim().toLowerCase(), password);
       toast.success(t("loginSuccess"));
       navigate("/");
     } catch (err) {
@@ -49,8 +49,9 @@ export default function LoginPage() {
 
   const handleGoogleLogin = () => {
     const webOrigin = isCapacitorNative() ? HOSTED_WEB_URL : window.location.origin;
-    const redirectUrl = encodeURIComponent(webOrigin + "/auth/google/callback");
-    window.location.href = `https://demobackend.emergentagent.com/auth/v1/env/oauth/google?redirect_url=${redirectUrl}`;
+    const redirectUrl = webOrigin + "/auth/google/callback";
+    const startUrl = `${HOSTED_WEB_URL}/api/auth/google/start?redirect_url=${encodeURIComponent(redirectUrl)}`;
+    window.location.href = startUrl;
   };
 
   return (
@@ -102,6 +103,10 @@ export default function LoginPage() {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder={t("emailPlaceholder")}
                   className={isRtl ? 'pr-10' : 'pl-10'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="email"
+                  spellCheck={false}
                   required
                   data-testid="email-input"
                 />
@@ -119,6 +124,10 @@ export default function LoginPage() {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••"
                   className={isRtl ? 'pr-10' : 'pl-10'}
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  autoComplete="current-password"
+                  spellCheck={false}
                   required
                   data-testid="password-input"
                 />

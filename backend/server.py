@@ -2,13 +2,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
 from bson import ObjectId
 import os
 import logging
 import uuid
 import asyncio
 from datetime import datetime, timezone, timedelta
+from urllib.parse import quote
 
 # Shared dependencies — DB, auth, models, utilities
 from deps import (
@@ -23,6 +24,7 @@ from deps import (
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code,
     APP_STORE_URL, PLAY_STORE_URL, VIP_EMAILS,
+    GOOGLE_OAUTH_AUTHORIZE_URL, GOOGLE_OAUTH_SESSION_URL,
     APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url,
 )
 import jwt
@@ -254,6 +256,21 @@ def require_report_proximity(report: dict, latitude: float, longitude: float) ->
 
 # ==================== GOOGLE / APPLE AUTH ====================
 
+@api_router.get("/auth/google/start")
+async def google_auth_start(redirect_url: Optional[str] = Query(None)):
+    """Start Google OAuth using the configured external auth provider."""
+    if not GOOGLE_OAUTH_AUTHORIZE_URL:
+        raise HTTPException(status_code=503, detail="Google login is not configured on this deployment")
+
+    frontend_url = os.environ.get("FRONTEND_URL", "https://cacaradar.es").rstrip("/")
+    target_redirect = redirect_url or f"{frontend_url}/auth/google/callback"
+    separator = "&" if "?" in GOOGLE_OAUTH_AUTHORIZE_URL else "?"
+    encoded_redirect = quote(target_redirect, safe="")
+    return RedirectResponse(
+        url=f"{GOOGLE_OAUTH_AUTHORIZE_URL}{separator}redirect_url={encoded_redirect}",
+        status_code=307,
+    )
+
 @api_router.post("/auth/google")
 async def google_auth(request: Request, response: Response):
     """Exchange Emergent Google Auth session_id for app session."""
@@ -263,10 +280,13 @@ async def google_auth(request: Request, response: Response):
     if not session_id:
         raise HTTPException(status_code=400, detail="Missing session_id")
 
+    if not GOOGLE_OAUTH_SESSION_URL:
+        raise HTTPException(status_code=503, detail="Google login is not configured on this deployment")
+
     # Verify session with Emergent Auth
     try:
         r = req.get(
-            "https://demobackend.emergentagent.com/auth/v1/env/oauth/session-data",
+            GOOGLE_OAUTH_SESSION_URL,
             headers={"X-Session-ID": session_id},
             timeout=10
         )
