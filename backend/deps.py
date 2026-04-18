@@ -27,10 +27,25 @@ from bson import ObjectId
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("server")
 
+# ── Environment ──────────────────────────────────────
+APP_ENV = os.environ.get("APP_ENV", "development")
+
 # ── MongoDB ──────────────────────────────────────────
 mongo_url = os.environ['MONGO_URL']
+db_name = os.environ['DB_NAME']
+
+# Production safety guard
+if APP_ENV == "production":
+    if "localhost" in mongo_url or "127.0.0.1" in mongo_url:
+        raise RuntimeError("FATAL: APP_ENV=production but MONGO_URL points to localhost. Refusing to start.")
+    if db_name == "test_database":
+        raise RuntimeError("FATAL: APP_ENV=production but DB_NAME=test_database. Refusing to start.")
+
 client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+db = client[db_name]
+
+def is_mongo_local() -> bool:
+    return "localhost" in mongo_url or "127.0.0.1" in mongo_url
 
 # ── JWT ──────────────────────────────────────────────
 JWT_ALGORITHM = "HS256"

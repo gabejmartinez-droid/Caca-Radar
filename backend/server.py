@@ -23,6 +23,7 @@ from deps import (
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code,
     APP_STORE_URL, PLAY_STORE_URL, VIP_EMAILS,
+    APP_ENV, db_name, is_mongo_local, mongo_url,
 )
 import jwt
 import re
@@ -808,6 +809,19 @@ async def create_report(request: Request, data: ReportCreate, response: Response
 
     report_doc = build_report_doc(report_id, data, user_id, user, geo, False)
     await db.reports.insert_one(report_doc)
+
+    # Audit log — permanent record of report creation
+    await db.report_audit_log.insert_one({
+        "event": "report_created",
+        "report_id": report_id,
+        "user_id": user_id,
+        "user_email": user.get("email", ""),
+        "latitude": data.latitude,
+        "longitude": data.longitude,
+        "municipality": geo["municipality"],
+        "province": geo["province"],
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
 
     points_result = await process_report_scoring(db, user, user_id, data, False)
     await upsert_municipality(db, geo)
@@ -2400,6 +2414,97 @@ async def root():
 async def health():
     return {"status": "ok"}
 
+
+@api_router.get("/version")
+async def version():
+    """Return environment and database configuration (no secrets)."""
+    from urllib.parse import urlparse
+    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
+    mongo_host = parsed.hostname or parsed.path or "unknown"
+    return {
+        "environment": APP_ENV,
+        "db_name": db_name,
+        "mongo_is_local": is_mongo_local(),
+        "mongo_host": mongo_host,
+    }
+
+
+@api_router.get("/health/deep")
+async def health_deep():
+    """Deep health check — verifies database connectivity and read access."""
+    checks = {
+        "status": "ok",
+        "database": False,
+        "reports_readable": False,
+        "users_readable": False,
+        "production_db_safe": not is_mongo_local() and db_name != "test_database",
+    }
+    try:
+        result = await db.command("ping")
+        checks["database"] = result.get("ok") == 1.0
+    except Exception as e:
+        checks["status"] = "error"
+        checks["database_error"] = str(e)
+        return checks
+
+    try:
+        await db.reports.find_one({}, {"_id": 1})
+        checks["reports_readable"] = True
+    except Exception as e:
+        checks["reports_error"] = str(e)
+
+    try:
+        await db.users.find_one({}, {"_id": 1})
+        checks["users_readable"] = True
+    except Exception as e:
+        checks["users_error"] = str(e)
+
+    if not all([checks["database"], checks["reports_readable"], checks["users_readable"]]):
+        checks["status"] = "degraded"
+    return checks
+
+
+@api_router.get("/admin/report-diagnostics")
+async def report_diagnostics(request: Request):
+    """Report diagnostics for admins — counts by city, timestamps, runtime info."""
+    user = await require_auth(request)
+    if user.get("role") not in ("admin", "municipality"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    pipeline = [
+        {"$group": {"_id": "$municipality", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    city_counts = await db.reports.aggregate(pipeline).to_list(100)
+
+    earliest = await db.reports.find_one({}, {"_id": 0, "created_at": 1}, sort=[("created_at", 1)])
+    latest = await db.reports.find_one({}, {"_id": 0, "created_at": 1}, sort=[("created_at", -1)])
+
+    total_reports = await db.reports.count_documents({})
+    total_users = await db.users.count_documents({})
+    total_audit = await db.report_audit_log.count_documents({})
+
+    from urllib.parse import urlparse
+    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
+    mongo_host = parsed.hostname or parsed.path or "unknown"
+
+    return {
+        "runtime": {
+            "db_name": db_name,
+            "mongo_is_local": is_mongo_local(),
+            "mongo_host": mongo_host,
+            "environment": APP_ENV,
+        },
+        "counts": {
+            "total_reports": total_reports,
+            "total_users": total_users,
+            "total_audit_entries": total_audit,
+        },
+        "reports_by_city": [{"city": r["_id"] or "Unknown", "count": r["count"]} for r in city_counts],
+        "earliest_report": earliest.get("created_at") if earliest else None,
+        "latest_report": latest.get("created_at") if latest else None,
+    }
+
 # Include router
 app.include_router(api_router)
 
@@ -2479,6 +2584,8 @@ async def init_database():
     await db.admin_codes.create_index("email", unique=True)
     await db.password_resets.create_index("token", unique=True)
     await db.password_resets.create_index("email")
+    await db.report_audit_log.create_index("report_id")
+    await db.report_audit_log.create_index("user_id")
 
 async def seed_users():
     """Create admin and demo municipality accounts if missing."""
