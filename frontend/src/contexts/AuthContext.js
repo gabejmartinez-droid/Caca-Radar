@@ -1,20 +1,25 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
-import { API } from "../config";
+import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
 import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
 
 const AuthContext = createContext(null);
 
 // Axios interceptor: attach Bearer token on native, handle auto-refresh on 401
 axios.interceptors.request.use((config) => {
+  config.headers = config.headers || {};
+  config.headers["X-App-Version"] = APP_VERSION;
+  config.headers["X-App-Environment"] = APP_ENVIRONMENT;
   if (isCapacitorNative()) {
     const token = getAccessToken();
     if (token) {
-      config.headers = config.headers || {};
       config.headers["Authorization"] = `Bearer ${token}`;
     }
+    config.headers["X-Platform"] = "capacitor";
     // Don't send cookies on native (they won't work due to proxy CORS)
     config.withCredentials = false;
+  } else {
+    config.headers["X-Platform"] = "web";
   }
   return config;
 });

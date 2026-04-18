@@ -17,6 +17,7 @@ import string
 import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Literal
+from urllib.parse import urlparse
 
 from fastapi import APIRouter, HTTPException, Request, UploadFile, File, Query, Response
 from pydantic import BaseModel, Field, EmailStr
@@ -27,25 +28,53 @@ from bson import ObjectId
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger("server")
 
-# ── Environment ──────────────────────────────────────
-APP_ENV = os.environ.get("APP_ENV", "development")
+# ── Runtime / MongoDB ────────────────────────────────
+APP_ENV = (
+    os.environ.get("APP_ENV")
+    or os.environ.get("ENVIRONMENT")
+    or os.environ.get("ENV")
+    or "development"
+).lower()
+mongo_url = os.environ["MONGO_URL"]
+db_name = os.environ["DB_NAME"]
 
-# ── MongoDB ──────────────────────────────────────────
-mongo_url = os.environ['MONGO_URL']
-db_name = os.environ['DB_NAME']
+PRODUCTION_ENV_NAMES = {"production", "prod"}
+LOCAL_MONGO_HOSTS = {"localhost", "127.0.0.1", "::1", "mongo", "mongodb"}
+UNSAFE_PRODUCTION_DB_NAMES = {"test", "test_database", "local", "dev", "development", "staging"}
 
-# Production safety guard
-if APP_ENV == "production":
-    if "localhost" in mongo_url or "127.0.0.1" in mongo_url:
-        raise RuntimeError("FATAL: APP_ENV=production but MONGO_URL points to localhost. Refusing to start.")
-    if db_name == "test_database":
-        raise RuntimeError("FATAL: APP_ENV=production but DB_NAME=test_database. Refusing to start.")
+
+def is_production_env() -> bool:
+    return APP_ENV in PRODUCTION_ENV_NAMES
+
+
+def is_mongo_local() -> bool:
+    parsed = urlparse(mongo_url)
+    host = (parsed.hostname or "").lower()
+    return parsed.scheme in {"mongodb", "mongodb+srv"} and host in LOCAL_MONGO_HOSTS
+
+
+def redacted_mongo_url() -> str:
+    parsed = urlparse(mongo_url)
+    host = parsed.hostname or "unknown-host"
+    port = f":{parsed.port}" if parsed.port else ""
+    return f"{parsed.scheme}://{host}{port}"
+
+
+def validate_database_config() -> None:
+    if not db_name:
+        raise RuntimeError("DB_NAME is required")
+    if is_production_env() and is_mongo_local():
+        raise RuntimeError("FATAL: APP_ENV=production but MONGO_URL points to local MongoDB. Refusing to start.")
+    if is_production_env() and db_name.lower() in UNSAFE_PRODUCTION_DB_NAMES:
+        raise RuntimeError(f"FATAL: APP_ENV=production but DB_NAME={db_name!r} is unsafe. Refusing to start.")
+    if is_production_env() and "prod" not in db_name.lower() and "production" not in db_name.lower():
+        raise RuntimeError("FATAL: production DB_NAME must clearly identify production.")
+
+
+validate_database_config()
 
 client = AsyncIOMotorClient(mongo_url)
 db = client[db_name]
-
-def is_mongo_local() -> bool:
-    return "localhost" in mongo_url or "127.0.0.1" in mongo_url
 
 # ── JWT ──────────────────────────────────────────────
 JWT_ALGORITHM = "HS256"

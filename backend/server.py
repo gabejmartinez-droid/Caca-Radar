@@ -23,7 +23,7 @@ from deps import (
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code,
     APP_STORE_URL, PLAY_STORE_URL, VIP_EMAILS,
-    APP_ENV, db_name, is_mongo_local, mongo_url,
+    APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url,
 )
 import jwt
 import re
@@ -226,6 +226,7 @@ class SavedLocationCreate(BaseModel):
 
 # Create the main app
 app = FastAPI()
+app.state.started_at = datetime.now(timezone.utc).isoformat()
 api_router = APIRouter(prefix="/api")
 
 # ==================== GOOGLE / APPLE AUTH ====================
@@ -801,6 +802,17 @@ async def create_report(request: Request, data: ReportCreate, response: Response
             confirmed["converted_to_confirmation"] = True
             confirmed["points_earned"] = 5
             confirmed["points_breakdown"] = {"confirmation": 5}
+            await audit_report_event(
+                request,
+                "report_converted_to_confirmation",
+                user,
+                report_id=existing_id,
+                latitude=data.latitude,
+                longitude=data.longitude,
+                municipality=confirmed.get("municipality"),
+                province=confirmed.get("province"),
+                metadata={"points_earned": 5},
+            )
             return confirmed
         # Fallback — shouldn't happen but create normally if report vanished
     
@@ -810,18 +822,17 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     report_doc = build_report_doc(report_id, data, user_id, user, geo, False)
     await db.reports.insert_one(report_doc)
 
-    # Audit log — permanent record of report creation
-    await db.report_audit_log.insert_one({
-        "event": "report_created",
-        "report_id": report_id,
-        "user_id": user_id,
-        "user_email": user.get("email", ""),
-        "latitude": data.latitude,
-        "longitude": data.longitude,
-        "municipality": geo["municipality"],
-        "province": geo["province"],
-        "created_at": datetime.now(timezone.utc).isoformat(),
-    })
+    await audit_report_event(
+        request,
+        "report_created",
+        user,
+        report_id=report_id,
+        latitude=data.latitude,
+        longitude=data.longitude,
+        municipality=geo.get("municipality"),
+        province=geo.get("province"),
+        metadata={"category": report_doc.get("category")},
+    )
 
     points_result = await process_report_scoring(db, user, user_id, data, False)
     await upsert_municipality(db, geo)
@@ -834,6 +845,68 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     return report_doc
 
 # ==================== REPORT HELPERS ====================
+
+def get_runtime_metadata() -> dict:
+    from urllib.parse import urlparse
+    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
+    mongo_host = parsed.hostname or parsed.path or "unknown"
+    return {
+        "environment": APP_ENV,
+        "db_name": db_name,
+        "mongo_url": redacted_mongo_url(),
+        "mongo_is_local": is_mongo_local(),
+        "mongo_host": mongo_host,
+        "commit": os.environ.get("GIT_SHA") or os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "unknown",
+        "started_at": app.state.started_at,
+    }
+
+
+def get_request_context(request: Request) -> dict:
+    forwarded_for = request.headers.get("x-forwarded-for", "")
+    client_ip = forwarded_for.split(",")[0].strip() if forwarded_for else (request.client.host if request.client else None)
+    return {
+        "client_ip": client_ip,
+        "user_agent": request.headers.get("user-agent"),
+        "origin": request.headers.get("origin"),
+        "referer": request.headers.get("referer"),
+        "app_version": request.headers.get("x-app-version") or request.headers.get("x-caca-radar-version"),
+        "app_environment": request.headers.get("x-app-environment"),
+        "platform": request.headers.get("x-platform") or request.headers.get("sec-ch-ua-platform"),
+        "api_base_url": str(request.base_url).rstrip("/"),
+    }
+
+
+async def audit_report_event(
+    request: Request,
+    event: str,
+    user: dict,
+    report_id: str,
+    latitude: float,
+    longitude: float,
+    municipality: Optional[str] = None,
+    province: Optional[str] = None,
+    metadata: Optional[dict] = None,
+) -> None:
+    """Write a second, append-only trace for report creation events."""
+    try:
+        await db.report_audit_log.insert_one({
+            "id": str(uuid.uuid4()),
+            "event": event,
+            "report_id": report_id,
+            "user_id": user.get("_id") if user else None,
+            "user_email": user.get("email") if user else None,
+            "username": user.get("username") if user else None,
+            "latitude": latitude,
+            "longitude": longitude,
+            "municipality": municipality,
+            "province": province,
+            "metadata": metadata or {},
+            "request": get_request_context(request),
+            "runtime": get_runtime_metadata(),
+            "created_at": datetime.now(timezone.utc).isoformat(),
+        })
+    except Exception as e:
+        logger.error(f"Failed to write report audit log for {report_id}: {e}")
 
 async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str) -> None:
     """Validate anti-spam rules before creating a report."""
@@ -2418,14 +2491,14 @@ async def health():
 @api_router.get("/version")
 async def version():
     """Return environment and database configuration (no secrets)."""
-    from urllib.parse import urlparse
-    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
-    mongo_host = parsed.hostname or parsed.path or "unknown"
+    metadata = get_runtime_metadata()
     return {
-        "environment": APP_ENV,
-        "db_name": db_name,
-        "mongo_is_local": is_mongo_local(),
-        "mongo_host": mongo_host,
+        "environment": metadata["environment"],
+        "db_name": metadata["db_name"],
+        "mongo_is_local": metadata["mongo_is_local"],
+        "mongo_host": metadata["mongo_host"],
+        "commit": metadata["commit"],
+        "started_at": metadata["started_at"],
     }
 
 
@@ -2461,18 +2534,45 @@ async def health_deep():
 
     if not all([checks["database"], checks["reports_readable"], checks["users_readable"]]):
         checks["status"] = "degraded"
+    checks["runtime"] = get_runtime_metadata()
     return checks
 
 
 @api_router.get("/admin/report-diagnostics")
-async def report_diagnostics(request: Request):
+async def report_diagnostics(
+    request: Request,
+    municipality: Optional[str] = None,
+    province: Optional[str] = None,
+    lat_min: Optional[float] = None,
+    lat_max: Optional[float] = None,
+    lng_min: Optional[float] = None,
+    lng_max: Optional[float] = None,
+):
     """Report diagnostics for admins — counts by city, timestamps, runtime info."""
     user = await require_auth(request)
     if user.get("role") not in ("admin", "municipality"):
         raise HTTPException(status_code=403, detail="Admin access required")
 
+    query = {}
+    if municipality:
+        query["municipality"] = {"$regex": municipality, "$options": "i"}
+    if province:
+        query["province"] = {"$regex": province, "$options": "i"}
+    if lat_min is not None or lat_max is not None:
+        query["latitude"] = {}
+        if lat_min is not None:
+            query["latitude"]["$gte"] = lat_min
+        if lat_max is not None:
+            query["latitude"]["$lte"] = lat_max
+    if lng_min is not None or lng_max is not None:
+        query["longitude"] = {}
+        if lng_min is not None:
+            query["longitude"]["$gte"] = lng_min
+        if lng_max is not None:
+            query["longitude"]["$lte"] = lng_max
+
     pipeline = [
-        {"$group": {"_id": "$municipality", "count": {"$sum": 1}}},
+        {"$group": {"_id": {"municipality": "$municipality", "province": "$province"}, "count": {"$sum": 1}}},
         {"$sort": {"count": -1}},
     ]
     city_counts = await db.reports.aggregate(pipeline).to_list(100)
@@ -2483,27 +2583,66 @@ async def report_diagnostics(request: Request):
     total_reports = await db.reports.count_documents({})
     total_users = await db.users.count_documents({})
     total_audit = await db.report_audit_log.count_documents({})
+    matching_reports = await db.reports.find(
+        query,
+        {"_id": 0, "id": 1, "user_id": 1, "latitude": 1, "longitude": 1, "municipality": 1, "province": 1, "created_at": 1, "category": 1, "archived": 1, "flagged": 1}
+    ).sort("created_at", -1).limit(100).to_list(100)
 
-    from urllib.parse import urlparse
-    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
-    mongo_host = parsed.hostname or parsed.path or "unknown"
+    runtime = get_runtime_metadata()
 
     return {
         "runtime": {
             "db_name": db_name,
             "mongo_is_local": is_mongo_local(),
-            "mongo_host": mongo_host,
+            "mongo_host": runtime["mongo_host"],
             "environment": APP_ENV,
+            "commit": runtime["commit"],
+            "started_at": runtime["started_at"],
         },
         "counts": {
             "total_reports": total_reports,
             "total_users": total_users,
             "total_audit_entries": total_audit,
+            "matching_reports": await db.reports.count_documents(query),
         },
-        "reports_by_city": [{"city": r["_id"] or "Unknown", "count": r["count"]} for r in city_counts],
+        "reports_by_city": [
+            {
+                "city": (r["_id"] or {}).get("municipality") or "Unknown",
+                "province": (r["_id"] or {}).get("province") or "",
+                "count": r["count"],
+            }
+            for r in city_counts
+        ],
         "earliest_report": earliest.get("created_at") if earliest else None,
         "latest_report": latest.get("created_at") if latest else None,
+        "query": query,
+        "matching_reports": matching_reports,
     }
+
+
+@api_router.get("/admin/report-audit")
+async def admin_report_audit(
+    request: Request,
+    email: Optional[str] = None,
+    report_id: Optional[str] = None,
+    municipality: Optional[str] = None,
+    limit: int = 100,
+):
+    user = await require_auth(request)
+    if user.get("role") not in ("admin", "municipality"):
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query = {}
+    if email:
+        query["user_email"] = email.lower()
+    if report_id:
+        query["report_id"] = report_id
+    if municipality:
+        query["municipality"] = {"$regex": municipality, "$options": "i"}
+
+    safe_limit = max(1, min(limit, 500))
+    events = await db.report_audit_log.find(query, {"_id": 0}).sort("created_at", -1).limit(safe_limit).to_list(safe_limit)
+    return {"runtime": get_runtime_metadata(), "total": await db.report_audit_log.count_documents(query), "events": events}
 
 # Include router
 app.include_router(api_router)
@@ -2584,8 +2723,12 @@ async def init_database():
     await db.admin_codes.create_index("email", unique=True)
     await db.password_resets.create_index("token", unique=True)
     await db.password_resets.create_index("email")
+    await db.report_audit_log.create_index("event")
     await db.report_audit_log.create_index("report_id")
     await db.report_audit_log.create_index("user_id")
+    await db.report_audit_log.create_index("user_email")
+    await db.report_audit_log.create_index("created_at")
+    await db.report_audit_log.create_index([("latitude", 1), ("longitude", 1)])
 
 async def seed_users():
     """Create admin and demo municipality accounts if missing."""

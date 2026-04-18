@@ -33,3 +33,5 @@ function getApiUrl() {
 
 export const API = getApiUrl();
 export const HOSTED_WEB_URL = HOSTED_BACKEND;
+export const APP_ENVIRONMENT = API.startsWith("http") ? "native-preview" : "web";
+export const APP_VERSION = process.env.REACT_APP_VERSION || "dev";
