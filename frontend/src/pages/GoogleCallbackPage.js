@@ -43,6 +43,10 @@ export default function GoogleCallbackPage() {
 
         await checkAuth();
         toast.success(t("loginUi.googleSuccess"));
+        if (typeof window !== "undefined") {
+          window.location.replace("/");
+          return;
+        }
         navigate("/");
       } catch (err) {
         const detail = err.response?.data?.detail || t("loginUi.googleError");
