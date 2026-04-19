@@ -39,3 +39,5 @@ export const APP_ENVIRONMENT = API.startsWith("http") ? "native-production" : "w
 export const APP_VERSION = process.env.REACT_APP_VERSION || getCurrentAppVersion();
 export const NATIVE_PUSH_ENABLED = process.env.REACT_APP_ENABLE_NATIVE_PUSH === "true";
 export const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID || "";
+export const PLAY_INTEGRITY_ENABLED = process.env.REACT_APP_ENABLE_PLAY_INTEGRITY === "true";
+export const PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER = process.env.REACT_APP_GOOGLE_CLOUD_PROJECT_NUMBER || "";

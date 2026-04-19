@@ -25,6 +25,7 @@ import PrivacyPage from "./pages/PrivacyPage";
 import HelpPage from "./pages/HelpPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { setupNativePushListeners } from "./utils/pushManager";
+import { preparePlayIntegrity } from "./utils/playIntegrity";
 import { isCapacitorNative } from "./tokenManager";
 import "./App.css";
 
@@ -70,6 +71,25 @@ function App() {
     startNativePushListeners();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isCapacitorNative()) return undefined;
+
+    let cancelled = false;
+    const warmIntegrity = () => {
+      if (cancelled) return;
+      preparePlayIntegrity().catch(() => {});
+    };
+
+    const idleId = window.requestIdleCallback?.(warmIntegrity, { timeout: 2500 });
+    const timeoutId = idleId ? null : window.setTimeout(warmIntegrity, 1400);
+
+    return () => {
+      cancelled = true;
+      if (idleId) window.cancelIdleCallback?.(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, []);
 

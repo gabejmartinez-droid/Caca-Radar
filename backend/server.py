@@ -54,6 +54,7 @@ from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
+from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -229,6 +230,11 @@ class SavedLocationCreate(BaseModel):
     name: str
     latitude: float
     longitude: float
+
+class PlayIntegrityVerifyRequest(BaseModel):
+    integrity_token: str
+    request_hash: str | None = None
+    action: str | None = None
     label: Optional[str] = None
 
 # Create the main app
@@ -2505,6 +2511,62 @@ async def admin_integration_status(request: Request):
             "google": "Set GOOGLE_SERVICE_ACCOUNT_PATH (JSON key file), GOOGLE_PACKAGE_NAME in .env. Create service account in Google Cloud Console.",
         }
     }
+
+@api_router.get("/play-integrity/status")
+async def get_play_integrity_status():
+    configured = play_integrity_is_configured()
+    return {
+        "configured": configured,
+        "package_name": GOOGLE_PACKAGE_NAME or "",
+        "service_account_configured": bool(GOOGLE_SERVICE_ACCOUNT_PATH),
+        "mode": "log_only",
+        "message": (
+            "Android-only verification scaffold is ready."
+            if configured
+            else "Set GOOGLE_SERVICE_ACCOUNT_PATH and GOOGLE_PACKAGE_NAME to enable server verification."
+        ),
+    }
+
+@api_router.post("/play-integrity/verify")
+async def verify_play_integrity(data: PlayIntegrityVerifyRequest, request: Request):
+    user = await get_current_user(request)
+
+    if not play_integrity_is_configured():
+        return {
+            "enabled": False,
+            "configured": False,
+            "mode": "log_only",
+            "message": "Play Integrity server verification is not configured yet.",
+        }
+
+    try:
+        decoded = await asyncio.to_thread(
+            decode_integrity_token,
+            data.integrity_token,
+            GOOGLE_PACKAGE_NAME,
+            GOOGLE_SERVICE_ACCOUNT_PATH,
+        )
+        summary = summarize_integrity_payload(decoded, data.request_hash)
+        logger.info(
+            "Play Integrity verdict",
+            extra={
+                "play_integrity_action": data.action or "unspecified",
+                "play_integrity_user": user.get("_id") if user else "anonymous",
+                "play_integrity_app_verdict": summary.get("app_recognition_verdict"),
+                "play_integrity_device_verdict": summary.get("device_recognition_verdict"),
+                "play_integrity_license_verdict": summary.get("app_licensing_verdict"),
+            },
+        )
+        return {
+            "enabled": True,
+            "configured": True,
+            "mode": "log_only",
+            "action": data.action,
+            "summary": summary,
+        }
+    except Exception as exc:
+        logger.error(f"Play Integrity verification failed: {exc}")
+        raise HTTPException(status_code=502, detail="Play Integrity verification failed")
 
 # ==================== SUCCESS METRICS (Admin) ====================
 
