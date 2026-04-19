@@ -471,10 +471,13 @@ export default function MapPage() {
       </MapContainer>
 
       {/* Header */}
-      <div className="fixed left-4 right-4 z-[1100] flex justify-between items-center ios-safe-floating-top pointer-events-none">
+      <div
+        className="absolute left-4 right-4 z-[1100] flex justify-between items-center"
+        style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
+      >
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <button className="pointer-events-auto bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2 hover:shadow-xl transition-shadow" data-testid="app-menu-btn">
+            <button className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2 hover:shadow-xl transition-shadow" data-testid="app-menu-btn">
               <img src="/icon-32x32.png" alt="Caca Radar" className="w-7 h-7 rounded-md" />
               <span className="font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
               <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE]" />
@@ -544,7 +547,7 @@ export default function MapPage() {
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-        <div className="flex gap-2 pointer-events-auto">
+        <div className="flex gap-2">
           <LanguageSelector />
           {user && (
             <Button variant="outline" size="sm" onClick={togglePush} className={`backdrop-blur-sm shadow-lg border-0 ${pushEnabled ? 'bg-[#FF6B6B] text-white' : 'bg-white/95'}`} data-testid="push-toggle">
