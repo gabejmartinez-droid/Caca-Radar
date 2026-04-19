@@ -11,23 +11,35 @@ export default function GoogleCallbackPage() {
   const [searchParams] = useSearchParams();
   const { t } = useLanguage();
   const [error, setError] = useState(null);
+  const [status, setStatus] = useState("Waiting for Google session");
+
+  const updateStatus = (message) => {
+    setStatus(message);
+    if (typeof window !== "undefined") {
+      window.sessionStorage.setItem("google_callback_status", message);
+    }
+  };
 
   useEffect(() => {
     const handleCallback = async () => {
+      updateStatus("Reading callback URL");
       const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
       const hashParams = new URLSearchParams(hash);
       const sessionId = searchParams.get("session_id") || hashParams.get("session_id");
       if (!sessionId) {
+        updateStatus("No session_id found in callback URL");
         setError("No session ID received from Google");
         setTimeout(() => navigate("/login"), 2000);
         return;
       }
 
       if (typeof window !== "undefined" && window.location.hash) {
+        updateStatus("Cleaning callback URL");
         window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
       }
 
       try {
+        updateStatus("Exchanging Google session with backend");
         const response = await fetch(`${API}/auth/google`, {
           method: "POST",
           headers: {
@@ -48,16 +60,25 @@ export default function GoogleCallbackPage() {
         }
 
         if (data.access_token) {
+          updateStatus("Saving auth tokens");
           setTokens(data.access_token, data.refresh_token);
         }
 
         if (typeof window !== "undefined") {
-          window.location.replace("/");
+          updateStatus("Login succeeded, redirecting to map");
+          const destination = "/?google_login=1";
+          window.location.replace(destination);
+          window.setTimeout(() => {
+            if (window.location.pathname.includes("/auth/google/callback")) {
+              window.location.assign(destination);
+            }
+          }, 250);
           return;
         }
         navigate("/");
       } catch (err) {
         const detail = err.response?.data?.detail || t("loginUi.googleError");
+        updateStatus("Google callback failed");
         setError(detail);
         toast.error(detail);
         setTimeout(() => navigate("/login"), 3000);
@@ -78,6 +99,7 @@ export default function GoogleCallbackPage() {
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B] mx-auto mb-3" />
           <p className="text-[#2B2D42] font-medium">{t("loginUi.connectingGoogle")}</p>
+          <p className="text-[#8D99AE] text-xs mt-2">{status}</p>
         </div>
       )}
     </div>
