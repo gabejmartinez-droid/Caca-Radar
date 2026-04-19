@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -355,6 +355,16 @@ export default function ProfilePage() {
               <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
                 <Lock className="w-4 h-4 text-[#66BB6A]" />
                 {t("legalUi.privacyPolicy")}
+              </span>
+            </button>
+            <button
+              onClick={() => navigate("/delete-account")}
+              className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
+              data-testid="profile-delete-account-link"
+            >
+              <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
+                <Trash2 className="w-4 h-4 text-[#FF6B6B]" />
+                Delete Account
               </span>
             </button>
           </div>

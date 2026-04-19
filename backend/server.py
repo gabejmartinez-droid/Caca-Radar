@@ -737,6 +737,48 @@ async def update_username(data: UsernameUpdate, request: Request):
     await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"username": username}})
     return {"username": username}
 
+@api_router.delete("/users/me")
+async def delete_current_user_account(request: Request, response: Response):
+    user = await require_auth(request)
+    user_object_id = user["_id"] if isinstance(user["_id"], ObjectId) else ObjectId(user["_id"])
+    user_id = str(user_object_id)
+    deleted_at = datetime.now(timezone.utc).isoformat()
+
+    await db.reports.update_many(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": None,
+            "contributor_name": "Anónimo",
+            "contributor_rank": None,
+            "contributor_rank_key": None,
+            "account_deleted_at": deleted_at,
+        }}
+    )
+    await db.report_audit_log.update_many(
+        {"user_id": user_id},
+        {"$set": {
+            "user_id": None,
+            "user_email": None,
+            "username": "deleted_user",
+            "account_deleted_at": deleted_at,
+        }}
+    )
+    await db.votes.delete_many({"user_id": user_id})
+    await db.validations.delete_many({"user_id": user_id})
+    await db.report_votes.delete_many({"user_id": user_id})
+    await db.flags.delete_many({"user_id": user_id})
+    await db.notifications.delete_many({"user_id": user_id})
+    await db.push_subscriptions.delete_many({"user_id": user_id})
+    await db.saved_locations.delete_many({"user_id": user_object_id})
+    await db.feedback.delete_many({"user_id": user_id})
+    await db.subscription_receipts.delete_many({"user_id": user_object_id})
+    await db.users.delete_one({"_id": user_object_id})
+
+    response.delete_cookie(key="access_token", path="/", secure=True, samesite="none")
+    response.delete_cookie(key="refresh_token", path="/", secure=True, samesite="none")
+    logger.info("Deleted account for user_id=%s email=%s", user_id, user.get("email"))
+    return {"message": "Cuenta eliminada correctamente", "deleted": True}
+
 @api_router.post("/users/subscribe")
 async def subscribe_user(request: Request):
     """Subscription: €3.99/month or €29.99/year with 7-day free trial."""

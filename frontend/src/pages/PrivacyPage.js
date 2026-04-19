@@ -320,7 +320,7 @@ const sections = [
       <>
         <p>You may request deletion of your account and associated personal data:</p>
         <ul className="list-disc pl-5 space-y-1 mt-2">
-          <li>through the in-app deletion function at: [INSERT APP ACCOUNT DELETION PATH OR URL]; or</li>
+          <li>through the in-app deletion function at: https://cacaradar.es/delete-account; or</li>
           <li>by contacting us at jefe@cacaradar.es.</li>
         </ul>
         <p className="mt-4">When we receive a valid deletion request, we will delete or anonymise your personal data unless we need to retain certain information for legal compliance, fraud prevention, security, dispute resolution, or the establishment, exercise, or defence of legal claims.</p>

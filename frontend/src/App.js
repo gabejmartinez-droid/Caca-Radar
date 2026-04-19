@@ -23,6 +23,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import HelpPage from "./pages/HelpPage";
+import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { isCapacitorNative } from "./tokenManager";
 import "./App.css";
@@ -92,6 +93,7 @@ function App() {
               <Route path="/impact" element={<ImpactPage />} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
+              <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Routes>

@@ -154,9 +154,19 @@ export function AuthProvider({ children }) {
     setUser(false);
   }, []);
 
+  const deleteAccount = useCallback(async () => {
+    const { data } = await axios.delete(`${API}/users/me`, {
+      withCredentials: !isCapacitorNative(),
+    });
+    clearTokens();
+    disableGoogleAutoSelect();
+    setUser(false);
+    return data;
+  }, []);
+
   const value = useMemo(
-    () => ({ user, loading, login, register, googleLogin, linkGoogle, logout, checkAuth }),
-    [user, loading, login, register, googleLogin, linkGoogle, logout, checkAuth]
+    () => ({ user, loading, login, register, googleLogin, linkGoogle, logout, deleteAccount, checkAuth }),
+    [user, loading, login, register, googleLogin, linkGoogle, logout, deleteAccount, checkAuth]
   );
 
   return (

@@ -74,10 +74,18 @@ export default function HelpPage() {
             </div>
             <div className="space-y-3 text-[#5C677D] leading-7">
               <p>
-                Account deletion path placeholder: the in-app deletion route or URL still needs to be finalized.
+                You can manage account deletion from the dedicated in-app route below, or contact us directly if you prefer a manual request.
               </p>
+              <Link
+                to="/delete-account"
+                className="flex items-center justify-between rounded-xl border border-[#8D99AE]/20 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
+                data-testid="help-delete-account-link"
+              >
+                <span className="font-medium">Delete Account</span>
+                <ChevronRight className="w-4 h-4 text-[#8D99AE]" />
+              </Link>
               <p>
-                Until that path is published, you can request account or data deletion by emailing{" "}
+                You can also request account or data deletion by emailing{" "}
                 <a className="text-[#FF6B6B] font-medium" href="mailto:jefe@cacaradar.es">jefe@cacaradar.es</a>.
               </p>
             </div>
