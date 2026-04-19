@@ -17,7 +17,6 @@ import ProfilePage from "./pages/ProfilePage";
 import AnalyticsPage from "./pages/AnalyticsPage";
 import AdminLoginPage from "./pages/AdminLoginPage";
 import AdminDashboardPage from "./pages/AdminDashboardPage";
-import GoogleCallbackPage from "./pages/GoogleCallbackPage";
 import ImpactPage from "./pages/ImpactPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
@@ -60,7 +59,6 @@ function App() {
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/auth/google/callback" element={<GoogleCallbackPage />} />
               <Route path="/impact" element={<ImpactPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />

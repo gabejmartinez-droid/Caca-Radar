@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { toast } from "sonner";
 import { MapPin, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
@@ -8,9 +8,7 @@ import { Label } from "../components/ui/label";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
-import { API, HOSTED_WEB_URL } from "../config";
-import { setTokens, isCapacitorNative } from "../tokenManager";
-import axios from "axios";
+import { GoogleSignInButton } from "../components/GoogleSignInButton";
 
 function formatApiErrorDetail(detail, t) {
   if (detail == null) return t("genericError");
@@ -22,7 +20,7 @@ function formatApiErrorDetail(detail, t) {
 }
 
 export default function LoginPage() {
-  const { login } = useAuth();
+  const { login, googleLogin } = useAuth();
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
   
@@ -47,12 +45,22 @@ export default function LoginPage() {
     }
   };
 
-  const handleGoogleLogin = () => {
-    const webOrigin = isCapacitorNative() ? HOSTED_WEB_URL : window.location.origin;
-    const redirectUrl = webOrigin + "/auth/google/callback";
-    const startUrl = `${HOSTED_WEB_URL}/api/auth/google/start?redirect_url=${encodeURIComponent(redirectUrl)}`;
-    window.location.href = startUrl;
-  };
+  const handleGoogleLogin = useCallback(async (credential) => {
+    try {
+      await googleLogin(credential);
+      toast.success(t("loginUi.googleSuccess"));
+      navigate("/");
+    } catch (err) {
+      const detail = formatApiErrorDetail(err.response?.data?.detail?.message || err.response?.data?.detail, t) || err.message;
+      setError(detail);
+      throw err;
+    }
+  }, [googleLogin, navigate, t]);
+
+  const handleGoogleError = useCallback((err) => {
+    const detail = formatApiErrorDetail(err.response?.data?.detail?.message || err.response?.data?.detail, t) || t("loginUi.googleError");
+    setError(detail);
+  }, [t]);
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] flex flex-col ${isRtl ? 'rtl' : 'ltr'}`} data-testid="login-page">
@@ -162,10 +170,13 @@ export default function LoginPage() {
               <span className="text-xs text-[#8D99AE]">{t("loginUi.or")}</span>
               <div className="flex-1 h-px bg-[#8D99AE]/20" />
             </div>
-            <button onClick={handleGoogleLogin} className="w-full flex items-center justify-center gap-2 border border-[#8D99AE]/20 rounded-xl py-3 hover:bg-gray-50 transition-colors" data-testid="google-login-btn">
-              <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
-              <span className="text-sm font-medium text-[#2B2D42]">{t("continueWithGoogle") || "Continuar con Google"}</span>
-            </button>
+            <GoogleSignInButton
+              onCredential={handleGoogleLogin}
+              onError={handleGoogleError}
+              text="continue_with"
+              context="signin"
+              testId="google-login-btn"
+            />
             <button className="w-full flex items-center justify-center gap-2 border border-[#8D99AE]/20 rounded-xl py-3 bg-black text-white hover:bg-gray-900 transition-colors opacity-50 cursor-not-allowed" disabled data-testid="apple-login-btn">
               <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
               <span className="text-sm font-medium">{t("loginUi.appleComingSoon")}</span>

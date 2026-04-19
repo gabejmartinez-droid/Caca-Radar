@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, useMemo } 
 import axios from "axios";
 import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
 import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
+import { disableGoogleAutoSelect } from "../utils/googleIdentity";
 
 const AuthContext = createContext(null);
 
@@ -36,6 +37,8 @@ axios.interceptors.response.use(
       !original._retry &&
       !original.url?.includes("/auth/login") &&
       !original.url?.includes("/auth/register") &&
+      !original.url?.includes("/auth/google/login") &&
+      !original.url?.includes("/auth/google/link") &&
       !original.url?.includes("/auth/refresh")
     ) {
       original._retry = true;
@@ -117,6 +120,29 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const googleLogin = useCallback(async (credential) => {
+    const { data } = await axios.post(
+      `${API}/auth/google/login`,
+      { credential },
+      { withCredentials: !isCapacitorNative() },
+    );
+    if (data.access_token) {
+      setTokens(data.access_token, data.refresh_token);
+    }
+    setUser(data);
+    return data;
+  }, []);
+
+  const linkGoogle = useCallback(async (credential) => {
+    const { data } = await axios.post(
+      `${API}/auth/google/link`,
+      { credential },
+      { withCredentials: !isCapacitorNative() },
+    );
+    await checkAuth();
+    return data;
+  }, [checkAuth]);
+
   const logout = useCallback(async () => {
     try {
       await axios.post(`${API}/auth/logout`, {}, {
@@ -124,10 +150,14 @@ export function AuthProvider({ children }) {
       });
     } catch { /* ignore */ }
     clearTokens();
+    disableGoogleAutoSelect();
     setUser(false);
   }, []);
 
-  const value = useMemo(() => ({ user, loading, login, register, logout, checkAuth }), [user, loading, login, register, logout, checkAuth]);
+  const value = useMemo(
+    () => ({ user, loading, login, register, googleLogin, linkGoogle, logout, checkAuth }),
+    [user, loading, login, register, googleLogin, linkGoogle, logout, checkAuth]
+  );
 
   return (
     <AuthContext.Provider value={value}>

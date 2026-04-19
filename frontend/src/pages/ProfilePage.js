@@ -9,6 +9,7 @@ import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { getBadgeName, getBadgeDescription } from "../utils/badges";
@@ -35,7 +36,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 export default function ProfilePage() {
-  const { user, checkAuth } = useAuth();
+  const { user, checkAuth, linkGoogle } = useAuth();
   const { t, isRtl, language } = useLanguage();
   const navigate = useNavigate();
 
@@ -131,6 +132,20 @@ export default function ProfilePage() {
       if (err.name !== "AbortError") toast.error(t("profileUi.shareError"));
     }
   };
+
+  const handleLinkGoogle = async (credential) => {
+    try {
+      const result = await linkGoogle(credential);
+      toast.success(result.message || t("profileUi.googleLinked"));
+      await fetchProfile();
+    } catch (err) {
+      const detail = err.response?.data?.detail?.message || err.response?.data?.detail || t("loginUi.googleError");
+      toast.error(detail);
+      throw err;
+    }
+  };
+
+  const isGoogleLinked = Boolean(profile?.linked_accounts?.google);
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
 
@@ -268,6 +283,36 @@ export default function ProfilePage() {
                 {t(`profileUi.trustTiers.${tier.key}`)}
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* Notification Settings */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h3 className="font-bold text-[#2B2D42]">{t("profileUi.loginMethods")}</h3>
+              <p className="text-xs text-[#8D99AE] mt-1">{t("profileUi.loginMethodsDesc")}</p>
+            </div>
+            {isGoogleLinked && (
+              <Badge className="bg-[#66BB6A]">{t("profileUi.googleLinked")}</Badge>
+            )}
+          </div>
+          <div className="space-y-3">
+            <div className="flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3">
+              <span className="text-sm font-medium text-[#2B2D42]">{t("profileUi.passwordLogin")}</span>
+              <span className="text-xs text-[#8D99AE]">
+                {profile?.linked_accounts?.password ? t("profileUi.linked") : t("profileUi.notLinked")}
+              </span>
+            </div>
+            {!isGoogleLinked && (
+              <GoogleSignInButton
+                onCredential={handleLinkGoogle}
+                onError={(error) => toast.error(error.message || t("loginUi.googleError"))}
+                text="continue_with"
+                context="use"
+                testId="google-link-btn"
+              />
+            )}
           </div>
         </div>
 

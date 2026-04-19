@@ -15,19 +15,17 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 class TestGoogleAuth:
     """Test Google Auth endpoint"""
     
-    def test_google_auth_missing_session_id(self):
-        """POST /api/auth/google should return 400 for missing session_id"""
-        response = requests.post(f"{BASE_URL}/api/auth/google", json={})
-        assert response.status_code == 400
-        data = response.json()
-        assert "session_id" in data.get("detail", "").lower() or "missing" in data.get("detail", "").lower()
-        print("PASS: Google auth returns 400 for missing session_id")
-    
-    def test_google_auth_invalid_session_id(self):
-        """POST /api/auth/google should return 401 for invalid session_id"""
-        response = requests.post(f"{BASE_URL}/api/auth/google", json={"session_id": "invalid_session_123"})
+    def test_google_auth_missing_credential(self):
+        """POST /api/auth/google/login should return 422/400 for missing credential"""
+        response = requests.post(f"{BASE_URL}/api/auth/google/login", json={})
+        assert response.status_code in (400, 422)
+        print("PASS: Google auth returns validation error for missing credential")
+
+    def test_google_auth_invalid_credential(self):
+        """POST /api/auth/google/login should return 401 for invalid credential"""
+        response = requests.post(f"{BASE_URL}/api/auth/google/login", json={"credential": "invalid_google_credential"})
         assert response.status_code == 401
-        print("PASS: Google auth returns 401 for invalid session_id")
+        print("PASS: Google auth returns 401 for invalid credential")
 
 
 class TestFeedbackEndpoint:

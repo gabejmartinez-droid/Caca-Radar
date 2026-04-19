@@ -257,18 +257,18 @@ class TestRegisterReturnsTokens:
 
 
 class TestGoogleAuthReturnsTokens:
-    """Test that Google Auth returns tokens (requires valid session_id)"""
+    """Test that Google Auth login endpoint exists"""
     
     def test_google_auth_endpoint_exists(self):
-        """POST /api/auth/google endpoint should exist"""
+        """POST /api/auth/google/login endpoint should exist"""
         response = requests.post(
-            f"{BASE_URL}/api/auth/google",
-            json={"session_id": "invalid_test_session"},
+            f"{BASE_URL}/api/auth/google/login",
+            json={"credential": "invalid_google_credential"},
             headers=CAPACITOR_HEADERS
         )
-        # Should return 401 (invalid session) not 404 (endpoint not found)
+        # Should return 401 (invalid credential) not 404 (endpoint not found)
         assert response.status_code in [400, 401], f"Unexpected status: {response.status_code}"
-        print(f"✓ POST /api/auth/google endpoint exists (returns {response.status_code} for invalid session)")
+        print(f"✓ POST /api/auth/google/login endpoint exists (returns {response.status_code} for invalid credential)")
 
 
 class TestCORSWithCapacitorOrigin:
