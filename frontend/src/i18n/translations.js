@@ -116,6 +116,12 @@ export const translations = {
     
     // Language
     language: "Idioma",
+    legalUi: {
+      privacyPolicy: "Política de Privacidad",
+      help: "Ayuda",
+      legalAndHelp: "Ayuda y legal",
+      signupNotice: "Al crear tu cuenta, puedes revisar nuestra"
+    },
     languages: {
       es: "Español",
       en: "English",
@@ -215,6 +221,12 @@ export const translations = {
     saveUsername: "Save",
     usernameSaved: "Username saved",
     language: "Language",
+    legalUi: {
+      privacyPolicy: "Privacy Policy",
+      help: "Help",
+      legalAndHelp: "Help & legal",
+      signupNotice: "By creating your account, you can review our"
+    },
     languages: {
       es: "Español",
       en: "English",

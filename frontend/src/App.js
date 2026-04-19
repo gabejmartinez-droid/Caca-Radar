@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -20,11 +21,11 @@ import AdminDashboardPage from "./pages/AdminDashboardPage";
 import ImpactPage from "./pages/ImpactPage";
 import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
+import PrivacyPage from "./pages/PrivacyPage";
+import HelpPage from "./pages/HelpPage";
 import { setupNativePushListeners } from "./utils/pushManager";
+import { isCapacitorNative } from "./tokenManager";
 import "./App.css";
-
-// Initialize native push listeners for Capacitor
-setupNativePushListeners();
 
 function UsernameGate({ children }) {
   const { user, checkAuth } = useAuth();
@@ -40,6 +41,35 @@ function UsernameGate({ children }) {
 }
 
 function App() {
+  useEffect(() => {
+    let cancelled = false;
+
+    const startNativePushListeners = () => {
+      if (cancelled) return;
+      setupNativePushListeners();
+    };
+
+    if (isCapacitorNative()) {
+      const idleHandle = window.requestIdleCallback?.(startNativePushListeners, { timeout: 1500 });
+      const timeoutHandle = idleHandle ? null : window.setTimeout(startNativePushListeners, 600);
+
+      return () => {
+        cancelled = true;
+        if (idleHandle) {
+          window.cancelIdleCallback?.(idleHandle);
+        }
+        if (timeoutHandle) {
+          window.clearTimeout(timeoutHandle);
+        }
+      };
+    }
+
+    startNativePushListeners();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   return (
     <LanguageProvider>
       <AuthProvider>
@@ -60,6 +90,8 @@ function App() {
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/impact" element={<ImpactPage />} />
+              <Route path="/help" element={<HelpPage />} />
+              <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Routes>

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -332,6 +332,32 @@ export default function ProfilePage() {
             </button>
           </div>
           <p className="text-xs text-[#8D99AE] mt-2">{t("profileUi.notificationsDesc")}</p>
+        </div>
+
+        <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
+          <h3 className="font-bold text-[#2B2D42] mb-3">{t("legalUi.legalAndHelp")}</h3>
+          <div className="space-y-2">
+            <button
+              onClick={() => navigate("/help")}
+              className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
+              data-testid="profile-help-link"
+            >
+              <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
+                <LifeBuoy className="w-4 h-4 text-[#42A5F5]" />
+                {t("legalUi.help")}
+              </span>
+            </button>
+            <button
+              onClick={() => navigate("/privacy")}
+              className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
+              data-testid="profile-privacy-link"
+            >
+              <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
+                <Lock className="w-4 h-4 text-[#66BB6A]" />
+                {t("legalUi.privacyPolicy")}
+              </span>
+            </button>
+          </div>
         </div>
 
         {/* How scoring works */}

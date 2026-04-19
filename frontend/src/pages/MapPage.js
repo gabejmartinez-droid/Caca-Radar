@@ -72,7 +72,11 @@ function LocationFinder({ onLocationFound, mapRef }) {
   });
   useEffect(() => {
     mapRef.current = map;
-    map.locate({ enableHighAccuracy: true });
+    map.locate({
+      enableHighAccuracy: false,
+      maximumAge: 60000,
+      timeout: 8000,
+    });
   }, [map, mapRef]);
   return null;
 }
@@ -96,6 +100,35 @@ const MAP_MODES = {
   REPORTS: "reports",
   HEATMAP: "heatmap",
 };
+
+function scheduleAfterFirstPaint(callback, delay = 0) {
+  if (typeof window === "undefined") {
+    callback();
+    return () => {};
+  }
+
+  let timeoutId = null;
+  let idleId = null;
+
+  const run = () => {
+    timeoutId = window.setTimeout(callback, delay);
+  };
+
+  if (typeof window.requestIdleCallback === "function") {
+    idleId = window.requestIdleCallback(run, { timeout: 1500 });
+  } else {
+    run();
+  }
+
+  return () => {
+    if (idleId !== null && typeof window.cancelIdleCallback === "function") {
+      window.cancelIdleCallback(idleId);
+    }
+    if (timeoutId !== null) {
+      window.clearTimeout(timeoutId);
+    }
+  };
+}
 
 export default function MapPage() {
   const { user, logout } = useAuth();
@@ -194,13 +227,15 @@ export default function MapPage() {
   // Check push notification status from backend
   useEffect(() => {
     if (!user) return;
+
     const checkPush = async () => {
       try {
         const { data } = await axios.get(`${API}/push/status`, { withCredentials: true });
         setPushEnabled(data.subscribed);
       } catch { /* ignore */ }
     };
-    checkPush();
+
+    return scheduleAfterFirstPaint(checkPush, 400);
   }, [user]);
 
   const fetchReports = useCallback(async () => {
@@ -218,11 +253,14 @@ export default function MapPage() {
     } catch (e) { console.error(e); setReports([]); }
   }, [activeFilter]);
 
-  useEffect(() => { fetchReports(); }, [fetchReports]);
+  useEffect(() => {
+    return scheduleAfterFirstPaint(fetchReports, 120);
+  }, [fetchReports]);
 
   // Detect user's city from location
   useEffect(() => {
     if (!userLocation) return;
+
     const detectCity = async () => {
       try {
         const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json&addressdetails=1&zoom=12`, { headers: { "User-Agent": "CacaRadar/1.0" } });
@@ -232,7 +270,8 @@ export default function MapPage() {
         if (city) setUserCity(city);
       } catch (err) { console.error("City detection failed:", err); }
     };
-    detectCity();
+
+    return scheduleAfterFirstPaint(detectCity, 1200);
   }, [userLocation]);
 
   const handleMarkerClick = useCallback(async (report) => {
@@ -545,6 +584,14 @@ export default function MapPage() {
               <MessageSquare className="w-4 h-4 text-[#8D99AE]" />
               <span className="flex-1">{t("mapUi.feedback")}</span>
             </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer gap-2" data-testid="menu-help">
+              <Heart className="w-4 h-4 text-[#42A5F5]" />
+              <span className="flex-1">{t("legalUi.help")}</span>
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => navigate("/privacy")} className="cursor-pointer gap-2" data-testid="menu-privacy">
+              <Shield className="w-4 h-4 text-[#66BB6A]" />
+              <span className="flex-1">{t("legalUi.privacyPolicy")}</span>
+            </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
         <div className="flex gap-2">
@@ -579,6 +626,9 @@ export default function MapPage() {
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate("/impact")} className="cursor-pointer" data-testid="menu-impact">
                   <Heart className="w-4 h-4 mr-2 text-[#66BB6A]" />{t("mapUi.myImpact")}
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer" data-testid="menu-user-help">
+                  <MessageSquare className="w-4 h-4 mr-2 text-[#42A5F5]" />{t("legalUi.help")}
                 </DropdownMenuItem>
                 {user.subscription_active && (
                   <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">

@@ -196,6 +196,13 @@ export default function RegisterPage() {
             </Button>
           </form>
 
+          <p className="text-center text-xs text-[#8D99AE] mt-3 leading-5">
+            {t("legalUi.signupNotice")}{" "}
+            <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline" data-testid="register-privacy-link">
+              {t("legalUi.privacyPolicy")}
+            </Link>
+          </p>
+
           {/* Social Sign-Up */}
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 my-3">
