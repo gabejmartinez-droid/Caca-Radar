@@ -17,11 +17,17 @@ export default function GoogleCallbackPage() {
 
   useEffect(() => {
     const handleCallback = async () => {
-      const sessionId = searchParams.get("session_id");
+      const hash = typeof window !== "undefined" ? window.location.hash.replace(/^#/, "") : "";
+      const hashParams = new URLSearchParams(hash);
+      const sessionId = searchParams.get("session_id") || hashParams.get("session_id");
       if (!sessionId) {
         setError("No session ID received from Google");
         setTimeout(() => navigate("/login"), 2000);
         return;
+      }
+
+      if (typeof window !== "undefined" && window.location.hash) {
+        window.history.replaceState({}, document.title, window.location.pathname + window.location.search);
       }
 
       try {
