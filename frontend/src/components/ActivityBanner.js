@@ -79,6 +79,10 @@ export default function ActivityBanner({ userLocation, userCity }) {
   };
 
   const handleBannerClick = () => {
+    if (current.key === "active_zones" || current.key === "user_rank") {
+      dismissCurrentItem();
+      return;
+    }
     if (items.length > 1) {
       setIdx((i) => (i + 1) % items.length);
     }
