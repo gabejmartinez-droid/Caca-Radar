@@ -693,21 +693,24 @@ export default function MapPage() {
 
       {/* Legend - hide when drawers open */}
       {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
-        <div className="absolute bottom-28 left-4 z-[999] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3">
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[999] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3 py-2"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
+        >
           {isHeatmapMode ? (
-            <div className="flex flex-col gap-2 text-xs min-w-[138px]">
+            <div className="flex items-center gap-3 text-xs min-w-[210px]">
               <span className="font-semibold text-[#2B2D42]">{t("heatmap")}</span>
-              <div className="h-3 rounded-full bg-gradient-to-r from-transparent via-[#42A5F5] via-[#66BB6A] via-[#FFA726] to-[#FF5252]" />
-              <div className="flex justify-between text-[#8D99AE]">
+              <div className="h-2 flex-1 rounded-full bg-gradient-to-r from-transparent via-[#42A5F5] via-[#66BB6A] via-[#FFA726] to-[#FF5252]" />
+              <div className="flex items-center gap-2 text-[#8D99AE] shrink-0">
                 <span>0</span>
                 <span>1</span>
               </div>
             </div>
           ) : (
-            <div className="flex flex-col gap-2 text-xs">
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
-              <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
+            <div className="flex items-center gap-3 text-xs whitespace-nowrap">
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#FF5252]"></div><span className="text-[#2B2D42]">{t("legend.recent")}</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#FFA726]"></div><span className="text-[#2B2D42]">{t("legend.moderate")}</span></div>
+              <div className="flex items-center gap-1.5"><div className="w-3 h-3 rounded-full bg-[#66BB6A]"></div><span className="text-[#2B2D42]">{t("legend.old")}</span></div>
             </div>
           )}
         </div>
