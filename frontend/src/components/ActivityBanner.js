@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Flame, AlertTriangle, Trophy } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -11,7 +11,8 @@ export default function ActivityBanner({ userLocation, userCity }) {
   const { t } = useLanguage();
   const [stats, setStats] = useState(null);
   const [idx, setIdx] = useState(0);
-  const [hideActiveZones, setHideActiveZones] = useState(false);
+  const [dismissedItems, setDismissedItems] = useState({});
+  const touchStartRef = useRef(null);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -37,7 +38,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
     } else if (stats.total_today > 0) {
       items.push({ key: "total_today", icon: Flame, text: formatTranslation(t, "activityUi.spainReportsToday", { count: stats.total_today }), color: "#FF6B6B" });
     }
-    if (!hideActiveZones && stats.active_zones > 0) {
+    if (!dismissedItems.active_zones && stats.active_zones > 0) {
       items.push({
         key: "active_zones",
         icon: AlertTriangle,
@@ -48,7 +49,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
         color: "#FFA726",
       });
     }
-    if (user && stats.user_rank) {
+    if (!dismissedItems.user_rank && user && stats.user_rank) {
       items.push({
         key: "user_rank",
         icon: Trophy,
@@ -71,12 +72,13 @@ export default function ActivityBanner({ userLocation, userCity }) {
 
   const current = items[idx % items.length];
   const Icon = current.icon;
+  const dismissCurrentItem = () => {
+    if (current.key !== "active_zones" && current.key !== "user_rank") return;
+    setDismissedItems((prev) => ({ ...prev, [current.key]: true }));
+    setIdx(0);
+  };
+
   const handleBannerClick = () => {
-    if (current.key === "active_zones") {
-      setHideActiveZones(true);
-      setIdx(0);
-      return;
-    }
     if (items.length > 1) {
       setIdx((i) => (i + 1) % items.length);
     }
@@ -94,6 +96,21 @@ export default function ActivityBanner({ userLocation, userCity }) {
         if (event.key === "Enter" || event.key === " ") {
           event.preventDefault();
           handleBannerClick();
+        }
+      }}
+      onTouchStart={(event) => {
+        const touch = event.touches[0];
+        touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+      }}
+      onTouchEnd={(event) => {
+        if (!touchStartRef.current) return;
+        const touch = event.changedTouches[0];
+        const deltaX = touch.clientX - touchStartRef.current.x;
+        const deltaY = touch.clientY - touchStartRef.current.y;
+        touchStartRef.current = null;
+
+        if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          dismissCurrentItem();
         }
       }}
     >
