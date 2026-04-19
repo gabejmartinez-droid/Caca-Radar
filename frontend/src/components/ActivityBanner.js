@@ -1,17 +1,34 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { Flame, AlertTriangle, Trophy } from "lucide-react";
+import { Flame, Trophy } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { formatTranslation } from "../utils/ranks";
 import { API } from "../config";
 import axios from "axios";
 
+const SESSION_KEY_PREFIX = "activity_banner_dismissals";
+
 export default function ActivityBanner({ userLocation, userCity }) {
   const { user } = useAuth();
   const { t } = useLanguage();
   const [stats, setStats] = useState(null);
+  const storageKey = `${SESSION_KEY_PREFIX}:${user?._id || user?.email || "guest"}`;
   const [dismissedItems, setDismissedItems] = useState({});
   const touchStartRef = useRef({});
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      setDismissedItems(JSON.parse(window.sessionStorage.getItem(storageKey) || "{}"));
+    } catch {
+      setDismissedItems({});
+    }
+  }, [storageKey]);
+
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.sessionStorage.setItem(storageKey, JSON.stringify(dismissedItems));
+  }, [dismissedItems, storageKey]);
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -32,62 +49,64 @@ export default function ActivityBanner({ userLocation, userCity }) {
 
   const primaryBanner = useMemo(() => {
     if (!stats) return null;
-    if (!dismissedItems.nearby_today && stats.nearby_today > 0) {
+
+    const nearbySignature = String(stats.nearby_today || 0);
+    if (stats.nearby_today > 0 && dismissedItems.nearby_today !== nearbySignature) {
       return {
         key: "nearby_today",
         icon: Flame,
         text: formatTranslation(t, "activityUi.nearbyReportsToday", { count: stats.nearby_today }),
         color: "#FF6B6B",
+        signature: nearbySignature,
       };
     }
-    if (!dismissedItems.total_today && stats.total_today > 0) {
+
+    const totalSignature = String(stats.total_today || 0);
+    if (stats.total_today > 0 && dismissedItems.total_today !== totalSignature) {
       return {
         key: "total_today",
         icon: Flame,
         text: formatTranslation(t, "activityUi.spainReportsToday", { count: stats.total_today }),
         color: "#FF6B6B",
+        signature: totalSignature,
       };
     }
+
     return null;
   }, [dismissedItems.nearby_today, dismissedItems.total_today, stats, t]);
 
   const dismissibleBanners = useMemo(() => {
-    if (!stats) return [];
+    if (!stats || !user || !stats.user_rank) return [];
 
-    const banners = [];
+    const cityName = userCity || t("rankUi.cityFallback");
+    const rankSignature = `${stats.user_rank}:${cityName}`;
 
-    if (!dismissedItems.active_zones && stats.active_zones > 0) {
-      banners.push({
-        key: "active_zones",
-        icon: AlertTriangle,
-        text: formatTranslation(t, userCity ? "activityUi.activeZonesInCity" : "activityUi.activeZones", {
-          count: stats.active_zones,
-          city: userCity,
-        }),
-        color: "#FFA726",
-      });
+    if (dismissedItems.user_rank === rankSignature) {
+      return [];
     }
 
-    if (!dismissedItems.user_rank && user && stats.user_rank) {
-      banners.push({
-        key: "user_rank",
-        icon: Trophy,
-        text: formatTranslation(t, "rankUi.cityPosition", {
-          rank: stats.user_rank,
-          city: userCity || t("rankUi.cityFallback"),
-        }),
-        color: "#66BB6A",
-      });
-    }
-
-    return banners;
-  }, [dismissedItems.active_zones, dismissedItems.user_rank, stats, t, user, userCity]);
+    return [{
+      key: "user_rank",
+      icon: Trophy,
+      text: formatTranslation(t, "rankUi.cityPosition", {
+        rank: stats.user_rank,
+        city: cityName,
+      }),
+      color: "#66BB6A",
+      signature: rankSignature,
+    }];
+  }, [dismissedItems.user_rank, stats, t, user, userCity]);
 
   if (!primaryBanner && dismissibleBanners.length === 0) return null;
 
-  const dismissBanner = (key) => {
-    if (!["nearby_today", "total_today", "active_zones", "user_rank"].includes(key)) return;
-    setDismissedItems((prev) => ({ ...prev, [key]: true }));
+  const dismissBanner = (item) => {
+    if (!item?.key || item.signature === undefined) return;
+    setDismissedItems((prev) => ({ ...prev, [item.key]: item.signature }));
+  };
+
+  const findBannerByKey = (key) => {
+    if (primaryBanner?.key === key) return primaryBanner;
+    return dismissibleBanners.find((item) => item.key === key) || null;
   };
 
   const handleTouchStart = (key, event) => {
@@ -105,33 +124,29 @@ export default function ActivityBanner({ userLocation, userCity }) {
     delete touchStartRef.current[key];
 
     if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY)) {
-      dismissBanner(key);
+      dismissBanner(findBannerByKey(key));
     }
   };
 
-  const renderBanner = (item, { dismissOnTap = false } = {}) => {
+  const renderBanner = (item) => {
     const Icon = item.icon;
 
     return (
       <div
         key={item.key}
-        className={`bg-[#2B2D42]/90 backdrop-blur-sm rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-lg transition-all duration-300 ${dismissOnTap ? "cursor-pointer" : ""}`}
+        className="bg-[#2B2D42]/90 backdrop-blur-sm rounded-xl px-4 py-2.5 flex items-center gap-2.5 shadow-lg transition-all duration-300 cursor-pointer"
         data-testid={`activity-banner-${item.key}`}
-        onClick={dismissOnTap ? () => dismissBanner(item.key) : undefined}
-        role={dismissOnTap ? "button" : undefined}
-        tabIndex={dismissOnTap ? 0 : undefined}
-        onKeyDown={
-          dismissOnTap
-            ? (event) => {
-                if (event.key === "Enter" || event.key === " ") {
-                  event.preventDefault();
-                  dismissBanner(item.key);
-                }
-              }
-            : undefined
-        }
-        onTouchStart={dismissOnTap ? (event) => handleTouchStart(item.key, event) : undefined}
-        onTouchEnd={dismissOnTap ? (event) => handleTouchEnd(item.key, event) : undefined}
+        onClick={() => dismissBanner(item)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            dismissBanner(item);
+          }
+        }}
+        onTouchStart={(event) => handleTouchStart(item.key, event)}
+        onTouchEnd={(event) => handleTouchEnd(item.key, event)}
       >
         <Icon className="w-4 h-4 shrink-0" style={{ color: item.color }} />
         <span className="text-white text-xs font-medium flex-1">{item.text}</span>
@@ -145,8 +160,8 @@ export default function ActivityBanner({ userLocation, userCity }) {
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 68px)" }}
       data-testid="activity-banner"
     >
-      {primaryBanner && renderBanner(primaryBanner, { dismissOnTap: true })}
-      {dismissibleBanners.map((item) => renderBanner(item, { dismissOnTap: true }))}
+      {primaryBanner && renderBanner(primaryBanner)}
+      {dismissibleBanners.map((item) => renderBanner(item))}
     </div>
   );
 }
