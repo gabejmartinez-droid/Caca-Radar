@@ -99,7 +99,7 @@ const languages = [
   { code: "val", name: "Valencià" },
 ];
 
-export function LanguageSelector() {
+export function LanguageSelector({ compact = false, className = "" }) {
   const { language, setLanguage } = useLanguage();
 
   return (
@@ -108,11 +108,11 @@ export function LanguageSelector() {
         <Button
           variant="outline"
           size="sm"
-          className="bg-white/95 backdrop-blur-sm shadow-lg border-0 gap-2"
+          className={`bg-white/95 backdrop-blur-sm shadow-lg border-0 ${compact ? "h-10 w-10 px-0" : "gap-2"} ${className}`.trim()}
           data-testid="language-selector"
         >
           <FlagIcon code={language} className="w-5 h-3.5 rounded-[1px]" />
-          <span className="text-xs font-medium">{languages.find(l => l.code === language)?.name}</span>
+          {!compact && <span className="text-xs font-medium">{languages.find(l => l.code === language)?.name}</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

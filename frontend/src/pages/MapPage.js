@@ -519,151 +519,159 @@ export default function MapPage() {
 
       {/* Header */}
       <div
-        className="absolute left-4 right-4 z-[1100] flex justify-between items-center"
+        className="absolute left-4 right-4 z-[1100]"
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       >
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-4 py-2 flex items-center gap-2 hover:shadow-xl transition-shadow" data-testid="app-menu-btn">
-              <img src="/icon-32x32.png" alt="Caca Radar" className="w-7 h-7 rounded-md" />
-              <span className="font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
-              <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE]" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start" className="w-64 rounded-xl shadow-xl p-1">
-            {userCity && (
-              <>
-                <div className="px-3 py-2 flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#FF6B6B]" />
-                  <span className="text-sm font-bold text-[#2B2D42]">{userCity}</span>
-                </div>
-                <DropdownMenuSeparator />
-              </>
-            )}
-            <DropdownMenuItem
-              onClick={() => user?.subscription_active ? navigate("/rankings") : navigate("/subscribe")}
-              className="cursor-pointer gap-2"
-              data-testid="menu-city-rankings"
-            >
-              <Building2 className="w-4 h-4 text-[#FF6B6B]" />
-              <span className="flex-1">{t("cityRankings")}</span>
-              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => user?.subscription_active ? navigate(`/rankings?tab=barrios&city=${encodeURIComponent(userCity || "Madrid")}`) : navigate("/subscribe")}
-              className="cursor-pointer gap-2"
-              data-testid="menu-barrio-rankings"
-            >
-              <MapPin className="w-4 h-4 text-[#FF6B6B]" />
-              <span className="flex-1">{t("barrioRankings")}</span>
-              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem
-              onClick={() => {
-                setHeatmapMode(isHeatmapMode ? MAP_MODES.REPORTS : MAP_MODES.HEATMAP);
-              }}
-              className="cursor-pointer gap-2"
-              data-testid="menu-heatmap"
-            >
-              <Flame className="w-4 h-4 text-[#FF6B6B]" />
-              <span className="flex-1">{t("heatmap")}</span>
-              {user?.subscription_active && isHeatmapMode && <CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" />}
-              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                if (user?.subscription_active) { setShowFilterBar(f => !f); }
-                else { navigate("/subscribe"); }
-              }}
-              className="cursor-pointer gap-2"
-              data-testid="menu-filters"
-            >
-              <Filter className="w-4 h-4 text-[#FF6B6B]" />
-              <span className="flex-1">{t("advancedFilters")}</span>
-              {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer gap-2" data-testid="menu-premium-link">
-              <Star className="w-4 h-4 text-amber-500" />
-              <span className="flex-1 font-bold text-amber-600">{t("goPremium")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer gap-2" data-testid="menu-feedback">
-              <MessageSquare className="w-4 h-4 text-[#8D99AE]" />
-              <span className="flex-1">{t("mapUi.feedback")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer gap-2" data-testid="menu-help">
-              <Heart className="w-4 h-4 text-[#42A5F5]" />
-              <span className="flex-1">{t("legalUi.help")}</span>
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate("/privacy")} className="cursor-pointer gap-2" data-testid="menu-privacy">
-              <Shield className="w-4 h-4 text-[#66BB6A]" />
-              <span className="flex-1">{t("legalUi.privacyPolicy")}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <div className="flex gap-2">
-          <LanguageSelector />
-          {user && (
-            <Button variant="outline" size="sm" onClick={togglePush} className={`backdrop-blur-sm shadow-lg border-0 ${pushEnabled ? 'bg-[#FF6B6B] text-white' : 'bg-white/95'}`} data-testid="push-toggle">
-              {pushEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
-            </Button>
-          )}
-          {user ? (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="bg-white/95 backdrop-blur-sm shadow-lg border-0 gap-1.5" data-testid="user-menu-btn">
-                  <User className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs max-w-[80px] truncate">{user.username || user.name || t("mapUi.userFallback")}</span>
-                  {user.total_score > 0 && <span className="text-xs text-[#FF6B6B] font-bold">{user.total_score}</span>}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <div className="px-3 py-2">
-                  <p className="font-bold text-[#2B2D42] text-sm">{user.username || user.name}</p>
-                  <p className="text-xs text-[#FF6B6B] font-medium leading-tight">{getRankLabel(user.rank_key || user.rank, t)}</p>
-                  <div className="flex gap-3 mt-1 text-xs text-[#8D99AE]">
-                    <span>{user.total_score || 0} {t("mapUi.pointsShort")}</span>
-                    <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{user.streak_days || 0}{t("mapUi.dayShort")}</span>
-                    <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" />{user.trust_score || 50}</span>
+        <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3 py-2 flex items-center gap-2 min-h-[56px]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="min-w-0 flex-1 flex items-center gap-2 hover:opacity-90 transition-opacity" data-testid="app-menu-btn">
+                <img src="/icon-32x32.png" alt="Caca Radar" className="w-8 h-8 rounded-lg shrink-0" />
+                <span className="font-bold text-[#2B2D42] truncate hidden sm:inline" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE] shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-64 rounded-xl shadow-xl p-1">
+              {userCity && (
+                <>
+                  <div className="px-3 py-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#FF6B6B]" />
+                    <span className="text-sm font-bold text-[#2B2D42]">{userCity}</span>
                   </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer" data-testid="menu-profile">
-                  <User className="w-4 h-4 mr-2" />{t("mapUi.myProfile")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/impact")} className="cursor-pointer" data-testid="menu-impact">
-                  <Heart className="w-4 h-4 mr-2 text-[#66BB6A]" />{t("mapUi.myImpact")}
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer" data-testid="menu-user-help">
-                  <MessageSquare className="w-4 h-4 mr-2 text-[#42A5F5]" />{t("legalUi.help")}
-                </DropdownMenuItem>
-                {user.subscription_active && (
-                  <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
-                    <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
+                  <DropdownMenuSeparator />
+                </>
+              )}
+              <DropdownMenuItem
+                onClick={() => user?.subscription_active ? navigate("/rankings") : navigate("/subscribe")}
+                className="cursor-pointer gap-2"
+                data-testid="menu-city-rankings"
+              >
+                <Building2 className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">{t("cityRankings")}</span>
+                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => user?.subscription_active ? navigate(`/rankings?tab=barrios&city=${encodeURIComponent(userCity || "Madrid")}`) : navigate("/subscribe")}
+                className="cursor-pointer gap-2"
+                data-testid="menu-barrio-rankings"
+              >
+                <MapPin className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">{t("barrioRankings")}</span>
+                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => {
+                  setHeatmapMode(isHeatmapMode ? MAP_MODES.REPORTS : MAP_MODES.HEATMAP);
+                }}
+                className="cursor-pointer gap-2"
+                data-testid="menu-heatmap"
+              >
+                <Flame className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">{t("heatmap")}</span>
+                {user?.subscription_active && isHeatmapMode && <CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" />}
+                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                onClick={() => {
+                  if (user?.subscription_active) { setShowFilterBar(f => !f); }
+                  else { navigate("/subscribe"); }
+                }}
+                className="cursor-pointer gap-2"
+                data-testid="menu-filters"
+              >
+                <Filter className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">{t("advancedFilters")}</span>
+                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer gap-2" data-testid="menu-premium-link">
+                <Star className="w-4 h-4 text-amber-500" />
+                <span className="flex-1 font-bold text-amber-600">{t("goPremium")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onClick={() => setShowFeedback(true)} className="cursor-pointer gap-2" data-testid="menu-feedback">
+                <MessageSquare className="w-4 h-4 text-[#8D99AE]" />
+                <span className="flex-1">{t("mapUi.feedback")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer gap-2" data-testid="menu-help">
+                <Heart className="w-4 h-4 text-[#42A5F5]" />
+                <span className="flex-1">{t("legalUi.help")}</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/privacy")} className="cursor-pointer gap-2" data-testid="menu-privacy">
+                <Shield className="w-4 h-4 text-[#66BB6A]" />
+                <span className="flex-1">{t("legalUi.privacyPolicy")}</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <div className="flex items-center gap-1 shrink-0">
+            <LanguageSelector compact />
+            {user && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={togglePush}
+                className={`h-10 w-10 p-0 backdrop-blur-sm shadow-none border-0 ${pushEnabled ? 'bg-[#FF6B6B] text-white' : 'bg-transparent text-[#2B2D42]'}`}
+                data-testid="push-toggle"
+              >
+                {pushEnabled ? <Bell className="w-4 h-4" /> : <BellOff className="w-4 h-4" />}
+              </Button>
+            )}
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-10 px-3 bg-transparent shadow-none border-0 gap-2" data-testid="user-menu-btn">
+                    <User className="w-4 h-4" />
+                    {user.total_score > 0 && <span className="text-xs text-[#FF6B6B] font-bold hidden sm:inline">{user.total_score}</span>}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="px-3 py-2">
+                    <p className="font-bold text-[#2B2D42] text-sm">{user.username || user.name}</p>
+                    <p className="text-xs text-[#FF6B6B] font-medium leading-tight">{getRankLabel(user.rank_key || user.rank, t)}</p>
+                    <div className="flex gap-3 mt-1 text-xs text-[#8D99AE]">
+                      <span>{user.total_score || 0} {t("mapUi.pointsShort")}</span>
+                      <span className="flex items-center gap-0.5"><Flame className="w-3 h-3 text-orange-500" />{user.streak_days || 0}{t("mapUi.dayShort")}</span>
+                      <span className="flex items-center gap-0.5"><Shield className="w-3 h-3" />{user.trust_score || 50}</span>
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => navigate("/profile")} className="cursor-pointer" data-testid="menu-profile">
+                    <User className="w-4 h-4 mr-2" />{t("mapUi.myProfile")}
                   </DropdownMenuItem>
-                )}
-                {!user.subscription_active && (
-                  <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
-                    <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium
+                  <DropdownMenuItem onClick={() => navigate("/impact")} className="cursor-pointer" data-testid="menu-impact">
+                    <Heart className="w-4 h-4 mr-2 text-[#66BB6A]" />{t("mapUi.myImpact")}
                   </DropdownMenuItem>
-                )}
-                {(user.role === "municipality" || user.role === "admin") && (
-                  <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer" data-testid="menu-dashboard">
-                    <Building2 className="w-4 h-4 mr-2" />Dashboard
+                  <DropdownMenuItem onClick={() => navigate("/help")} className="cursor-pointer" data-testid="menu-user-help">
+                    <MessageSquare className="w-4 h-4 mr-2 text-[#42A5F5]" />{t("legalUi.help")}
                   </DropdownMenuItem>
-                )}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-500" data-testid="menu-logout">
-                  <LogOut className="w-4 h-4 mr-2" />{t("logout")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          ) : (
-            <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="bg-white/95 backdrop-blur-sm shadow-lg border-0" data-testid="login-btn">
-              <LogIn className="w-4 h-4 mr-1" />{t("enter")}
-            </Button>
-          )}
+                  {user.subscription_active && (
+                    <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
+                      <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
+                    </DropdownMenuItem>
+                  )}
+                  {!user.subscription_active && (
+                    <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
+                      <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium
+                    </DropdownMenuItem>
+                  )}
+                  {(user.role === "municipality" || user.role === "admin") && (
+                    <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer" data-testid="menu-dashboard">
+                      <Building2 className="w-4 h-4 mr-2" />Dashboard
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={logout} className="cursor-pointer text-red-500" data-testid="menu-logout">
+                    <LogOut className="w-4 h-4 mr-2" />{t("logout")}
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => navigate("/login")} className="h-10 px-3 bg-transparent shadow-none border-0" data-testid="login-btn">
+                <LogIn className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
