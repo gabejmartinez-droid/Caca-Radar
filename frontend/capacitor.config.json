@@ -5,9 +5,9 @@
   "bundledWebRuntime": false,
   "server": {
     "allowNavigation": [
+      "cacaradar.es",
       "caca-radar.emergent.host",
-      "*.emergent.host",
-      "cacaradar.es"
+      "*.emergent.host"
     ]
   },
   "plugins": {

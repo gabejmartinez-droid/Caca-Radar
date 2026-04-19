@@ -85,6 +85,10 @@ export default function ForgotPasswordPage() {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder={t("emailPlaceholder")}
                       className={isRtl ? "pr-10" : "pl-10"}
+                      autoCapitalize="none"
+                      autoCorrect="off"
+                      autoComplete="email"
+                      spellCheck={false}
                       required
                       data-testid="email-input"
                     />

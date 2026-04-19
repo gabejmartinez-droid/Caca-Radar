@@ -17,7 +17,7 @@
  * ============================================================
  */
 
-const HOSTED_BACKEND = "https://caca-radar.emergent.host";
+const HOSTED_BACKEND = "https://cacaradar.es";
 
 function getApiUrl() {
   if (typeof window !== "undefined") {
