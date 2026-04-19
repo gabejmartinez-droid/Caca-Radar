@@ -67,7 +67,10 @@ function MapMarkers({ reports, onMarkerClick }) {
 
 function LocationFinder({ onLocationFound, mapRef }) {
   const map = useMapEvents({
-    locationfound(e) { map.flyTo(e.latlng, 16); onLocationFound(e.latlng); },
+    locationfound(e) {
+      map.setView(e.latlng, 16, { animate: false });
+      onLocationFound(e.latlng);
+    },
     locationerror() { /* handled by caller */ },
   });
   useEffect(() => {
@@ -158,6 +161,7 @@ export default function MapPage() {
   const [showFeedback, setShowFeedback] = useState(false);
   const [pointsEarned, setPointsEarned] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
+  const [showAmbientUi, setShowAmbientUi] = useState(false);
   const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
@@ -226,6 +230,10 @@ export default function MapPage() {
 
   // Check push notification status from backend
   useEffect(() => {
+    return scheduleAfterFirstPaint(() => setShowAmbientUi(true), 1400);
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
 
     const checkPush = async () => {
@@ -235,7 +243,7 @@ export default function MapPage() {
       } catch { /* ignore */ }
     };
 
-    return scheduleAfterFirstPaint(checkPush, 400);
+    return scheduleAfterFirstPaint(checkPush, 1200);
   }, [user]);
 
   const fetchReports = useCallback(async () => {
@@ -254,7 +262,7 @@ export default function MapPage() {
   }, [activeFilter]);
 
   useEffect(() => {
-    return scheduleAfterFirstPaint(fetchReports, 120);
+    return scheduleAfterFirstPaint(fetchReports, 250);
   }, [fetchReports]);
 
   // Detect user's city from location
@@ -271,7 +279,7 @@ export default function MapPage() {
       } catch (err) { console.error("City detection failed:", err); }
     };
 
-    return scheduleAfterFirstPaint(detectCity, 1200);
+    return scheduleAfterFirstPaint(detectCity, 1800);
   }, [userLocation]);
 
   const handleMarkerClick = useCallback(async (report) => {
@@ -698,10 +706,10 @@ export default function MapPage() {
       )}
 
       {/* Activity Banner */}
-      <ActivityBanner userLocation={userLocation} userCity={userCity} />
+      {showAmbientUi && <ActivityBanner userLocation={userLocation} userCity={userCity} />}
 
       {/* Streak Flame Animation */}
-      <StreakFlame />
+      {showAmbientUi && <StreakFlame />}
 
       {/* Lower-right map controls */}
       <div
