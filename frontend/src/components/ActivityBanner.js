@@ -47,57 +47,54 @@ export default function ActivityBanner({ userLocation, userCity }) {
     return () => clearInterval(interval);
   }, [userLocation]);
 
-  const primaryBanner = useMemo(() => {
-    if (!stats) return null;
+  const banners = useMemo(() => {
+    if (!stats) return [];
+    const nextBanners = [];
 
     const nearbySignature = String(stats.nearby_today || 0);
     if (stats.nearby_today > 0 && dismissedItems.nearby_today !== nearbySignature) {
-      return {
+      nextBanners.push({
         key: "nearby_today",
         icon: Flame,
         text: formatTranslation(t, "activityUi.nearbyReportsToday", { count: stats.nearby_today }),
         color: "#FF6B6B",
         signature: nearbySignature,
-      };
+      });
     }
 
     const totalSignature = String(stats.total_today || 0);
     if (stats.total_today > 0 && dismissedItems.total_today !== totalSignature) {
-      return {
+      nextBanners.push({
         key: "total_today",
         icon: Flame,
         text: formatTranslation(t, "activityUi.spainReportsToday", { count: stats.total_today }),
         color: "#FF6B6B",
         signature: totalSignature,
-      };
+      });
     }
 
-    return null;
-  }, [dismissedItems.nearby_today, dismissedItems.total_today, stats, t]);
+    if (stats.user_rank && user) {
+      const cityName = userCity || t("rankUi.cityFallback");
+      const rankSignature = `${stats.user_rank}:${cityName}`;
 
-  const dismissibleBanners = useMemo(() => {
-    if (!stats || !user || !stats.user_rank) return [];
-
-    const cityName = userCity || t("rankUi.cityFallback");
-    const rankSignature = `${stats.user_rank}:${cityName}`;
-
-    if (dismissedItems.user_rank === rankSignature) {
-      return [];
+      if (dismissedItems.user_rank !== rankSignature) {
+        nextBanners.push({
+          key: "user_rank",
+          icon: Trophy,
+          text: formatTranslation(t, "rankUi.cityPosition", {
+            rank: stats.user_rank,
+            city: cityName,
+          }),
+          color: "#66BB6A",
+          signature: rankSignature,
+        });
+      }
     }
 
-    return [{
-      key: "user_rank",
-      icon: Trophy,
-      text: formatTranslation(t, "rankUi.cityPosition", {
-        rank: stats.user_rank,
-        city: cityName,
-      }),
-      color: "#66BB6A",
-      signature: rankSignature,
-    }];
-  }, [dismissedItems.user_rank, stats, t, user, userCity]);
+    return nextBanners;
+  }, [dismissedItems.nearby_today, dismissedItems.total_today, dismissedItems.user_rank, stats, t, user, userCity]);
 
-  if (!primaryBanner && dismissibleBanners.length === 0) return null;
+  if (banners.length === 0) return null;
 
   const dismissBanner = (item) => {
     if (!item?.key || item.signature === undefined) return;
@@ -105,8 +102,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
   };
 
   const findBannerByKey = (key) => {
-    if (primaryBanner?.key === key) return primaryBanner;
-    return dismissibleBanners.find((item) => item.key === key) || null;
+    return banners.find((item) => item.key === key) || null;
   };
 
   const handleTouchStart = (key, event) => {
@@ -160,8 +156,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 68px)" }}
       data-testid="activity-banner"
     >
-      {primaryBanner && renderBanner(primaryBanner)}
-      {dismissibleBanners.map((item) => renderBanner(item))}
+      {banners.map((item) => renderBanner(item))}
     </div>
   );
 }

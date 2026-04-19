@@ -99,8 +99,10 @@ const languages = [
   { code: "val", name: "Valencià" },
 ];
 
-export function LanguageSelector({ compact = false, className = "" }) {
+export function LanguageSelector({ compact = false, showLabel = true, className = "" }) {
   const { language, setLanguage } = useLanguage();
+  const selectedLanguage = languages.find((l) => l.code === language);
+  const shouldHideLabel = compact || !showLabel;
 
   return (
     <DropdownMenu>
@@ -108,11 +110,11 @@ export function LanguageSelector({ compact = false, className = "" }) {
         <Button
           variant="outline"
           size="sm"
-          className={`bg-white/95 backdrop-blur-sm shadow-lg border-0 ${compact ? "h-10 w-10 px-0" : "gap-2"} ${className}`.trim()}
+          className={`bg-white/95 backdrop-blur-sm shadow-lg border-0 ${shouldHideLabel ? "h-10 w-10 px-0" : "h-10 px-3 gap-2"} ${className}`.trim()}
           data-testid="language-selector"
         >
           <FlagIcon code={language} className="w-5 h-3.5 rounded-[1px]" />
-          {!compact && <span className="text-xs font-medium">{languages.find(l => l.code === language)?.name}</span>}
+          {!shouldHideLabel && <span className="text-xs font-medium truncate">{selectedLanguage?.name}</span>}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">

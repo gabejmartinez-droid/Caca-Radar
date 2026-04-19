@@ -25,6 +25,7 @@ import PointsPopup from "../components/PointsPopup";
 import StreakFlame from "../components/StreakFlame";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { compressReportPhoto, REPORT_PHOTO_MAX_BYTES } from "../utils/reportPhoto";
+import { isCapacitorNative } from "../tokenManager";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -156,6 +157,8 @@ export default function MapPage() {
   const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [userCity, setUserCity] = useState(null);
+  const [userBarrio, setUserBarrio] = useState(null);
+  const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1024));
   const fileInputRef = useRef(null);
   const mapRef = useRef(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -166,6 +169,7 @@ export default function MapPage() {
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
+  const isNativeApp = isCapacitorNative();
 
   const setHeatmapMode = useCallback((nextMode) => {
     if (nextMode === MAP_MODES.HEATMAP && !user?.subscription_active) {
@@ -265,21 +269,30 @@ export default function MapPage() {
     return scheduleAfterFirstPaint(fetchReports, 250);
   }, [fetchReports]);
 
-  // Detect user's city from location
+  useEffect(() => {
+    if (typeof window === "undefined") return undefined;
+    const handleResize = () => setViewportWidth(window.innerWidth);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Detect user's city and barrio from location
   useEffect(() => {
     if (!userLocation) return;
 
-    const detectCity = async () => {
+    const detectArea = async () => {
       try {
-        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json&addressdetails=1&zoom=12`, { headers: { "User-Agent": "CacaRadar/1.0" } });
+        const resp = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${userLocation.lat}&lon=${userLocation.lng}&format=json&addressdetails=1&zoom=16`, { headers: { "User-Agent": "CacaRadar/1.0" } });
         const data = await resp.json();
         const addr = data.address || {};
         const city = addr.city || addr.town || addr.village || addr.municipality || "";
+        const barrio = addr.suburb || addr.neighbourhood || addr.neighborhood || addr.quarter || addr.city_district || addr.borough || addr.hamlet || "";
         if (city) setUserCity(city);
-      } catch (err) { console.error("City detection failed:", err); }
+        if (barrio) setUserBarrio(barrio);
+      } catch (err) { console.error("Area detection failed:", err); }
     };
 
-    return scheduleAfterFirstPaint(detectCity, 1800);
+    return scheduleAfterFirstPaint(detectArea, 1800);
   }, [userLocation]);
 
   const handleMarkerClick = useCallback(async (report) => {
@@ -508,6 +521,28 @@ export default function MapPage() {
     return date.toLocaleDateString();
   };
 
+  const locationLabel = (() => {
+    if (isNativeApp) {
+      return userBarrio || userCity || "";
+    }
+    if (userCity && userBarrio && userBarrio.toLowerCase() !== userCity.toLowerCase()) {
+      return `${userCity} · ${userBarrio}`;
+    }
+    return userBarrio || userCity || "";
+  })();
+
+  const shouldShowLanguageLabel = (() => {
+    if (viewportWidth < 420) return false;
+    if (isNativeApp) {
+      return viewportWidth >= 430 && locationLabel.length < 18;
+    }
+    if (viewportWidth < 720) return false;
+    if (locationLabel.length > 24 && viewportWidth < 980) return false;
+    return true;
+  })();
+
+  const shouldShowAppName = viewportWidth >= 640;
+
   return (
     <div className={`h-screen w-full relative overflow-hidden ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
       <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
@@ -527,16 +562,29 @@ export default function MapPage() {
             <DropdownMenuTrigger asChild>
               <button className="min-w-0 flex-1 flex items-center gap-2 hover:opacity-90 transition-opacity" data-testid="app-menu-btn">
                 <img src="/icon-32x32.png" alt="Caca Radar" className="w-8 h-8 rounded-lg shrink-0" />
-                <span className="font-bold text-[#2B2D42] truncate hidden sm:inline" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("appName")}</span>
+                <div className="min-w-0 flex-1 text-left">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {shouldShowAppName && (
+                      <span className="font-bold text-[#2B2D42] truncate" style={{ fontFamily: 'Nunito, sans-serif' }}>
+                        {t("appName")}
+                      </span>
+                    )}
+                    {locationLabel && (
+                      <span className="text-[11px] font-medium text-[#8D99AE] truncate">
+                        {locationLabel}
+                      </span>
+                    )}
+                  </div>
+                </div>
                 <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE] shrink-0" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start" className="w-64 rounded-xl shadow-xl p-1">
-              {userCity && (
+              {(userCity || userBarrio) && (
                 <>
                   <div className="px-3 py-2 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-[#FF6B6B]" />
-                    <span className="text-sm font-bold text-[#2B2D42]">{userCity}</span>
+                    <span className="text-sm font-bold text-[#2B2D42]">{locationLabel}</span>
                   </div>
                   <DropdownMenuSeparator />
                 </>
@@ -605,7 +653,7 @@ export default function MapPage() {
           </DropdownMenu>
 
           <div className="flex items-center gap-1 shrink-0">
-            <LanguageSelector compact />
+            <LanguageSelector showLabel={shouldShowLanguageLabel} />
             {user && (
               <Button
                 variant="outline"
@@ -836,14 +884,14 @@ export default function MapPage() {
 
       {/* Details Drawer */}
       <Drawer open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
-        <DrawerContent className="rounded-t-3xl max-h-[50vh] md:max-h-[25vh]" data-testid="details-drawer">
+        <DrawerContent className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl max-h-[50vh] md:max-h-[25vh]" data-testid="details-drawer">
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</DrawerTitle>
           </DrawerHeader>
           {selectedReport && (
             <div className="px-4 pb-4 overflow-y-auto">
               {selectedReport.photo_url && (
-                <div className="mb-4 max-w-[180px] sm:max-w-[200px] mx-auto rounded-2xl overflow-hidden shadow-sm">
+                <div className="mb-4 max-w-[10.5rem] mx-auto rounded-2xl overflow-hidden shadow-sm">
                   <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full aspect-square object-cover object-center" data-testid="report-photo" />
                 </div>
               )}
