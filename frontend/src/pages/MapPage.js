@@ -165,11 +165,38 @@ export default function MapPage() {
   const [pointsEarned, setPointsEarned] = useState(null);
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [showAmbientUi, setShowAmbientUi] = useState(false);
+  const [showMapSurface, setShowMapSurface] = useState(() => !isCapacitorNative());
   const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
   const isNativeApp = isCapacitorNative();
+
+  useEffect(() => {
+    if (!isNativeApp) return undefined;
+
+    let timeoutId = null;
+    let idleId = null;
+    let cancelled = false;
+
+    const revealMap = () => {
+      if (!cancelled) {
+        setShowMapSurface(true);
+      }
+    };
+
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(revealMap, { timeout: 1800 });
+    } else {
+      timeoutId = window.setTimeout(revealMap, 350);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId) window.cancelIdleCallback?.(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
+    };
+  }, [isNativeApp]);
 
   const setHeatmapMode = useCallback((nextMode) => {
     if (nextMode === MAP_MODES.HEATMAP && !user?.subscription_active) {
@@ -266,8 +293,9 @@ export default function MapPage() {
   }, [activeFilter]);
 
   useEffect(() => {
+    if (!showMapSurface) return undefined;
     return scheduleAfterFirstPaint(fetchReports, 250);
-  }, [fetchReports]);
+  }, [fetchReports, showMapSurface]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -545,12 +573,20 @@ export default function MapPage() {
 
   return (
     <div className={`h-screen w-full relative overflow-hidden ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
-      <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
-        <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
-        <LocationFinder onLocationFound={setUserLocation} mapRef={mapRef} />
-        {mapMode === MAP_MODES.REPORTS && <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />}
-        <HeatmapLayer reports={reports} visible={isHeatmapMode} />
-      </MapContainer>
+      {showMapSurface ? (
+        <MapContainer center={DEFAULT_CENTER} zoom={DEFAULT_ZOOM} className="h-full w-full" zoomControl={false}>
+          <TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+          <LocationFinder onLocationFound={setUserLocation} mapRef={mapRef} />
+          {mapMode === MAP_MODES.REPORTS && <MapMarkers reports={reports} onMarkerClick={handleMarkerClick} />}
+          <HeatmapLayer reports={reports} visible={isHeatmapMode} />
+        </MapContainer>
+      ) : (
+        <div className="h-full w-full bg-[#F8F9FA]">
+          <div className="h-full w-full opacity-70" style={{
+            backgroundImage: "radial-gradient(circle at 20% 20%, rgba(255,107,107,0.08), transparent 28%), radial-gradient(circle at 80% 30%, rgba(66,165,245,0.08), transparent 24%), linear-gradient(135deg, #f8f9fa 0%, #eef2f7 100%)",
+          }} />
+        </div>
+      )}
 
       {/* Header */}
       <div

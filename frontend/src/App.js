@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
@@ -42,6 +42,8 @@ function UsernameGate({ children }) {
 }
 
 function App() {
+  const [showNotificationChecker, setShowNotificationChecker] = useState(!isCapacitorNative());
+
   useEffect(() => {
     let cancelled = false;
 
@@ -68,6 +70,32 @@ function App() {
     startNativePushListeners();
     return () => {
       cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!isCapacitorNative()) return undefined;
+
+    let timeoutId = null;
+    let idleId = null;
+
+    const enableChecker = () => {
+      if (!cancelled) {
+        setShowNotificationChecker(true);
+      }
+    };
+
+    let cancelled = false;
+    if (typeof window.requestIdleCallback === "function") {
+      idleId = window.requestIdleCallback(enableChecker, { timeout: 2500 });
+    } else {
+      timeoutId = window.setTimeout(enableChecker, 1200);
+    }
+
+    return () => {
+      cancelled = true;
+      if (idleId) window.cancelIdleCallback?.(idleId);
+      if (timeoutId) window.clearTimeout(timeoutId);
     };
   }, []);
 
@@ -98,7 +126,7 @@ function App() {
               <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Routes>
           </UsernameGate>
-          <NotificationChecker />
+          {showNotificationChecker && <NotificationChecker />}
           <Toaster position="top-center" richColors />
         </BrowserRouter>
       </AuthProvider>
