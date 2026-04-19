@@ -65,6 +65,15 @@ function canvasToBlob(canvas, type, quality) {
   });
 }
 
+function getSquareCrop(width, height) {
+  const size = Math.min(width, height);
+  return {
+    size,
+    sx: Math.max(0, Math.round((width - size) / 2)),
+    sy: Math.max(0, Math.round((height - size) / 2)),
+  };
+}
+
 export async function compressReportPhoto(file) {
   if (!(file instanceof File) || !file.type.startsWith("image/")) {
     throw new Error("unsupported-file");
@@ -73,7 +82,8 @@ export async function compressReportPhoto(file) {
   const image = await readImageBitmap(file);
   const sourceWidth = image.naturalWidth || image.videoWidth || image.width;
   const sourceHeight = image.naturalHeight || image.videoHeight || image.height;
-  const { width, height } = getScaledSize(sourceWidth, sourceHeight);
+  const { size, sx, sy } = getSquareCrop(sourceWidth, sourceHeight);
+  const { width, height } = getScaledSize(size, size);
 
   const canvas = document.createElement("canvas");
   canvas.width = width;
@@ -86,7 +96,7 @@ export async function compressReportPhoto(file) {
 
   context.fillStyle = "#ffffff";
   context.fillRect(0, 0, width, height);
-  context.drawImage(image, 0, 0, width, height);
+  context.drawImage(image, sx, sy, size, size, 0, 0, width, height);
 
   const preferredType = supportsCanvasType("image/webp") ? "image/webp" : "image/jpeg";
   const extension = preferredType === "image/webp" ? "webp" : "jpg";

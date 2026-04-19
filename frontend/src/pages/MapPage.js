@@ -812,8 +812,8 @@ export default function MapPage() {
               data-testid="description-input"
             />
             {photoPreview ? (
-              <div className="relative mb-4">
-                <img src={photoPreview} alt="Preview" className="w-full h-48 object-cover rounded-xl" />
+              <div className="relative mb-4 max-w-[220px] mx-auto">
+                <img src={photoPreview} alt="Preview" className="w-full aspect-square object-cover object-center rounded-2xl shadow-sm" />
                 <button onClick={clearSelectedPhoto} className="absolute top-2 right-2 p-1 bg-black/50 rounded-full text-white"><X className="w-4 h-4" /></button>
               </div>
             ) : (
@@ -833,15 +833,15 @@ export default function MapPage() {
 
       {/* Details Drawer */}
       <Drawer open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
-        <DrawerContent className="rounded-t-3xl" data-testid="details-drawer">
+        <DrawerContent className="rounded-t-3xl max-h-[50vh] md:max-h-[25vh]" data-testid="details-drawer">
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</DrawerTitle>
           </DrawerHeader>
           {selectedReport && (
-            <div className="px-4 pb-4">
+            <div className="px-4 pb-4 overflow-y-auto">
               {selectedReport.photo_url && (
-                <div className="mb-4 rounded-xl overflow-hidden">
-                  <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full h-48 object-cover" data-testid="report-photo" />
+                <div className="mb-4 max-w-[180px] sm:max-w-[200px] mx-auto rounded-2xl overflow-hidden shadow-sm">
+                  <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full aspect-square object-cover object-center" data-testid="report-photo" />
                 </div>
               )}
               {selectedReport.description && (
