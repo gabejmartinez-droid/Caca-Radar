@@ -79,11 +79,11 @@ export default function RankingsPage() {
         setCityData(data);
         const uniqueCities = [...new Set(data.dirtiest.map(c => c.city))];
         setCities(uniqueCities);
-      } catch { toast.error("Error loading rankings"); }
+      } catch { toast.error(t("rankingUi.loadError")); }
       finally { setLoading(false); }
     };
     fetchCities();
-  }, [isPremium]);
+  }, [isPremium, t]);
 
   useEffect(() => {
     if (!isPremium || tab !== "barrios") return;
@@ -92,11 +92,11 @@ export default function RankingsPage() {
       try {
         const { data } = await axios.get(`${API}/rankings/barrios?city=${encodeURIComponent(selectedCity)}`, { withCredentials: true });
         setBarrioData(data);
-      } catch { toast.error("Error loading barrio data"); }
+      } catch { toast.error(t("rankingUi.loadBarrioError")); }
       finally { setLoading(false); }
     };
     fetchBarrios();
-  }, [isPremium, tab, selectedCity]);
+  }, [isPremium, tab, selectedCity, t]);
 
   const handleShare = async (type) => {
     try {
@@ -105,10 +105,10 @@ export default function RankingsPage() {
         await navigator.share({ title: data.title, text: data.share_text, url: data.app_url });
       } else {
         await navigator.clipboard.writeText(data.share_text);
-        toast.success("Copiado al portapapeles");
+        toast.success(t("rankingUi.copied"));
       }
     } catch (err) {
-      if (err.name !== "AbortError") toast.error("Error al compartir");
+      if (err.name !== "AbortError") toast.error(t("rankingUi.shareError"));
     }
   };
 
@@ -123,10 +123,10 @@ export default function RankingsPage() {
         </div>
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           <Lock className="w-12 h-12 text-[#8D99AE] mb-4" />
-          <h2 className="text-xl font-bold text-[#2B2D42] mb-2">Rankings Premium</h2>
-          <p className="text-[#8D99AE] text-sm mb-6">Accede a los rankings de ciudades y barrios con Caca Radar Premium</p>
+          <h2 className="text-xl font-bold text-[#2B2D42] mb-2">{t("rankingUi.premiumTitle")}</h2>
+          <p className="text-[#8D99AE] text-sm mb-6">{t("rankingUi.premiumBody")}</p>
           <Button onClick={() => navigate("/subscribe")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-8 py-5" data-testid="upgrade-btn">
-            Ver planes Premium
+            {t("rankingUi.viewPremiumPlans")}
           </Button>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function RankingsPage() {
       <div className="max-w-lg mx-auto px-4 pb-20">
         <div className="text-center mb-5">
           <BarChart3 className="w-10 h-10 text-[#FF6B6B] mx-auto mb-2" />
-          <h1 className="text-2xl font-black text-[#2B2D42]" style={{ fontFamily: "Nunito, sans-serif" }}>Rankings</h1>
+          <h1 className="text-2xl font-black text-[#2B2D42]" style={{ fontFamily: "Nunito, sans-serif" }}>{t("rankingUi.pageTitle")}</h1>
         </div>
 
         {/* Tab Switcher */}
@@ -205,14 +205,14 @@ export default function RankingsPage() {
 
             {/* Share button */}
             <Button onClick={() => handleShare(listType)} variant="outline" className="w-full border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-rankings-btn">
-              <Share2 className="w-4 h-4 mr-2" /> Compartir ranking
+              <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
             </Button>
           </>
         ) : (
           <>
             {/* City selector */}
             <div className="mb-4">
-              <label className="text-xs font-bold text-[#2B2D42] mb-1 block">Ciudad</label>
+              <label className="text-xs font-bold text-[#2B2D42] mb-1 block">{t("rankingUi.cityLabel")}</label>
               <select
                 value={selectedCity}
                 onChange={(e) => setSelectedCity(e.target.value)}
@@ -225,7 +225,7 @@ export default function RankingsPage() {
             </div>
 
             <p className="text-xs text-[#8D99AE] mb-3 text-center">
-              {barrioData?.total_reports || 0} reportes activos en {selectedCity}
+              {formatTranslation(t, "rankingUi.activeReportsInCity", { count: barrioData?.total_reports || 0, city: selectedCity })}
             </p>
 
             <div className="space-y-2">
@@ -233,7 +233,7 @@ export default function RankingsPage() {
                 <BarrioCard key={b.barrio} barrio={b} index={i} />
               ))}
               {(!barrioData?.barrios || barrioData.barrios.length === 0) && (
-                <p className="text-center text-[#8D99AE] py-8">No hay datos de barrios para esta ciudad</p>
+                <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noNeighborhoodData")}</p>
               )}
             </div>
           </>

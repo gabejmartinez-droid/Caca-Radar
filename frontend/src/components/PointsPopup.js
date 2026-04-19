@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useLanguage } from "../contexts/LanguageContext";
 
 export default function PointsPopup({ points, breakdown, onDone }) {
   const [visible, setVisible] = useState(true);
+  const { t } = useLanguage();
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -17,7 +19,7 @@ export default function PointsPopup({ points, breakdown, onDone }) {
     <div className="fixed inset-0 z-[3000] pointer-events-none flex items-center justify-center" data-testid="points-popup">
       <div className="bg-[#2B2D42] text-white rounded-2xl px-6 py-4 shadow-2xl animate-bounce-in text-center">
         <p className="text-3xl font-black mb-1" style={{ fontFamily: "Nunito, sans-serif" }}>+{points}</p>
-        <p className="text-xs text-white/70">puntos</p>
+        <p className="text-xs text-white/70">{t("pointsUi.pointsLabel")}</p>
         {breakdown && (
           <div className="mt-2 space-y-0.5">
             {Object.entries(breakdown).map(([key, val]) => (

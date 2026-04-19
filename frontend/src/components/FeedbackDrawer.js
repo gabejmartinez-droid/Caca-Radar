@@ -48,7 +48,7 @@ export default function FeedbackDrawer({ open, onClose }) {
     <div className="fixed inset-0 z-[2000] bg-black/50 flex items-end justify-center" onClick={onClose} data-testid="feedback-overlay">
       <div className="bg-white w-full max-w-lg rounded-t-2xl p-5 pb-8 animate-in slide-in-from-bottom" onClick={(e) => e.stopPropagation()} data-testid="feedback-drawer">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="font-bold text-[#2B2D42] text-lg" style={{ fontFamily: "Nunito, sans-serif" }}>Feedback</h3>
+          <h3 className="font-bold text-[#2B2D42] text-lg" style={{ fontFamily: "Nunito, sans-serif" }}>{t("feedbackUi.title")}</h3>
           <button onClick={onClose} className="text-[#8D99AE]"><X className="w-5 h-5" /></button>
         </div>
 

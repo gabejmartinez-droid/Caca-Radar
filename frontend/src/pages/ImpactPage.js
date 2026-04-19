@@ -8,6 +8,7 @@ import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import { formatTranslation } from "../utils/ranks";
 import { API } from "../config";
 import "leaflet/dist/leaflet.css";
 
@@ -97,7 +98,7 @@ function Timeline({ data }) {
 
 export default function ImpactPage() {
   const { user } = useAuth();
-  const { isRtl } = useLanguage();
+  const { isRtl, t } = useLanguage();
   const navigate = useNavigate();
   const [impact, setImpact] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -109,35 +110,35 @@ export default function ImpactPage() {
         const { data } = await axios.get(`${API}/users/impact`, { withCredentials: true });
         setImpact(data);
       } catch {
-        toast.error("Error cargando datos de impacto");
+        toast.error(t("impactUi.loadError"));
         navigate("/profile");
       } finally {
         setLoading(false);
       }
     };
     fetchImpact();
-  }, [user, navigate]);
+  }, [user, navigate, t]);
 
   const handleShare = async () => {
     if (!impact) return;
     const s = impact.stats;
     const text = [
-      `Mi impacto en Caca Radar:`,
-      `${s.total_reports} reportes | ${s.cleaned_reports} zonas limpiadas`,
-      `${s.total_confirmations} confirmaciones | ${s.municipalities_helped} municipios`,
-      `Puntuacion de impacto: ${s.impact_score}`,
-      `Juntos hacemos nuestras calles mas limpias!`,
+      t("impactUi.shareLead"),
+      formatTranslation(t, "impactUi.shareStats1", { reports: s.total_reports, cleaned: s.cleaned_reports }),
+      formatTranslation(t, "impactUi.shareStats2", { confirmations: s.total_confirmations, municipalities: s.municipalities_helped }),
+      formatTranslation(t, "impactUi.shareScore", { score: s.impact_score }),
+      t("impactUi.shareFooter"),
     ].join("\n");
 
     try {
       if (navigator.share) {
-        await navigator.share({ title: "Mi impacto — Caca Radar", text });
+        await navigator.share({ title: t("impactUi.shareTitle"), text });
       } else {
         await navigator.clipboard.writeText(text);
-        toast.success("Copiado al portapapeles");
+        toast.success(t("impactUi.copied"));
       }
     } catch (err) {
-      if (err.name !== "AbortError") toast.error("Error al compartir");
+      if (err.name !== "AbortError") toast.error(t("impactUi.shareError"));
     }
   };
 
@@ -161,7 +162,7 @@ export default function ImpactPage() {
       {/* Header */}
       <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate("/profile")} className="text-[#8D99AE]" data-testid="back-btn">
-          <ArrowLeft className="w-4 h-4 mr-2" />Perfil
+          <ArrowLeft className="w-4 h-4 mr-2" />{t("impactUi.backProfile")}
         </Button>
         <LanguageSelector />
       </div>
@@ -175,25 +176,25 @@ export default function ImpactPage() {
           <div className="relative z-10">
             <Heart className="w-8 h-8 text-[#FF6B6B] mx-auto mb-2 impact-pulse" />
             <h1 className="text-2xl font-black text-white mb-1" style={{ fontFamily: "Nunito, sans-serif" }}>
-              Tu Impacto Comunitario
+              {t("impactUi.title")}
             </h1>
             <p className="text-white/60 text-xs mb-4">
-              Cada reporte que haces ayuda a tu vecindario
+              {t("impactUi.subtitle")}
             </p>
             <div className="inline-flex items-center gap-2 bg-white/10 rounded-full px-4 py-2">
               <Trophy className="w-4 h-4 text-amber-400" />
               <span className="text-white font-bold text-lg">{stats.impact_score}</span>
-              <span className="text-white/50 text-xs">puntos de impacto</span>
+              <span className="text-white/50 text-xs">{t("impactUi.impactPoints")}</span>
             </div>
           </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid grid-cols-2 gap-3 mb-4" data-testid="impact-stats">
-          <StatCard icon={MapPin} label="Reportes" value={stats.total_reports} color="#FF6B6B" />
-          <StatCard icon={CheckCircle} label="Zonas limpiadas" value={stats.cleaned_reports} color="#66BB6A" sub={`${cleanedPct}% de tus reportes`} />
-          <StatCard icon={ThumbsUp} label="Confirmaciones" value={stats.total_confirmations} color="#42A5F5" />
-          <StatCard icon={Building2} label="Municipios" value={stats.municipalities_helped} color="#FFA726" />
+          <StatCard icon={MapPin} label={t("impactUi.reportsLabel")} value={stats.total_reports} color="#FF6B6B" />
+          <StatCard icon={CheckCircle} label={t("impactUi.cleanedZonesLabel")} value={stats.cleaned_reports} color="#66BB6A" sub={formatTranslation(t, "impactUi.cleanedZonesSub", { percent: cleanedPct })} />
+          <StatCard icon={ThumbsUp} label={t("impactUi.confirmationsLabel")} value={stats.total_confirmations} color="#42A5F5" />
+          <StatCard icon={Building2} label={t("impactUi.municipalitiesLabel")} value={stats.municipalities_helped} color="#FFA726" />
         </div>
 
         {/* Impact Map */}
@@ -201,18 +202,18 @@ export default function ImpactPage() {
           <div className="mb-4">
             <h3 className="font-bold text-[#2B2D42] text-sm mb-2 flex items-center gap-2 px-1">
               <MapPin className="w-4 h-4 text-[#FF6B6B]" />
-              Tu mapa de impacto
+              {t("impactUi.mapTitle")}
             </h3>
             <ImpactMap points={map_points} />
             <div className="flex gap-4 mt-2 px-1">
               <div className="flex items-center gap-1.5 text-xs text-[#8D99AE]">
-                <div className="w-3 h-3 rounded-full bg-[#66BB6A]" /> Limpiado
+                <div className="w-3 h-3 rounded-full bg-[#66BB6A]" /> {t("impactUi.cleanedLegend")}
               </div>
               <div className="flex items-center gap-1.5 text-xs text-[#8D99AE]">
-                <div className="w-3 h-3 rounded-full bg-[#FF6B6B]" /> Activo
+                <div className="w-3 h-3 rounded-full bg-[#FF6B6B]" /> {t("impactUi.activeLegend")}
               </div>
               <div className="flex items-center gap-1.5 text-xs text-[#8D99AE]">
-                <div className="w-3 h-3 rounded-full border-2 border-[#42A5F5]" /> Confirmado
+                <div className="w-3 h-3 rounded-full border-2 border-[#42A5F5]" /> {t("impactUi.confirmedLegend")}
               </div>
             </div>
           </div>
@@ -228,7 +229,7 @@ export default function ImpactPage() {
           <div className="bg-white rounded-2xl shadow-sm p-5 mb-4" data-testid="impact-areas">
             <h3 className="font-bold text-[#2B2D42] text-sm mb-3 flex items-center gap-2">
               <Building2 className="w-4 h-4 text-[#FFA726]" />
-              Zonas donde has contribuido
+              {t("impactUi.areasTitle")}
             </h3>
             {municipalities.length > 0 && (
               <div className="flex flex-wrap gap-2 mb-2">
@@ -247,7 +248,7 @@ export default function ImpactPage() {
                   </span>
                 ))}
                 {barrios.length > 12 && (
-                  <span className="text-[#8D99AE] text-[10px] py-0.5">+{barrios.length - 12} mas</span>
+                  <span className="text-[#8D99AE] text-[10px] py-0.5">{formatTranslation(t, "impactUi.moreAreas", { count: barrios.length - 12 })}</span>
                 )}
               </div>
             )}
@@ -258,10 +259,10 @@ export default function ImpactPage() {
         {map_points.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm p-8 text-center mb-4" data-testid="impact-empty">
             <MapPin className="w-10 h-10 text-[#8D99AE]/30 mx-auto mb-3" />
-            <p className="text-[#2B2D42] font-bold mb-1">Empieza a contribuir</p>
-            <p className="text-[#8D99AE] text-sm mb-4">Reporta cacas de perro en tu barrio para ver tu impacto aqui</p>
+            <p className="text-[#2B2D42] font-bold mb-1">{t("impactUi.emptyTitle")}</p>
+            <p className="text-[#8D99AE] text-sm mb-4">{t("impactUi.emptyBody")}</p>
             <Button onClick={() => navigate("/")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl">
-              Ir al mapa
+              {t("impactUi.goToMap")}
             </Button>
           </div>
         )}
@@ -273,12 +274,12 @@ export default function ImpactPage() {
           data-testid="share-impact-btn"
         >
           <Share2 className="w-4 h-4 mr-2" />
-          Compartir mi impacto
+          {t("impactUi.shareButton")}
         </Button>
 
         {/* Motivational footer */}
         <p className="text-center text-[#8D99AE] text-xs mt-4 mb-8">
-          Juntos hacemos nuestras calles mas limpias. Cada reporte cuenta.
+          {t("impactUi.footer")}
         </p>
       </div>
 

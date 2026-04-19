@@ -64,7 +64,7 @@ export default function LeaderboardPage() {
     try {
       const { data } = await axios.get(`${API}/leaderboard/city/${encodeURIComponent(cityName)}`, { withCredentials: true });
       setCityLeaderboard(data);
-    } catch { toast.error("Error"); }
+    } catch { toast.error(t("genericError")); }
   };
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
@@ -101,7 +101,7 @@ export default function LeaderboardPage() {
 
         <div className="flex items-center gap-3 mb-4">
           <Trophy className="w-6 h-6 text-[#FF6B6B]" />
-          <h1 className="text-2xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>Leaderboard</h1>
+          <h1 className="text-2xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("rankingUi.leaderboardTitle")}</h1>
         </div>
 
         <Tabs defaultValue="national" className="w-full">
