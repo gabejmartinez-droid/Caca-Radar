@@ -8,7 +8,9 @@ import os
 import logging
 import uuid
 import asyncio
+import json
 from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 # Shared dependencies — DB, auth, models, utilities
 from deps import (
@@ -235,6 +237,20 @@ app.state.started_at = datetime.now(timezone.utc).isoformat()
 api_router = APIRouter(prefix="/api")
 
 ACTION_PROXIMITY_METERS = 5
+APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
+
+
+def load_app_versions() -> dict:
+    try:
+        with APP_VERSIONS_PATH.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except Exception:
+        return {
+            "web": "unknown",
+            "ios": {"version": "unknown", "build": "unknown"},
+            "android": {"version": "unknown", "build": "unknown"},
+            "backend": "unknown",
+        }
 
 
 def require_report_proximity(report: dict, latitude: float, longitude: float) -> float:
@@ -1039,6 +1055,7 @@ async def create_report(request: Request, data: ReportCreate, response: Response
 
 def get_runtime_metadata() -> dict:
     from urllib.parse import urlparse
+    app_versions = load_app_versions()
     parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
     mongo_host = parsed.hostname or parsed.path or "unknown"
     return {
@@ -1049,6 +1066,8 @@ def get_runtime_metadata() -> dict:
         "mongo_host": mongo_host,
         "commit": os.environ.get("GIT_SHA") or os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "unknown",
         "started_at": app.state.started_at,
+        "backend_version": os.environ.get("BACKEND_VERSION") or app_versions.get("backend", "unknown"),
+        "app_versions": app_versions,
     }
 
 
@@ -1301,6 +1320,9 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
+
+    if report.get("user_id") == user_id:
+        raise HTTPException(status_code=400, detail="No puedes votar tu propio reporte")
     
     existing_vote = await db.votes.find_one({"report_id": report_id, "user_id": user_id})
     if existing_vote:
@@ -1429,6 +1451,20 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     inc_field = "upvotes" if vote_type == "upvote" else "downvotes"
     await db.reports.update_one({"id": report_id}, {"$inc": {inc_field: 1}})
 
+    validation_result = None
+    if report.get("user_id") != user_id:
+        existing_validation = await db.validations.find_one({"report_id": report_id, "user_id": user_id})
+        if not existing_validation:
+            is_sub = user.get("subscription_active", False) if user else False
+            validation_result = await process_validation(
+                db,
+                report_id,
+                user_id,
+                "confirm" if vote_type == "upvote" else "reject",
+                is_sub,
+                sync_report_vote_counts=False,
+            )
+
     # Award/deduct points to reporter
     reporter_id = report.get("user_id", "")
     points = calc_vote_points(vote_type)
@@ -1450,7 +1486,12 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
 
-    return {"message": "Voto registrado", "vote_type": vote_type}
+    return {
+        "message": "Voto registrado",
+        "vote_type": vote_type,
+        "validation_synced": bool(validation_result),
+        "consensus": validation_result.get("consensus") if validation_result else None,
+    }
 
 # ==================== USER GAMIFICATION ====================
 
@@ -2721,6 +2762,8 @@ async def version():
         "mongo_host": metadata["mongo_host"],
         "commit": metadata["commit"],
         "started_at": metadata["started_at"],
+        "backend_version": metadata["backend_version"],
+        "app_versions": metadata["app_versions"],
     }
 
 

@@ -120,7 +120,8 @@ export const translations = {
       privacyPolicy: "Política de Privacidad",
       help: "Ayuda",
       legalAndHelp: "Ayuda y legal",
-      signupNotice: "Al crear tu cuenta, puedes revisar nuestra"
+      signupNotice: "Al crear tu cuenta, puedes revisar nuestra",
+      versions: "Versiones"
     },
     languages: {
       es: "Español",
@@ -225,7 +226,8 @@ export const translations = {
       privacyPolicy: "Privacy Policy",
       help: "Help",
       legalAndHelp: "Help & legal",
-      signupNotice: "By creating your account, you can review our"
+      signupNotice: "By creating your account, you can review our",
+      versions: "Versions"
     },
     languages: {
       es: "Español",
@@ -1330,8 +1332,9 @@ const appUiTranslations = {
       locationRequiredForAction: "Necesitamos tu GPS para esta acción. Acércate a menos de {meters} m e inténtalo de nuevo.",
       tooFarFromReport: "Estás demasiado lejos del reporte ({distance} m). Debes estar a menos de {meters} m.",
       useValidationToConfirm: "Usa Confirmar o Rechazar para indicar si el reporte sigue ahí.",
-      voteSuccess: { noLongerHere: "Marcado como ya no está" },
+      voteSuccess: { noLongerHere: "Marcado como ya no está", upvote: "Voto positivo registrado y usado como verificación", downvote: "Voto negativo registrado" },
       voteError: "Error al marcar el reporte",
+      downvoteGoneQuestion: "¿Ya no está esta caca?",
       linkCopied: "Enlace copiado al portapapeles",
       shareError: "Error al compartir",
       pushUnsupported: "Tu navegador no soporta notificaciones push",
@@ -1583,8 +1586,9 @@ const appUiTranslations = {
       locationRequiredForAction: "We need your GPS for this action. Move within {meters} m and try again.",
       tooFarFromReport: "You are too far from the report ({distance} m). You must be within {meters} m.",
       useValidationToConfirm: "Use Confirm or Reject to indicate whether the report is still there.",
-      voteSuccess: { noLongerHere: "Marked as no longer here" },
+      voteSuccess: { noLongerHere: "Marked as no longer here", upvote: "Upvote recorded and used as verification", downvote: "Downvote recorded" },
       voteError: "Error marking the report",
+      downvoteGoneQuestion: "Is this mess already gone?",
       linkCopied: "Link copied to clipboard",
       shareError: "Error sharing",
       pushUnsupported: "Your browser does not support push notifications",

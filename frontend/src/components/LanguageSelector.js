@@ -89,14 +89,14 @@ function FlagIcon({ code, className = "w-5 h-3.5" }) {
 const languages = [
   { code: "es", name: "Español" },
   { code: "en", name: "English" },
+  { code: "eu", name: "Euskara" },
+  { code: "val", name: "Valencià" },
+  { code: "ca", name: "Català" },
   { code: "de", name: "Deutsch" },
   { code: "nl", name: "Nederlands" },
   { code: "pl", name: "Polski" },
   { code: "uk", name: "Українська" },
   { code: "ru", name: "Русский" },
-  { code: "eu", name: "Euskara" },
-  { code: "ca", name: "Català" },
-  { code: "val", name: "Valencià" },
 ];
 
 export function LanguageSelector({ compact = false, showLabel = true, className = "" }) {

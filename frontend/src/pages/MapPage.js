@@ -26,6 +26,7 @@ import StreakFlame from "../components/StreakFlame";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { compressReportPhoto, REPORT_PHOTO_MAX_BYTES } from "../utils/reportPhoto";
 import { isCapacitorNative } from "../tokenManager";
+import { getCurrentPlatform, getVersionSummary } from "../versionInfo";
 const DEFAULT_CENTER = [40.4168, -3.7038];
 const DEFAULT_ZOOM = 14;
 
@@ -136,7 +137,7 @@ function scheduleAfterFirstPaint(callback, delay = 0) {
 
 export default function MapPage() {
   const { user, logout } = useAuth();
-  const { t, tTime, isRtl } = useLanguage();
+  const { t, tTime, isRtl, language } = useLanguage();
   const navigate = useNavigate();
 
   const [reports, setReports] = useState([]);
@@ -166,11 +167,14 @@ export default function MapPage() {
   const [showNotifPrompt, setShowNotifPrompt] = useState(false);
   const [showAmbientUi, setShowAmbientUi] = useState(false);
   const [showMapSurface, setShowMapSurface] = useState(() => !isCapacitorNative());
+  const [backendVersion, setBackendVersion] = useState("unknown");
   const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
   const isNativeApp = isCapacitorNative();
+  const currentPlatform = getCurrentPlatform();
+  const versionSummary = getVersionSummary();
 
   useEffect(() => {
     if (!isNativeApp) return undefined;
@@ -296,6 +300,18 @@ export default function MapPage() {
     if (!showMapSurface) return undefined;
     return scheduleAfterFirstPaint(fetchReports, 250);
   }, [fetchReports, showMapSurface]);
+
+  useEffect(() => {
+    const fetchVersion = async () => {
+      try {
+        const { data } = await axios.get(`${API}/version`, { withCredentials: !isNativeApp });
+        setBackendVersion(data.backend_version || "unknown");
+      } catch {
+        setBackendVersion("unknown");
+      }
+    };
+    return scheduleAfterFirstPaint(fetchVersion, 600);
+  }, [isNativeApp]);
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
@@ -485,11 +501,24 @@ export default function MapPage() {
   const handleReportVote = async (voteType) => {
     if (!selectedReport) return;
     try {
+      if (voteType === "downvote") {
+        const gonePrompt = language === "es" ? "¿Ya no está esta caca?" : "Is this mess already gone?";
+        const shouldMarkGone = window.confirm(t("mapUi.downvoteGoneQuestion") === "mapUi.downvoteGoneQuestion" ? gonePrompt : t("mapUi.downvoteGoneQuestion"));
+        if (shouldMarkGone) {
+          await handleVote("cleaned");
+          return;
+        }
+      }
       const endpoint = voteType === "upvote" ? "upvote" : "downvote";
       await axios.post(`${API}/reports/${selectedReport.id}/${endpoint}`, {}, { withCredentials: true });
-      toast.success(voteType === "upvote" ? "+1" : "-1");
-      const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
+      toast.success(voteType === "upvote" ? t("mapUi.voteSuccess.upvote") : t("mapUi.voteSuccess.downvote"));
+      const [detailRes, valRes] = await Promise.all([
+        axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true }),
+        axios.get(`${API}/reports/${selectedReport.id}/my-validation`, { withCredentials: true }),
+      ]);
+      const data = detailRes.data;
       setSelectedReport(data);
+      setMyValidation(valRes.data.validation?.vote || null);
     } catch (error) { toast.error(error.response?.data?.detail || "Error"); }
   };
 
@@ -570,6 +599,13 @@ export default function MapPage() {
   })();
 
   const shouldShowAppName = viewportWidth >= 640;
+
+  const versionEntries = [
+    { key: "web", label: "Web", value: versionSummary.web },
+    { key: "ios", label: "iOS", value: versionSummary.ios },
+    { key: "android", label: "Android", value: versionSummary.android },
+    { key: "backend", label: "Backend", value: backendVersion || versionSummary.backend },
+  ];
 
   return (
     <div className={`h-screen w-full relative overflow-hidden ${isRtl ? 'rtl' : 'ltr'}`} data-testid="map-page">
@@ -685,6 +721,16 @@ export default function MapPage() {
                 <Shield className="w-4 h-4 text-[#66BB6A]" />
                 <span className="flex-1">{t("legalUi.privacyPolicy")}</span>
               </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-3 py-2 space-y-1" data-testid="menu-versions">
+                <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8D99AE]">{t("legalUi.versions")}</div>
+                {versionEntries.map((entry) => (
+                  <div key={entry.key} className={`flex items-center justify-between gap-3 text-xs ${entry.key === currentPlatform ? "text-[#2B2D42] font-semibold" : "text-[#8D99AE]"}`}>
+                    <span>{entry.label}</span>
+                    <span className="truncate">{entry.value}</span>
+                  </div>
+                ))}
+              </div>
             </DropdownMenuContent>
           </DropdownMenu>
 
@@ -948,9 +994,11 @@ export default function MapPage() {
                   {selectedReport.municipality && <span className="text-xs bg-[#FF6B6B]/10 text-[#FF6B6B] px-2 py-0.5 rounded-full ml-auto">{selectedReport.municipality}</span>}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : selectedReport.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                    {statusLabel(selectedReport.status)}
-                  </span>
+                  {selectedReport.status !== "pending" && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                      {statusLabel(selectedReport.status)}
+                    </span>
+                  )}
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
                     {freshnessLabel(selectedReport.freshness)}
                   </span>
@@ -980,17 +1028,7 @@ export default function MapPage() {
                 </Button>
               </div>
 
-              {/* Validation */}
-              {!myValidation && selectedReport.status === 'pending' ? (
-                <div className="flex gap-3 mb-4">
-                  <Button onClick={() => handleValidation("confirm")} disabled={loading} className="flex-1 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="validate-confirm-btn">
-                    <CheckCircle className="w-5 h-5 mr-2" /> {t("mapUi.confirm")}
-                  </Button>
-                  <Button onClick={() => handleValidation("reject")} disabled={loading} className="flex-1 bg-[#FF5252] hover:bg-[#E53935] text-white py-5 rounded-xl" data-testid="validate-reject-btn">
-                    <X className="w-5 h-5 mr-2" /> {t("mapUi.reject")}
-                  </Button>
-                </div>
-              ) : myValidation ? (
+              {myValidation ? (
                 <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
                   {tf("mapUi.yourValidation", { value: myValidation === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected") })}
                 </div>

@@ -18,6 +18,7 @@ async def process_validation(
     latitude: float | None = None,
     longitude: float | None = None,
     distance_meters: float | None = None,
+    sync_report_vote_counts: bool = True,
 ):
     """Process a validation vote and check if report reaches consensus."""
 
@@ -57,10 +58,10 @@ async def process_validation(
     await db.validations.insert_one(validation_doc)
 
     # Update report counts
-    if vote == "confirm":
-        await db.reports.update_one({"id": report_id}, {"$inc": {"validation_count": 1, "upvotes": 1}})
-    else:
-        await db.reports.update_one({"id": report_id}, {"$inc": {"downvotes": 1}})
+    report_updates = {"validation_count": 1}
+    if sync_report_vote_counts:
+        report_updates["upvotes" if vote == "confirm" else "downvotes"] = 1
+    await db.reports.update_one({"id": report_id}, {"$inc": report_updates})
 
     # Increment user's vote_count
     if user:
