@@ -51,6 +51,7 @@ from badges_service import check_and_award_badges, get_user_badges, calc_confide
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings
+from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 
 # ==================== RECEIPT VERIFICATION ====================
 
@@ -266,8 +267,10 @@ async def google_auth_start(redirect_url: Optional[str] = Query(None)):
     target_redirect = redirect_url or f"{frontend_url}/auth/google/callback"
     separator = "&" if "?" in GOOGLE_OAUTH_AUTHORIZE_URL else "?"
     encoded_redirect = quote(target_redirect, safe="")
+    redirect_target = f"{GOOGLE_OAUTH_AUTHORIZE_URL}{separator}redirect_url={encoded_redirect}"
+    logger.info("Google auth start redirecting to %s", redirect_target)
     return RedirectResponse(
-        url=f"{GOOGLE_OAUTH_AUTHORIZE_URL}{separator}redirect_url={encoded_redirect}",
+        url=redirect_target,
         status_code=307,
     )
 
@@ -290,17 +293,31 @@ async def google_auth(request: Request, response: Response):
             headers={"X-Session-ID": session_id},
             timeout=10
         )
-        r.raise_for_status()
         google_data = r.json()
     except Exception as e:
         logger.error(f"Google auth verification failed: {e}")
         raise HTTPException(status_code=401, detail="Invalid session")
 
+    if not isinstance(google_data, dict):
+        logger.error("Google auth verification returned non-object payload (status=%s)", r.status_code)
+        raise HTTPException(status_code=401, detail="Invalid session")
+
+    if r.status_code >= 500:
+        logger.error("Google auth verification upstream error: status=%s body=%s", r.status_code, google_data)
+        raise HTTPException(status_code=502, detail="Google login verification is temporarily unavailable")
+
     email = google_data.get("email", "").lower()
     name = google_data.get("name", "")
     picture = google_data.get("picture", "")
+    provider_profile = {
+        "email": email,
+        "name": name,
+        "picture": picture,
+        "subject": google_data.get("sub") or google_data.get("id") or google_data.get("user_id"),
+    }
 
     if not email:
+        logger.warning("Google auth verification did not return an email (status=%s body=%s)", r.status_code, google_data)
         raise HTTPException(status_code=400, detail="No email from Google")
 
     # Find or create user
@@ -309,9 +326,7 @@ async def google_auth(request: Request, response: Response):
 
     if user:
         # Existing user — update picture if available
-        updates = {}
-        if picture and not user.get("picture"):
-            updates["picture"] = picture
+        updates = build_provider_link_updates(user, "google", provider_profile)
         if is_vip and not user.get("subscription_active"):
             updates["subscription_active"] = True
             updates["subscription_type"] = "lifetime"
@@ -319,6 +334,7 @@ async def google_auth(request: Request, response: Response):
             updates["trust_score"] = 50
         if updates:
             await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+            user.update(updates)
         user_id = str(user["_id"])
         role = user.get("role", "user")
         username = user.get("username")
@@ -338,6 +354,17 @@ async def google_auth(request: Request, response: Response):
             "email": email, "password_hash": "",
             "name": name, "username": username, "picture": picture,
             "role": "user", "auth_provider": "google",
+            "auth_methods": ["google"],
+            "linked_providers": {
+                "google": {
+                    "email": email,
+                    "name": name,
+                    "picture": picture,
+                    "subject": provider_profile.get("subject"),
+                    "linked_at": datetime.now(timezone.utc).isoformat(),
+                    "last_login_at": datetime.now(timezone.utc).isoformat(),
+                }
+            },
             "subscription_active": is_vip, "subscription_type": "lifetime" if is_vip else None,
             "total_score": 0, "trust_score": 50,
             "rank": DEFAULT_RANK_NAME, "rank_key": get_rank_key(DEFAULT_RANK_NAME), "level": 1,
@@ -361,6 +388,7 @@ async def google_auth(request: Request, response: Response):
         "needs_username": needs_username,
         "access_token": access_token, "refresh_token": refresh_token,
         "auth_provider": "google",
+        "auth_methods": normalize_auth_methods(user if user else user_doc),
     }
 
 # ==================== AUTH ROUTES ====================
@@ -389,6 +417,9 @@ async def register(data: UserRegister, response: Response):
         "password_hash": hashed,
         "name": data.name or username,
         "username": username,
+        "auth_provider": "password",
+        "auth_methods": ["password"],
+        "linked_providers": {},
         "role": "user",
         "subscription_active": is_vip,
         "subscription_type": "lifetime" if is_vip else None,
@@ -421,7 +452,8 @@ async def register(data: UserRegister, response: Response):
         "total_score": 0, "trust_score": 50,
         "rank": DEFAULT_RANK_NAME, "rank_key": get_rank_key(DEFAULT_RANK_NAME), "level": 1,
         "streak_days": 0, "needs_username": False,
-        "access_token": access_token, "refresh_token": refresh_token
+        "access_token": access_token, "refresh_token": refresh_token,
+        "auth_methods": user_doc["auth_methods"],
     }
 
 @api_router.post("/auth/login")
@@ -439,7 +471,7 @@ async def login(data: UserLogin, request: Request, response: Response):
             await db.login_attempts.delete_one({"identifier": identifier})
     
     user = await db.users.find_one({"email": email})
-    if not user or not verify_password(data.password, user["password_hash"]):
+    if not user or not verify_password(data.password, user.get("password_hash", "")):
         await db.login_attempts.update_one(
             {"identifier": identifier},
             {"$inc": {"count": 1}, "$set": {"last_attempt": datetime.now(timezone.utc)}},
@@ -484,7 +516,8 @@ async def login(data: UserLogin, request: Request, response: Response):
         "level": user.get("level", 1),
         "streak_days": user.get("streak_days", 0),
         "needs_username": not bool(user.get("username")),
-        "access_token": access_token, "refresh_token": refresh_token
+        "access_token": access_token, "refresh_token": refresh_token,
+        "auth_methods": normalize_auth_methods(user),
     }
 
 @api_router.post("/auth/forgot-password")
@@ -498,10 +531,6 @@ async def forgot_password(request: Request):
     user = await db.users.find_one({"email": email})
     # Always return success to prevent email enumeration
     if not user:
-        return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
-
-    # Google-auth users can't reset password
-    if user.get("auth_provider") == "google" and not user.get("password_hash"):
         return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
 
     # Generate a time-limited reset token (1 hour)
@@ -564,9 +593,10 @@ async def reset_password(request: Request):
     if not user:
         raise HTTPException(status_code=400, detail="Usuario no encontrado")
 
-    # Update password
+    # Update password and link password auth to this account.
     hashed = hash_password(new_password)
-    await db.users.update_one({"email": email}, {"$set": {"password_hash": hashed}})
+    password_updates = build_password_link_updates(user, hashed)
+    await db.users.update_one({"email": email}, {"$set": password_updates})
 
     # Mark token as used
     await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
@@ -586,6 +616,7 @@ async def get_me(request: Request):
     user = await get_current_user(request)
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
+    user["auth_methods"] = normalize_auth_methods(user)
     user["needs_username"] = not bool(user.get("username"))
     return user
 
@@ -1328,6 +1359,7 @@ async def get_user_profile(request: Request):
     return {
         **rank_info, "trust_tier": tier,
         "username": user.get("username"), "name": user.get("name"),
+        "auth_methods": normalize_auth_methods(user),
         "subscription_active": user.get("subscription_active", False),
         "badges": earned_badges,
         "badges_count": len(earned_badges),
@@ -2609,6 +2641,63 @@ async def health_deep():
     if not all([checks["database"], checks["reports_readable"], checks["users_readable"]]):
         checks["status"] = "degraded"
     checks["runtime"] = get_runtime_metadata()
+    return checks
+
+
+@api_router.get("/health/auth")
+async def health_auth():
+    """Diagnose Google auth configuration without requiring a real session."""
+    import requests as req
+
+    checks = {
+        "authorize_url_configured": bool(GOOGLE_OAUTH_AUTHORIZE_URL),
+        "session_url_configured": bool(GOOGLE_OAUTH_SESSION_URL),
+        "authorize_url_check": "not_configured",
+        "session_url_check": "not_configured",
+        "status": "degraded",
+    }
+
+    if GOOGLE_OAUTH_AUTHORIZE_URL:
+        try:
+            authorize_response = req.get(
+                GOOGLE_OAUTH_AUTHORIZE_URL,
+                params={"redirect_url": "https://cacaradar.es/auth/google/callback"},
+                allow_redirects=False,
+                timeout=10,
+            )
+            location = authorize_response.headers.get("location", "")
+            if 300 <= authorize_response.status_code < 400 and "accounts.google.com" in location:
+                checks["authorize_url_check"] = "ok: redirects to Google"
+            else:
+                checks["authorize_url_check"] = (
+                    f"unexpected: status={authorize_response.status_code} location={location or 'none'}"
+                )
+        except Exception as exc:
+            checks["authorize_url_check"] = f"error: {exc}"
+
+    if GOOGLE_OAUTH_SESSION_URL:
+        try:
+            session_response = req.get(
+                GOOGLE_OAUTH_SESSION_URL,
+                headers={"X-Session-ID": "invalid-session-for-health-check"},
+                timeout=10,
+            )
+            try:
+                session_payload = session_response.json()
+            except ValueError:
+                session_payload = None
+
+            if isinstance(session_payload, dict) and not session_payload.get("email"):
+                checks["session_url_check"] = "ok: returns JSON error for invalid session (expected)"
+            else:
+                checks["session_url_check"] = (
+                    f"unexpected: status={session_response.status_code} body_type={type(session_payload).__name__}"
+                )
+        except Exception as exc:
+            checks["session_url_check"] = f"error: {exc}"
+
+    if checks["authorize_url_check"].startswith("ok") and checks["session_url_check"].startswith("ok"):
+        checks["status"] = "ok"
     return checks
 
 
