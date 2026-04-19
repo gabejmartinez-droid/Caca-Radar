@@ -1,17 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
-import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API } from "../config";
 import { setTokens, isCapacitorNative } from "../tokenManager";
 import axios from "axios";
-import { toast } from "sonner";
 
 export default function GoogleCallbackPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { checkAuth } = useAuth();
   const { t } = useLanguage();
   const [error, setError] = useState(null);
 
@@ -41,8 +38,6 @@ export default function GoogleCallbackPage() {
           setTokens(data.access_token, data.refresh_token);
         }
 
-        await checkAuth();
-        toast.success(t("loginUi.googleSuccess"));
         if (typeof window !== "undefined") {
           window.location.replace("/");
           return;
@@ -57,7 +52,7 @@ export default function GoogleCallbackPage() {
     };
 
     handleCallback();
-  }, [searchParams, navigate, checkAuth]);
+  }, [searchParams, navigate, t]);
 
   return (
     <div className="min-h-screen bg-[#F8F9FA] flex flex-col items-center justify-center" data-testid="google-callback-page">
