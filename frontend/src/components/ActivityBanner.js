@@ -32,7 +32,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
 
   const primaryBanner = useMemo(() => {
     if (!stats) return null;
-    if (stats.nearby_today > 0) {
+    if (!dismissedItems.nearby_today && stats.nearby_today > 0) {
       return {
         key: "nearby_today",
         icon: Flame,
@@ -40,7 +40,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
         color: "#FF6B6B",
       };
     }
-    if (stats.total_today > 0) {
+    if (!dismissedItems.total_today && stats.total_today > 0) {
       return {
         key: "total_today",
         icon: Flame,
@@ -49,7 +49,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
       };
     }
     return null;
-  }, [stats, t]);
+  }, [dismissedItems.nearby_today, dismissedItems.total_today, stats, t]);
 
   const dismissibleBanners = useMemo(() => {
     if (!stats) return [];
@@ -86,7 +86,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
   if (!primaryBanner && dismissibleBanners.length === 0) return null;
 
   const dismissBanner = (key) => {
-    if (key !== "active_zones" && key !== "user_rank") return;
+    if (!["nearby_today", "total_today", "active_zones", "user_rank"].includes(key)) return;
     setDismissedItems((prev) => ({ ...prev, [key]: true }));
   };
 
@@ -145,7 +145,7 @@ export default function ActivityBanner({ userLocation, userCity }) {
       style={{ top: "calc(env(safe-area-inset-top, 0px) + 68px)" }}
       data-testid="activity-banner"
     >
-      {primaryBanner && renderBanner(primaryBanner)}
+      {primaryBanner && renderBanner(primaryBanner, { dismissOnTap: true })}
       {dismissibleBanners.map((item) => renderBanner(item, { dismissOnTap: true }))}
     </div>
   );
