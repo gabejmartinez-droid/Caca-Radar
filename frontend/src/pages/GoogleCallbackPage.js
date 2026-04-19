@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API } from "../config";
 import { setTokens, isCapacitorNative } from "../tokenManager";
-import axios from "axios";
 
 export default function GoogleCallbackPage() {
   const navigate = useNavigate();
@@ -28,11 +28,24 @@ export default function GoogleCallbackPage() {
       }
 
       try {
-        const { data } = await axios.post(
-          `${API}/auth/google`,
-          { session_id: sessionId },
-          { withCredentials: !isCapacitorNative() }
-        );
+        const response = await fetch(`${API}/auth/google`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: isCapacitorNative() ? "omit" : "include",
+          body: JSON.stringify({ session_id: sessionId }),
+        });
+
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+          throw {
+            response: {
+              data,
+            },
+          };
+        }
 
         if (data.access_token) {
           setTokens(data.access_token, data.refresh_token);
