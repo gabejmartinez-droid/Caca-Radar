@@ -87,6 +87,14 @@ frontend/ios/App/App.xcodeproj/xcuserdata/
 frontend/ios/App/App.xcodeproj/project.xcworkspace/xcuserdata/
 frontend/ios/App/CapApp-SPM/.swiftpm/
 frontend/ios/capacitor-cordova-ios-plugins/
+frontend/android/.gradle/
+frontend/android/**/build/
+frontend/android/local.properties
+frontend/android/app/src/main/assets/
+frontend/android/app/src/main/res/xml/config.xml
+frontend/android/app/capacitor.build.gradle
+frontend/android/capacitor.settings.gradle
+frontend/android/capacitor-cordova-android-plugins/
 android-sdk/frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/9.pack
 frontend/node_modules/.cache/default-development/1.pack
