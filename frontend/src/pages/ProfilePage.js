@@ -161,7 +161,7 @@ export default function ProfilePage() {
     { action: t("profileUi.scoreCorrectValidation"), pts: "+4", extra: t("profileUi.scoreFirstFive") },
     { action: t("profileUi.scoreVerifiedReport"), pts: "+5", extra: "" },
     { action: t("profileUi.scoreUpvoteReceived"), pts: "+2", extra: "" },
-    { action: t("profileUi.scoreStreak"), pts: "+5 / +15 / +50", extra: "" },
+    { action: t("profileUi.scoreStreak"), pts: "+15 / +30 / +50", extra: "" },
   ];
 
   return (

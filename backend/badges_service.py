@@ -10,6 +10,7 @@ BADGES = {
     "confirmer_50": {"name": "Validador Oficial", "description": "50 confirmaciones", "icon": "shield", "threshold": 50, "field": "vote_count"},
     "streak_3": {"name": "Constante", "description": "3 días de racha", "icon": "flame", "threshold": 3, "field": "streak_days"},
     "streak_7": {"name": "Dedicado", "description": "7 días de racha", "icon": "flame", "threshold": 7, "field": "streak_days"},
+    "streak_14": {"name": "Comprometido", "description": "14 días de racha", "icon": "flame", "threshold": 14, "field": "streak_days"},
     "streak_30": {"name": "Imparable", "description": "30 días de racha", "icon": "flame", "threshold": 30, "field": "streak_days"},
     "trusted": {"name": "Fuente Fiable", "description": "Nivel de confianza 80+", "icon": "shield-check", "threshold": 80, "field": "trust_score"},
 }

@@ -21,7 +21,7 @@ REPORT_VERIFIED_BONUS = 5
 SUBSCRIBER_MULTIPLIER = 1.5
 SUBSCRIBER_MAX_BONUS_CAP = 50  # Max bonus points from multiplier per action
 
-STREAK_BONUSES = {3: 5, 7: 15, 30: 50}
+STREAK_BONUSES = {7: 15, 14: 30, 30: 50}
 
 HOT_ZONE_BONUS = 5
 HOT_ZONE_THRESHOLD = 10  # Reports in area within 7 days

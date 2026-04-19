@@ -722,30 +722,10 @@ export default function MapPage() {
       {/* Lower-right map controls */}
       <div
         className="fixed right-4 z-[1000] flex flex-col items-end gap-3"
-        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 100px)" }}
+        style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 150px)" }}
       >
         {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
           <>
-            <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-1 flex items-center gap-1">
-              <button
-                onClick={() => setHeatmapMode(MAP_MODES.REPORTS)}
-                className={`min-w-[88px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${mapMode === MAP_MODES.REPORTS ? 'bg-[#2B2D42] text-white shadow-sm' : 'text-[#8D99AE]'}`}
-                data-testid="reports-mode-toggle"
-                title={t("profileUi.reports")}
-              >
-                <MapPin className="w-4 h-4" />
-                <span className="truncate">{t("profileUi.reports")}</span>
-              </button>
-              <button
-                onClick={() => setHeatmapMode(MAP_MODES.HEATMAP)}
-                className={`min-w-[104px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${isHeatmapMode ? 'bg-[#FF6B6B] text-white shadow-sm' : 'text-[#8D99AE]'}`}
-                data-testid="heatmap-toggle"
-                title={t("heatmap")}
-              >
-                <Layers className="w-4 h-4" />
-                <span className="truncate">{t("heatmap")}</span>
-              </button>
-            </div>
             <button
               onClick={() => setShowFilterBar(!showFilterBar)}
               className={`w-12 h-12 rounded-2xl shadow-lg flex items-center justify-center transition-all ${showFilterBar ? 'bg-[#FF6B6B] text-white' : 'bg-white/95 backdrop-blur-sm text-[#8D99AE]'}`}
@@ -767,9 +747,35 @@ export default function MapPage() {
         </button>
       </div>
 
-      <button onClick={() => setShowReportDrawer(true)} className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200" style={{ fontFamily: 'Nunito, sans-serif', bottom: "calc(env(safe-area-inset-bottom, 0px) + 32px)" }} data-testid="report-btn">
+      <button onClick={() => setShowReportDrawer(true)} className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200" style={{ fontFamily: 'Nunito, sans-serif', bottom: "calc(env(safe-area-inset-bottom, 0px) + 88px)" }} data-testid="report-btn">
         <Plus className="w-5 h-5" />{t("report")}
       </button>
+
+      {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+        <div
+          className="fixed left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-1 flex items-center gap-1"
+          style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
+        >
+          <button
+            onClick={() => setHeatmapMode(MAP_MODES.REPORTS)}
+            className={`min-w-[88px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${mapMode === MAP_MODES.REPORTS ? 'bg-[#2B2D42] text-white shadow-sm' : 'text-[#8D99AE]'}`}
+            data-testid="reports-mode-toggle"
+            title={t("profileUi.reports")}
+          >
+            <MapPin className="w-4 h-4" />
+            <span className="truncate">{t("profileUi.reports")}</span>
+          </button>
+          <button
+            onClick={() => setHeatmapMode(MAP_MODES.HEATMAP)}
+            className={`min-w-[104px] h-11 px-3 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all ${isHeatmapMode ? 'bg-[#FF6B6B] text-white shadow-sm' : 'text-[#8D99AE]'}`}
+            data-testid="heatmap-toggle"
+            title={t("heatmap")}
+          >
+            <Layers className="w-4 h-4" />
+            <span className="truncate">{t("heatmap")}</span>
+          </button>
+        </div>
+      )}
 
       {/* Report Drawer */}
       <Drawer open={showReportDrawer} onOpenChange={setShowReportDrawer}>

@@ -7,23 +7,25 @@ export default function StreakFlame() {
   const { user } = useAuth();
   const { t, tTime } = useLanguage();
   const [show, setShow] = useState(false);
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedMilestones, setDismissedMilestones] = useState([]);
 
   const streak = user?.streak_days || 0;
+  const milestoneReached = streak === 7 || streak === 14 || streak === 30;
+  const isDismissed = dismissedMilestones.includes(streak);
 
   useEffect(() => {
-    if (streak >= 3 && !dismissed) {
+    if (milestoneReached && !isDismissed) {
       setShow(true);
       const timer = setTimeout(() => setShow(false), 8000);
       return () => clearTimeout(timer);
     }
-  }, [streak, dismissed]);
+  }, [isDismissed, milestoneReached]);
 
-  if (!show || streak < 3) return null;
+  if (!show || !milestoneReached) return null;
 
-  const flameSize = streak >= 30 ? "large" : streak >= 7 ? "medium" : "small";
-  const flameColor = streak >= 30 ? "#FF3D00" : streak >= 7 ? "#FF6B6B" : "#FFA726";
-  const flameGlow = streak >= 30 ? "0 0 24px #FF3D00" : streak >= 7 ? "0 0 16px #FF6B6B" : "0 0 10px #FFA726";
+  const flameSize = streak >= 30 ? "large" : streak >= 14 ? "medium" : "small";
+  const flameColor = streak >= 30 ? "#FF3D00" : streak >= 14 ? "#FF6B6B" : "#FFA726";
+  const flameGlow = streak >= 30 ? "0 0 24px #FF3D00" : streak >= 14 ? "0 0 16px #FF6B6B" : "0 0 10px #FFA726";
 
   return (
     <div
@@ -38,7 +40,10 @@ export default function StreakFlame() {
           backdropFilter: "blur(12px)",
           boxShadow: flameGlow,
         }}
-        onClick={() => { setDismissed(true); setShow(false); }}
+        onClick={() => {
+          setDismissedMilestones((prev) => (prev.includes(streak) ? prev : [...prev, streak]));
+          setShow(false);
+        }}
       >
         <div className={`streak-flame-icon streak-flame-${flameSize}`}>
           <Flame className="w-5 h-5" style={{ color: flameColor }} />
