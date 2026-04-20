@@ -670,7 +670,7 @@ export default function MapPage() {
             </DropdownMenuTrigger>
             <DropdownMenuContent
               align="start"
-              className="w-[min(18rem,calc(100vw-2rem))] rounded-xl shadow-xl p-1 overflow-y-auto"
+              className="w-[min(19rem,calc(100vw-2rem))] rounded-xl shadow-xl p-1 overflow-y-auto"
               style={{ maxHeight: `${headerMenuMaxHeight}px` }}
             >
               {(userCity || userBarrio) && (
@@ -747,8 +747,8 @@ export default function MapPage() {
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8D99AE]">{t("legalUi.versions")}</div>
                 {versionEntries.map((entry) => (
                   <div key={entry.key} className={`flex items-center justify-between gap-3 text-xs ${entry.key === currentPlatform ? "text-[#2B2D42] font-semibold" : "text-[#8D99AE]"}`}>
-                    <span>{entry.label}</span>
-                    <span className="truncate">{entry.value}</span>
+                    <span className="shrink-0">{entry.label}</span>
+                    <span className="max-w-[9rem] truncate text-right">{entry.value}</span>
                   </div>
                 ))}
               </div>
@@ -829,6 +829,15 @@ export default function MapPage() {
           </div>
         </div>
       </div>
+
+      {showMainMenu && (
+        <button
+          type="button"
+          className="fixed inset-0 z-[1050] bg-transparent cursor-default"
+          onClick={() => setShowMainMenu(false)}
+          aria-label="Close main menu"
+        />
+      )}
 
       {/* Filter Bar */}
       {showFilterBar && !showMainMenu && (
