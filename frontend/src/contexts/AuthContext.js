@@ -3,6 +3,7 @@ import axios from "axios";
 import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
 import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
 import { disableGoogleAutoSelect } from "../utils/googleIdentity";
+import { signOutGoogleNative } from "../utils/googleNative";
 
 const AuthContext = createContext(null);
 
@@ -151,6 +152,7 @@ export function AuthProvider({ children }) {
     } catch { /* ignore */ }
     clearTokens();
     disableGoogleAutoSelect();
+    await signOutGoogleNative();
     setUser(false);
   }, []);
 
@@ -160,6 +162,7 @@ export function AuthProvider({ children }) {
     });
     clearTokens();
     disableGoogleAutoSelect();
+    await signOutGoogleNative();
     setUser(false);
     return data;
   }, []);

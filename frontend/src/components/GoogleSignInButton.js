@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { getGoogleClientId, isGoogleIdentitySupported, loadGoogleIdentityScript } from "../utils/googleIdentity";
+import { isNativeAndroidGoogleSupported, signInWithGoogleNative } from "../utils/googleNative";
 
 export function GoogleSignInButton({
   onCredential,
@@ -14,12 +15,20 @@ export function GoogleSignInButton({
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [unavailableReason, setUnavailableReason] = useState("");
+  const isNativeAndroid = isNativeAndroidGoogleSupported();
 
   useEffect(() => {
     let cancelled = false;
 
     async function setupGoogleButton() {
       const clientId = getGoogleClientId();
+      if (isNativeAndroid) {
+        if (!clientId) {
+          setUnavailableReason(t("loginUi.googleNotConfigured"));
+        }
+        setLoading(false);
+        return;
+      }
       if (!isGoogleIdentitySupported()) {
         setUnavailableReason(t("loginUi.googleBrowserOnly"));
         setLoading(false);
@@ -82,7 +91,31 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [context, onCredential, onError, t, text]);
+  }, [context, isNativeAndroid, onCredential, onError, t, text]);
+
+  const handleNativeClick = async () => {
+    const clientId = getGoogleClientId();
+    if (!clientId) {
+      const error = new Error(t("loginUi.googleNotConfigured"));
+      setUnavailableReason(error.message);
+      onError?.(error);
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const credential = await signInWithGoogleNative(clientId);
+      if (!credential) {
+        throw new Error(t("loginUi.googleError"));
+      }
+      await onCredential?.(credential);
+    } catch (error) {
+      console.error("Native Google sign-in failed", error);
+      onError?.(error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (unavailableReason) {
     return (
@@ -92,6 +125,29 @@ export function GoogleSignInButton({
       >
         {unavailableReason}
       </div>
+    );
+  }
+
+  if (isNativeAndroid) {
+    return (
+      <button
+        type="button"
+        onClick={handleNativeClick}
+        disabled={loading}
+        className="w-full min-h-[44px] border border-[#8D99AE]/20 rounded-xl py-3 px-4 text-sm text-[#2B2D42] bg-white flex items-center justify-center gap-3 disabled:opacity-70"
+        data-testid={testId}
+      >
+        {loading ? (
+          <Loader2 className="w-4 h-4 animate-spin text-[#8D99AE]" />
+        ) : (
+          <>
+            <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+              <path fill="#EA4335" d="M12 10.2v3.9h5.5c-.2 1.3-1.5 3.9-5.5 3.9-3.3 0-6-2.8-6-6.2s2.7-6.2 6-6.2c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 2.9 14.6 2 12 2 6.9 2 2.8 6.2 2.8 11.3S6.9 20.6 12 20.6c6.9 0 9.1-4.9 9.1-7.4 0-.5 0-.9-.1-1.3H12z" />
+            </svg>
+            <span>{t("continueWithGoogle")}</span>
+          </>
+        )}
+      </button>
     );
   }
 
