@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { useLanguage } from "../contexts/LanguageContext";
 import { getGoogleClientId, isGoogleIdentitySupported, loadGoogleIdentityScript } from "../utils/googleIdentity";
-import { isNativeAndroidGoogleSupported, signInWithGoogleNative } from "../utils/googleNative";
+import { GOOGLE_IOS_CLIENT_ID } from "../config";
+import { isNativeGoogleSupported, isNativeAndroidGoogleSupported, isNativeIOSGoogleSupported, signInWithGoogleNative } from "../utils/googleNative";
 
 export function GoogleSignInButton({
   onCredential,
@@ -15,15 +16,17 @@ export function GoogleSignInButton({
   const containerRef = useRef(null);
   const [loading, setLoading] = useState(true);
   const [unavailableReason, setUnavailableReason] = useState("");
+  const isNativeIOS = isNativeIOSGoogleSupported();
   const isNativeAndroid = isNativeAndroidGoogleSupported();
+  const isNativeGoogle = isNativeGoogleSupported();
 
   useEffect(() => {
     let cancelled = false;
 
     async function setupGoogleButton() {
       const clientId = getGoogleClientId();
-      if (isNativeAndroid) {
-        if (!clientId) {
+      if (isNativeGoogle) {
+        if (!clientId || (isNativeIOS && !GOOGLE_IOS_CLIENT_ID)) {
           setUnavailableReason(t("loginUi.googleNotConfigured"));
         }
         setLoading(false);
@@ -91,11 +94,11 @@ export function GoogleSignInButton({
     return () => {
       cancelled = true;
     };
-  }, [context, isNativeAndroid, onCredential, onError, t, text]);
+  }, [context, isNativeGoogle, isNativeIOS, onCredential, onError, t, text]);
 
   const handleNativeClick = async () => {
-    const clientId = getGoogleClientId();
-    if (!clientId) {
+    const serverClientId = getGoogleClientId();
+    if (!serverClientId || (isNativeIOS && !GOOGLE_IOS_CLIENT_ID)) {
       const error = new Error(t("loginUi.googleNotConfigured"));
       setUnavailableReason(error.message);
       onError?.(error);
@@ -104,7 +107,10 @@ export function GoogleSignInButton({
 
     setLoading(true);
     try {
-      const credential = await signInWithGoogleNative(clientId);
+      const credential = await signInWithGoogleNative({
+        serverClientId,
+        iosClientId: GOOGLE_IOS_CLIENT_ID,
+      });
       if (!credential) {
         throw new Error(t("loginUi.googleError"));
       }
@@ -128,7 +134,7 @@ export function GoogleSignInButton({
     );
   }
 
-  if (isNativeAndroid) {
+  if (isNativeGoogle) {
     return (
       <button
         type="button"

@@ -2,20 +2,31 @@ import { Capacitor, registerPlugin } from "@capacitor/core";
 
 const GoogleAuth = registerPlugin("GoogleAuth");
 
+export function isNativeGoogleSupported() {
+  return Capacitor.isNativePlatform() && ["android", "ios"].includes(Capacitor.getPlatform());
+}
+
 export function isNativeAndroidGoogleSupported() {
   return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "android";
 }
 
-export async function signInWithGoogleNative(serverClientId) {
-  if (!isNativeAndroidGoogleSupported()) {
-    throw new Error("Native Google sign-in is only supported on Android");
+export function isNativeIOSGoogleSupported() {
+  return Capacitor.isNativePlatform() && Capacitor.getPlatform() === "ios";
+}
+
+export async function signInWithGoogleNative({ serverClientId, iosClientId = "" }) {
+  if (!isNativeGoogleSupported()) {
+    throw new Error("Native Google sign-in is only supported on iOS and Android");
   }
-  const result = await GoogleAuth.signIn({ serverClientId });
+  const payload = isNativeIOSGoogleSupported()
+    ? { serverClientId, iosClientId }
+    : { serverClientId };
+  const result = await GoogleAuth.signIn(payload);
   return result?.idToken || "";
 }
 
 export async function signOutGoogleNative() {
-  if (!isNativeAndroidGoogleSupported()) {
+  if (!isNativeGoogleSupported()) {
     return;
   }
   try {
