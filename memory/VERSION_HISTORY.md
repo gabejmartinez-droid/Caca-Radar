@@ -43,3 +43,20 @@ Planned changes:
 
 Audit reminder:
 - After deployment, record the exact deployed commit hash, production bundle hash, and any version number bumps here.
+
+### 2026-04-20 — Pending deploy after local validation (post-`06d7918`)
+
+Impacted environments:
+- Web `1.1.1-web.1`
+- iOS `1.1.1 (3)`
+- Android `1.1.1 (3)`
+- Backend unchanged at `1.1.0-api.1`
+
+Changes:
+- Main map menu dropdown now caps its height dynamically so it does not conflict with the report button on smaller screens.
+- Version numbers were incremented for the platforms touched by this batch and left unchanged for backend.
+- Audit log updated so deploy/backtrack work can tie a shipped version to the specific UI changes in this batch.
+
+Next deploy checklist:
+- Record the deployed commit hash and production bundle hash
+- Confirm `/api/version` returns web `1.1.1-web.1`, iOS `1.1.1 (3)`, Android `1.1.1 (3)`, backend `1.1.0-api.1`

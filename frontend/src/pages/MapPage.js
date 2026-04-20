@@ -160,6 +160,7 @@ export default function MapPage() {
   const [userCity, setUserCity] = useState(null);
   const [userBarrio, setUserBarrio] = useState(null);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1024));
+  const [viewportHeight, setViewportHeight] = useState(() => (typeof window !== "undefined" ? window.innerHeight : 768));
   const fileInputRef = useRef(null);
   const mapRef = useRef(null);
   const [showFeedback, setShowFeedback] = useState(false);
@@ -315,7 +316,10 @@ export default function MapPage() {
 
   useEffect(() => {
     if (typeof window === "undefined") return undefined;
-    const handleResize = () => setViewportWidth(window.innerWidth);
+    const handleResize = () => {
+      setViewportWidth(window.innerWidth);
+      setViewportHeight(window.innerHeight);
+    };
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
@@ -599,6 +603,10 @@ export default function MapPage() {
   })();
 
   const shouldShowAppName = viewportWidth >= 640;
+  const headerMenuMaxHeight = Math.max(
+    280,
+    viewportHeight - (viewportWidth < 640 ? 240 : 180)
+  );
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -651,7 +659,11 @@ export default function MapPage() {
                 <ChevronDown className="w-3.5 h-3.5 text-[#8D99AE] shrink-0" />
               </button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="start" className="w-64 rounded-xl shadow-xl p-1">
+            <DropdownMenuContent
+              align="start"
+              className="w-[min(18rem,calc(100vw-2rem))] rounded-xl shadow-xl p-1 overflow-y-auto"
+              style={{ maxHeight: `${headerMenuMaxHeight}px` }}
+            >
               {(userCity || userBarrio) && (
                 <>
                   <div className="px-3 py-2 flex items-center gap-2">
@@ -755,7 +767,11 @@ export default function MapPage() {
                     {user.total_score > 0 && <span className="text-xs text-[#FF6B6B] font-bold hidden sm:inline">{user.total_score}</span>}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuContent
+                  align="end"
+                  className="w-[min(14rem,calc(100vw-2rem))] overflow-y-auto"
+                  style={{ maxHeight: `${headerMenuMaxHeight}px` }}
+                >
                   <div className="px-3 py-2">
                     <p className="font-bold text-[#2B2D42] text-sm">{user.username || user.name}</p>
                     <p className="text-xs text-[#FF6B6B] font-medium leading-tight">{getRankLabel(user.rank_key || user.rank, t)}</p>
