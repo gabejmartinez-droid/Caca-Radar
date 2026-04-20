@@ -9,6 +9,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
+import LegalLinksFooter from "../components/LegalLinksFooter";
 
 function formatApiErrorDetail(detail, t) {
   if (detail == null) return t("genericError");
@@ -201,6 +202,10 @@ export default function RegisterPage() {
             <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline" data-testid="register-privacy-link">
               {t("legalUi.privacyPolicy")}
             </Link>
+            {" "}y los{" "}
+            <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline" data-testid="register-terms-link">
+              Términos de uso
+            </Link>
           </p>
 
           {/* Social Sign-Up */}
@@ -230,6 +235,9 @@ export default function RegisterPage() {
         <p className="text-center text-[#8D99AE] text-sm mt-6 mb-20">
           {t("useWithoutAccount")}
         </p>
+        <div className="w-full max-w-sm mb-10">
+          <LegalLinksFooter className="justify-center" />
+        </div>
       </div>
     </div>
   );

@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair, MessageSquare, Heart } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair, MessageSquare, Heart, Cookie, FileText } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -738,10 +738,27 @@ export default function MapPage() {
                 <Heart className="w-4 h-4 text-[#42A5F5]" />
                 <span className="flex-1">{t("legalUi.help")}</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/terms")} className="cursor-pointer gap-2" data-testid="menu-terms">
+                <FileText className="w-4 h-4 text-[#FFA726]" />
+                <span className="flex-1">Términos de uso</span>
+              </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/privacy")} className="cursor-pointer gap-2" data-testid="menu-privacy">
                 <Shield className="w-4 h-4 text-[#66BB6A]" />
                 <span className="flex-1">{t("legalUi.privacyPolicy")}</span>
               </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/cookies")} className="cursor-pointer gap-2" data-testid="menu-cookies">
+                <Cookie className="w-4 h-4 text-[#42A5F5]" />
+                <span className="flex-1">Política de Cookies</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => navigate("/community")} className="cursor-pointer gap-2" data-testid="menu-community">
+                <Flag className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">Normas de la comunidad</span>
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <div className="px-3 py-2 rounded-lg bg-[#F8F9FA] text-[11px] leading-5 text-[#5C677D]">
+                Caca Radar es una herramienta privada, independiente y no oficial. Los avisos del mapa son aportaciones de la comunidad y pueden
+                ser exactos, incompletos, desactualizados o retirados tras moderación.
+              </div>
               <DropdownMenuSeparator />
               <div className="px-3 py-2 space-y-1" data-testid="menu-versions">
                 <div className="text-[11px] font-semibold uppercase tracking-wide text-[#8D99AE]">{t("legalUi.versions")}</div>
@@ -972,6 +989,9 @@ export default function MapPage() {
               <div>
                 <p className="text-xs text-amber-800 font-medium">{t("photoPolicy")}</p>
                 <p className="text-xs text-amber-600 mt-1">{t("policyAgreement")}</p>
+                <p className="text-xs text-amber-700 mt-2">
+                  No subas datos personales innecesarios de terceros. Evita rostros identificables, menores, matrículas u otra información personal salvo que sea estrictamente necesario y lícito.
+                </p>
               </div>
             </div>
 
@@ -1080,6 +1100,10 @@ export default function MapPage() {
                     )}
                   </div>
                 </div>
+              </div>
+
+              <div className="mt-3 rounded-2xl bg-[#F8F9FA] px-3 py-2 text-[11px] leading-5 text-[#5C677D]">
+                Los avisos mostrados en Caca Radar son aportaciones de la comunidad. Pueden ser exactos, incompletos, desactualizados o retirados tras moderación.
               </div>
 
               {selectedReport.contributor_rank && (

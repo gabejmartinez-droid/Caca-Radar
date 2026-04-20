@@ -6,6 +6,7 @@ import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
+import LegalLinksFooter from "../components/LegalLinksFooter";
 
 export default function DeleteAccountPage() {
   const navigate = useNavigate();
@@ -59,6 +60,10 @@ export default function DeleteAccountPage() {
               <p className="text-[#5C677D] leading-7">
                 {t("deleteAccountUi.signInFirst")}
               </p>
+              <p className="text-[#5C677D] leading-7">
+                También puedes solicitar la supresión escribiendo a <a className="text-[#FF6B6B] font-medium" href="mailto:jefe@cacaradar.es">jefe@cacaradar.es</a> desde
+                la dirección asociada a tu cuenta o aportando la información necesaria para verificar tu identidad.
+              </p>
               <div className="flex flex-wrap gap-3">
                 <Link to="/login" className="inline-flex items-center rounded-xl bg-[#FF6B6B] px-4 py-2.5 text-white font-semibold">
                   {t("deleteAccountUi.goToLogin")}
@@ -82,6 +87,16 @@ export default function DeleteAccountPage() {
                     </p>
                     <p>
                       {t("deleteAccountUi.warningBody2")}
+                    </p>
+                    <p>
+                      Si eliminas la cuenta desde esta pantalla, el backend borra la cuenta, tokens, votos, validaciones, flags, ubicaciones guardadas, feedback y suscripciones push
+                      vinculadas a ella. Los reportes publicados pasan a mostrarse como anónimos para mantener la utilidad del mapa público.
+                    </p>
+                    <p>
+                      Si tienes una suscripción comprada en Apple App Store o Google Play, debes cancelarla también desde tu cuenta de la tienda correspondiente.
+                    </p>
+                    <p className="text-sm text-[#8D99AE]">
+                      TODO-LEGAL: confirmar el plazo máximo de persistencia de copias de seguridad tras una solicitud válida de supresión.
                     </p>
                   </div>
                 </div>
@@ -120,6 +135,13 @@ export default function DeleteAccountPage() {
               </div>
             </>
           )}
+        </section>
+
+        <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
+          <p className="text-sm text-[#5C677D] mb-4">
+            Puedes solicitar la eliminación de tu cuenta desde esta sección o en la página web de borrado de cuenta.
+          </p>
+          <LegalLinksFooter />
         </section>
       </main>
     </div>

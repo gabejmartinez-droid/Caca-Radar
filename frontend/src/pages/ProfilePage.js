@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock, Trash2, FileText } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock, Trash2, FileText, Cookie, Flag } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -336,6 +336,10 @@ export default function ProfilePage() {
 
         <div className="bg-white rounded-2xl shadow-sm p-6 mb-4">
           <h3 className="font-bold text-[#2B2D42] mb-3">{t("legalUi.legalAndHelp")}</h3>
+          <div className="rounded-xl bg-[#F8F9FA] px-4 py-3 text-sm text-[#5C677D] mb-3">
+            Caca Radar es una herramienta privada, independiente y no oficial. No representa, sustituye ni está afiliada a ningún ayuntamiento,
+            administración pública ni entidad gubernamental.
+          </div>
           <div className="space-y-2">
             <button
               onClick={() => navigate("/help")}
@@ -368,6 +372,26 @@ export default function ProfilePage() {
               </span>
             </button>
             <button
+              onClick={() => navigate("/cookies")}
+              className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
+              data-testid="profile-cookies-link"
+            >
+              <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
+                <Cookie className="w-4 h-4 text-[#42A5F5]" />
+                Política de Cookies
+              </span>
+            </button>
+            <button
+              onClick={() => navigate("/community")}
+              className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
+              data-testid="profile-community-link"
+            >
+              <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
+                <Flag className="w-4 h-4 text-[#FF6B6B]" />
+                Normas de la comunidad
+              </span>
+            </button>
+            <button
               onClick={() => navigate("/delete-account")}
               className="w-full flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3 text-left"
               data-testid="profile-delete-account-link"
@@ -378,6 +402,9 @@ export default function ProfilePage() {
               </span>
             </button>
           </div>
+          <p className="text-xs text-[#8D99AE] mt-3">
+            Puedes solicitar la eliminación de tu cuenta desde esta sección o en la página web de borrado de cuenta.
+          </p>
         </div>
 
         {/* How scoring works */}

@@ -10,6 +10,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
+import LegalLinksFooter from "../components/LegalLinksFooter";
 
 function formatApiErrorDetail(detail, t) {
   if (detail == null) return t("genericError");
@@ -193,11 +194,25 @@ export default function LoginPage() {
               {t("registerLink")}
             </Link>
           </p>
+
+          <p className="text-center text-xs text-[#8D99AE] mt-4 leading-5">
+            Al iniciar sesión, puedes revisar la{" "}
+            <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline" data-testid="login-privacy-link">
+              Política de Privacidad
+            </Link>
+            {" "}y los{" "}
+            <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline" data-testid="login-terms-link">
+              Términos de uso
+            </Link>.
+          </p>
         </div>
 
         <p className="text-center text-[#8D99AE] text-sm mt-6 mb-20">
           {t("useWithoutAccount")}
         </p>
+        <div className="w-full max-w-sm mb-10">
+          <LegalLinksFooter className="justify-center" />
+        </div>
       </div>
     </div>
   );
