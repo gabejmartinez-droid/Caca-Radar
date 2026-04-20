@@ -157,6 +157,7 @@ export default function MapPage() {
   const [pushEnabled, setPushEnabled] = useState(false);
   const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
   const [showFilterBar, setShowFilterBar] = useState(false);
+  const [showMainMenu, setShowMainMenu] = useState(false);
   const [userCity, setUserCity] = useState(null);
   const [userBarrio, setUserBarrio] = useState(null);
   const [viewportWidth, setViewportWidth] = useState(() => (typeof window !== "undefined" ? window.innerWidth : 1024));
@@ -176,6 +177,7 @@ export default function MapPage() {
   const isNativeApp = isCapacitorNative();
   const currentPlatform = getCurrentPlatform();
   const versionSummary = getVersionSummary();
+  const shouldHideMapControls = showMainMenu || showReportDrawer || showFlagDrawer;
 
   useEffect(() => {
     if (!isNativeApp) return undefined;
@@ -607,12 +609,12 @@ export default function MapPage() {
     280,
     viewportHeight - (viewportWidth < 640 ? 240 : 180)
   );
-  const detailsDrawerBottomPx = user?.subscription_active ? 176 : 136;
-  const detailsDrawerMaxHeightPx = (() => {
+  const detailsCardBottomPx = user?.subscription_active ? 226 : 158;
+  const detailsCardMaxHeightPx = (() => {
     if (viewportWidth < 768) {
-      return Math.min(Math.max(Math.round(viewportHeight * 0.34), 220), 280);
+      return Math.min(Math.max(Math.round(viewportHeight * 0.2), 176), 208);
     }
-    return Math.min(Math.max(Math.round(viewportHeight * 0.22), 190), 240);
+    return Math.min(Math.max(Math.round(viewportHeight * 0.17), 168), 200);
   })();
 
   const versionEntries = [
@@ -645,7 +647,7 @@ export default function MapPage() {
         style={{ top: "calc(env(safe-area-inset-top, 0px) + 12px)" }}
       >
         <div className="bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3 py-2 flex items-center gap-2 min-h-[56px]">
-          <DropdownMenu>
+          <DropdownMenu open={showMainMenu} onOpenChange={setShowMainMenu}>
             <DropdownMenuTrigger asChild>
               <button className="min-w-0 flex-1 flex items-center gap-2 hover:opacity-90 transition-opacity" data-testid="app-menu-btn">
                 <img src="/icon-32x32.png" alt="Caca Radar" className="w-8 h-8 rounded-lg shrink-0" />
@@ -829,7 +831,7 @@ export default function MapPage() {
       </div>
 
       {/* Filter Bar */}
-      {showFilterBar && (
+      {showFilterBar && !showMainMenu && (
         <div className="absolute left-4 right-4 z-[1000] bg-white/95 backdrop-blur-sm rounded-xl shadow-lg p-3" style={{ top: "calc(env(safe-area-inset-top, 0px) + 88px)" }}>
           <div className="flex gap-2 flex-wrap">
             {FRESHNESS_FILTERS.map(({ value, labelKey }) => (
@@ -845,7 +847,7 @@ export default function MapPage() {
       )}
 
       {/* Legend - hide when drawers open */}
-      {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+      {!shouldHideMapControls && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[999] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg px-3 py-2"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 4px)" }}
@@ -870,17 +872,17 @@ export default function MapPage() {
       )}
 
       {/* Activity Banner */}
-      {showAmbientUi && <ActivityBanner userLocation={userLocation} userCity={userCity} />}
+      {showAmbientUi && !showMainMenu && <ActivityBanner userLocation={userLocation} userCity={userCity} />}
 
       {/* Streak Flame Animation */}
-      {showAmbientUi && <StreakFlame />}
+      {showAmbientUi && !showMainMenu && <StreakFlame />}
 
       {/* Lower-right map controls */}
       <div
         className="fixed right-4 z-[1000] flex flex-col items-end gap-3"
         style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 150px)" }}
       >
-        {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+        {user?.subscription_active && !shouldHideMapControls && (
           <>
             <button
               onClick={() => setShowFilterBar(!showFilterBar)}
@@ -893,17 +895,19 @@ export default function MapPage() {
           </>
         )}
 
-        <button
-          onClick={recenterMap}
-          className="w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors"
-          data-testid="recenter-btn"
-          title={t("mapUi.recenterMap")}
-        >
-          <Crosshair className="w-5 h-5 text-[#2B2D42]" />
-        </button>
+        {!shouldHideMapControls && (
+          <button
+            onClick={recenterMap}
+            className="w-12 h-12 bg-white shadow-lg rounded-full flex items-center justify-center hover:bg-gray-50 transition-colors"
+            data-testid="recenter-btn"
+            title={t("mapUi.recenterMap")}
+          >
+            <Crosshair className="w-5 h-5 text-[#2B2D42]" />
+          </button>
+        )}
       </div>
 
-      {!showReportDrawer && !showFlagDrawer && (
+      {!shouldHideMapControls && (
         <button
           onClick={() => setShowReportDrawer(true)}
           className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200"
@@ -914,7 +918,7 @@ export default function MapPage() {
         </button>
       )}
 
-      {user?.subscription_active && !showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+      {user?.subscription_active && !shouldHideMapControls && (
         <div
           className="fixed left-1/2 -translate-x-1/2 z-[1000] bg-white/95 backdrop-blur-sm rounded-2xl shadow-lg p-1 flex items-center gap-1"
           style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 28px)" }}
@@ -994,103 +998,126 @@ export default function MapPage() {
         </DrawerContent>
       </Drawer>
 
-      {/* Details Drawer */}
-      <Drawer open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
-        <DrawerContent
-          className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl"
-          style={{
-            bottom: `calc(env(safe-area-inset-bottom, 0px) + ${detailsDrawerBottomPx}px)`,
-            maxHeight: `${detailsDrawerMaxHeightPx}px`,
-          }}
-          data-testid="details-drawer"
-        >
-          <DrawerHeader>
-            <DrawerTitle className="text-xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</DrawerTitle>
-          </DrawerHeader>
-          {selectedReport && (
-            <div className="px-4 pb-4 overflow-y-auto">
-              {selectedReport.photo_url && (
-                <div className="mb-4 max-w-[10.5rem] mx-auto rounded-2xl overflow-hidden shadow-sm">
-                  <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full aspect-square object-cover object-center" data-testid="report-photo" />
-                </div>
-              )}
-              {selectedReport.description && (
-                <p className="text-sm text-[#2B2D42] mb-3 italic">"{selectedReport.description}"</p>
-              )}
-              {/* Contributor */}
-              <div className="flex items-center gap-2 mb-3">
-                <User className="w-4 h-4 text-[#8D99AE]" />
-                <span className="text-sm text-[#2B2D42] font-medium">{selectedReport.contributor_name || t("mapUi.anonymous")}</span>
-                {selectedReport.contributor_rank && (
-                  <span className="text-xs text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-0.5 rounded-full max-w-[190px] truncate">{getRankLabel(selectedReport.contributor_rank_key || selectedReport.contributor_rank, t)}</span>
-                )}
+      {/* Details Popup */}
+      {showDetailsDrawer && selectedReport && (
+        <>
+          <div
+            className="fixed inset-0 z-[1600] bg-black/20"
+            onClick={() => setShowDetailsDrawer(false)}
+            aria-hidden="true"
+          />
+          <div
+            className="fixed left-1/2 -translate-x-1/2 z-[1601] w-[min(calc(100vw-1rem),21rem)] rounded-3xl bg-white border border-black/5 shadow-2xl overflow-hidden"
+            style={{
+              bottom: `calc(env(safe-area-inset-bottom, 0px) + ${detailsCardBottomPx}px)`,
+              maxHeight: `${detailsCardMaxHeightPx}px`,
+            }}
+            data-testid="details-drawer"
+          >
+            <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-[#E9ECF2]" />
+            <div className="px-3 pt-2 pb-3 overflow-y-auto">
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <h2 className="text-lg font-bold text-[#2B2D42] truncate" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</h2>
+                <Button variant="ghost" className="text-[#8D99AE] h-7 px-2 shrink-0" onClick={() => setShowDetailsDrawer(false)}>
+                  {t("close")}
+                </Button>
               </div>
-              <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4">
-                <div className="flex items-center gap-2 text-[#8D99AE] mb-2">
-                  <Clock className="w-4 h-4" /><span className="text-sm">{formatDate(selectedReport.refreshed_at || selectedReport.created_at)}</span>
-                  {selectedReport.municipality && <span className="text-xs bg-[#FF6B6B]/10 text-[#FF6B6B] px-2 py-0.5 rounded-full ml-auto">{selectedReport.municipality}</span>}
-                </div>
-                <div className="flex items-center gap-2 mb-2">
-                  {selectedReport.status !== "pending" && (
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                      {statusLabel(selectedReport.status)}
+
+              <div className="flex items-start gap-3">
+                {selectedReport.photo_url && (
+                  <div className="w-24 shrink-0 rounded-2xl overflow-hidden shadow-sm bg-[#F8F9FA]">
+                    <img src={`${API}/files/${selectedReport.photo_url}`} alt={t("mapUi.photoAlt")} className="w-full aspect-square object-cover object-center" data-testid="report-photo" />
+                  </div>
+                )}
+
+                <div className="min-w-0 flex-1">
+                  {selectedReport.description && (
+                    <p className="text-sm text-[#2B2D42] mb-2 italic line-clamp-2">"{selectedReport.description}"</p>
+                  )}
+
+                  <div className="flex items-center gap-2 mb-2 min-w-0">
+                    <User className="w-4 h-4 text-[#8D99AE] shrink-0" />
+                    <span className="text-sm text-[#2B2D42] font-medium truncate">{selectedReport.contributor_name || t("mapUi.anonymous")}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 text-[#8D99AE] mb-2 min-w-0">
+                    <Clock className="w-4 h-4 shrink-0" />
+                    <span className="text-xs truncate">{formatDate(selectedReport.refreshed_at || selectedReport.created_at)}</span>
+                  </div>
+
+                  <div className="flex flex-wrap gap-1.5 mb-2">
+                    {selectedReport.status !== "pending" && (
+                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                        {statusLabel(selectedReport.status)}
+                      </span>
+                    )}
+                    <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
+                      {freshnessLabel(selectedReport.freshness)}
                     </span>
-                  )}
-                  <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
-                    {freshnessLabel(selectedReport.freshness)}
-                  </span>
-                  {selectedReport.confidence !== undefined && (
-                    <span className="text-xs text-[#8D99AE]">{tf("mapUi.confidence", { value: selectedReport.confidence })}</span>
-                  )}
-                  <span className="text-xs text-[#8D99AE]">{tf("mapUi.validations", { count: selectedReport.validation_count || 0 })}</span>
-                </div>
-                <div className="flex gap-4">
-                  <div className="flex items-center gap-1"><ThumbsUp className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.upvotes || 0}</span></div>
-                  <div className="flex items-center gap-1"><ThumbsDown className="w-4 h-4 text-[#FF5252]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.downvotes || 0}</span></div>
-                  <div className="flex items-center gap-1"><CheckCircle className="w-4 h-4 text-[#66BB6A]" /><span className="text-sm font-medium text-[#2B2D42]">{selectedReport.cleaned_count || 0} {t("mapUi.noLongerHereCount")}</span></div>
+                    {selectedReport.municipality && (
+                      <span className="text-[10px] bg-[#FF6B6B]/10 text-[#FF6B6B] px-2 py-0.5 rounded-full truncate max-w-full">
+                        {selectedReport.municipality}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-3 text-xs text-[#8D99AE]">
+                    <div className="flex items-center gap-1"><ThumbsUp className="w-3.5 h-3.5 text-[#66BB6A]" /><span>{selectedReport.upvotes || 0}</span></div>
+                    <div className="flex items-center gap-1"><ThumbsDown className="w-3.5 h-3.5 text-[#FF5252]" /><span>{selectedReport.downvotes || 0}</span></div>
+                    <div className="flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5 text-[#66BB6A]" /><span>{selectedReport.cleaned_count || 0}</span></div>
+                    <div>{tf("mapUi.validations", { count: selectedReport.validation_count || 0 })}</div>
+                    {selectedReport.confidence !== undefined && (
+                      <div>{tf("mapUi.confidence", { value: selectedReport.confidence })}</div>
+                    )}
+                  </div>
                 </div>
               </div>
 
-              <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
+              {selectedReport.contributor_rank && (
+                <div className="mt-2 mb-2">
+                  <span className="inline-flex text-[10px] text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-1 rounded-full max-w-full truncate">
+                    {getRankLabel(selectedReport.contributor_rank_key || selectedReport.contributor_rank, t)}
+                  </span>
+                </div>
+              )}
+
+              <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
                 {tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS })}
               </div>
 
-              {/* Upvote / Downvote */}
-              <div className="flex gap-2 mb-4">
-                <Button size="sm" variant="outline" onClick={() => handleReportVote("upvote")} className="flex-1 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" data-testid="upvote-btn">
+              <div className="grid grid-cols-2 gap-2 mb-2">
+                <Button size="sm" variant="outline" onClick={() => handleReportVote("upvote")} className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" data-testid="upvote-btn">
                   <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleReportVote("downvote")} className="flex-1 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10" data-testid="downvote-btn">
+                <Button size="sm" variant="outline" onClick={() => handleReportVote("downvote")} className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10" data-testid="downvote-btn">
                   <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}
                 </Button>
               </div>
 
               {myValidation ? (
-                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">
+                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
                   {tf("mapUi.yourValidation", { value: myValidation === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected") })}
                 </div>
               ) : null}
 
-              {/* No longer here */}
               {!myVote ? (
-                <Button onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-4 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-5 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-5 h-5 mr-2" />{t("mapUi.noLongerHere")}</Button>
+                <Button onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>
               ) : (
-                <div className="bg-[#F8F9FA] rounded-xl p-3 mb-4 text-center text-sm text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
+                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
               )}
 
-              <div className="flex gap-2 mb-2">
-                <Button variant="ghost" onClick={handleShare} className="flex-1 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
+              <div className="grid grid-cols-2 gap-2">
+                <Button variant="ghost" onClick={handleShare} className="h-9 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
                   <Share2 className="w-4 h-4 mr-2" />{t("mapUi.share")}
                 </Button>
-                <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="flex-1 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
+                <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="h-9 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
                   <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
                 </Button>
               </div>
             </div>
-          )}
-          <DrawerFooter className="pt-0"><DrawerClose asChild><Button variant="ghost" className="text-[#8D99AE]">{t("close")}</Button></DrawerClose></DrawerFooter>
-        </DrawerContent>
-      </Drawer>
+          </div>
+        </>
+      )}
 
       {/* Flag Drawer */}
       <Drawer open={showFlagDrawer} onOpenChange={(open) => { setShowFlagDrawer(open); if (!open) setSelectedFlagReason(null); }}>
