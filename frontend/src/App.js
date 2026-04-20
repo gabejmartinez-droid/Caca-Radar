@@ -23,6 +23,7 @@ import ForgotPasswordPage from "./pages/ForgotPasswordPage";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import PrivacyPage from "./pages/PrivacyPage";
 import HelpPage from "./pages/HelpPage";
+import TermsPage from "./pages/TermsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
@@ -140,6 +141,7 @@ function App() {
               <Route path="/admin" element={<AdminDashboardPage />} />
               <Route path="/impact" element={<ImpactPage />} />
               <Route path="/help" element={<HelpPage />} />
+              <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />

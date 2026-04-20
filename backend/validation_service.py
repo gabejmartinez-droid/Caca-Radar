@@ -61,7 +61,10 @@ async def process_validation(
     report_updates = {"validation_count": 1}
     if sync_report_vote_counts:
         report_updates["upvotes" if vote == "confirm" else "downvotes"] = 1
-    await db.reports.update_one({"id": report_id}, {"$inc": report_updates})
+    report_update_doc = {"$inc": report_updates}
+    if vote == "confirm":
+        report_update_doc["$set"] = {"refreshed_at": datetime.now(timezone.utc).isoformat()}
+    await db.reports.update_one({"id": report_id}, report_update_doc)
 
     # Increment user's vote_count
     if user:
@@ -93,7 +96,10 @@ async def check_consensus(db, report: dict, validator_count: int) -> dict:
 
     # Verification: 3+ confirmations AND positive net score
     if weighted_confirm >= CONFIRMATIONS_NEEDED and net_score > NET_VOTE_THRESHOLD:
-        await db.reports.update_one({"id": report_id}, {"$set": {"status": "verified"}})
+        await db.reports.update_one(
+            {"id": report_id},
+            {"$set": {"status": "verified", "refreshed_at": datetime.now(timezone.utc).isoformat()}},
+        )
 
         # Reward reporter
         reporter_id = report.get("user_id", "")

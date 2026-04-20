@@ -947,7 +947,7 @@ async def get_reports(
 
     reports = await db.reports.find(query, {
         "_id": 0, "id": 1, "latitude": 1, "longitude": 1, "category": 1,
-        "status": 1, "created_at": 1, "upvotes": 1, "downvotes": 1,
+        "status": 1, "created_at": 1, "refreshed_at": 1, "upvotes": 1, "downvotes": 1,
         "contributor_name": 1, "contributor_rank": 1, "contributor_rank_key": 1, "municipality": 1,
         "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
         "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1,
@@ -955,7 +955,7 @@ async def get_reports(
 
     # Add freshness labels and confidence scores
     for r in reports:
-        r["freshness"] = get_freshness_label(r.get("created_at", ""))
+        r["freshness"] = get_freshness_label(r.get("created_at", ""), r.get("refreshed_at"))
         r["confidence"] = calc_confidence_score(r)
         r["is_premium_report"] = r.get("contributor_rank") is not None
         if "contributor_name" not in r:
@@ -974,7 +974,7 @@ async def get_report(report_id: str):
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
-    report["freshness"] = get_freshness_label(report.get("created_at", ""))
+    report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)
     report["is_premium_report"] = report.get("contributor_rank") is not None
     return report
@@ -1001,7 +1001,10 @@ async def create_report(request: Request, data: ReportCreate, response: Response
             })
             await db.reports.update_one(
                 {"id": existing_id},
-                {"$inc": {"still_there_count": 1, "validation_count": 1, "status_score": 1}}
+                {
+                    "$inc": {"still_there_count": 1, "validation_count": 1, "status_score": 1},
+                    "$set": {"refreshed_at": datetime.now(timezone.utc).isoformat()},
+                }
             )
         # Award reduced points for confirmation
         await db.users.update_one(
@@ -1011,7 +1014,7 @@ async def create_report(request: Request, data: ReportCreate, response: Response
         # Return the confirmed report
         confirmed = await db.reports.find_one({"id": existing_id}, {"_id": 0})
         if confirmed:
-            confirmed["freshness"] = get_freshness_label(confirmed.get("created_at", ""))
+            confirmed["freshness"] = get_freshness_label(confirmed.get("created_at", ""), confirmed.get("refreshed_at"))
             confirmed["converted_to_confirmation"] = True
             confirmed["points_earned"] = 5
             confirmed["points_breakdown"] = {"confirmation": 5}

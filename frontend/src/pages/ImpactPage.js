@@ -13,12 +13,12 @@ import { API } from "../config";
 import "leaflet/dist/leaflet.css";
 
 const TYPE_STYLES = {
-  cleaned: { color: "#66BB6A", label: "Limpiado", fill: true },
-  active: { color: "#FF6B6B", label: "Activo", fill: true },
-  confirmed: { color: "#42A5F5", label: "Confirmado", fill: false },
+  cleaned: { color: "#66BB6A", labelKey: "impactUi.cleanedLegend", fill: true },
+  active: { color: "#FF6B6B", labelKey: "impactUi.activeLegend", fill: true },
+  confirmed: { color: "#42A5F5", labelKey: "impactUi.confirmedLegend", fill: false },
 };
 
-function ImpactMap({ points }) {
+function ImpactMap({ points, t }) {
   if (!points || points.length === 0) return null;
   const center = [
     points.reduce((s, p) => s + p.lat, 0) / points.length,
@@ -46,7 +46,7 @@ function ImpactMap({ points }) {
                 weight: p.type === "cleaned" ? 3 : 2,
               }}
             >
-              <Tooltip>{style.label} — {p.municipality || ""}</Tooltip>
+              <Tooltip>{t(style.labelKey)} — {p.municipality || ""}</Tooltip>
             </CircleMarker>
           );
         })}
@@ -66,7 +66,7 @@ function StatCard({ icon: Icon, label, value, color, sub }) {
   );
 }
 
-function Timeline({ data }) {
+function Timeline({ data, t }) {
   if (!data || data.length === 0) return null;
   const max = Math.max(...data.map((d) => d.count), 1);
 
@@ -74,7 +74,7 @@ function Timeline({ data }) {
     <div className="bg-white rounded-2xl shadow-sm p-5" data-testid="impact-timeline">
       <h3 className="font-bold text-[#2B2D42] text-sm mb-3 flex items-center gap-2">
         <TrendingUp className="w-4 h-4 text-[#42A5F5]" />
-        Tu actividad mensual
+        {t("impactUi.monthlyActivity")}
       </h3>
       <div className="flex items-end gap-1.5 h-24">
         {data.slice(-12).map((d) => (
@@ -204,7 +204,7 @@ export default function ImpactPage() {
               <MapPin className="w-4 h-4 text-[#FF6B6B]" />
               {t("impactUi.mapTitle")}
             </h3>
-            <ImpactMap points={map_points} />
+            <ImpactMap points={map_points} t={t} />
             <div className="flex gap-4 mt-2 px-1">
               <div className="flex items-center gap-1.5 text-xs text-[#8D99AE]">
                 <div className="w-3 h-3 rounded-full bg-[#66BB6A]" /> {t("impactUi.cleanedLegend")}
@@ -221,7 +221,7 @@ export default function ImpactPage() {
 
         {/* Timeline */}
         <div className="mb-4">
-          <Timeline data={timeline} />
+        <Timeline data={timeline} t={t} />
         </div>
 
         {/* Areas helped */}

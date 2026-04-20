@@ -46,8 +46,8 @@ function createMarkerIcon(category, isPremium) {
   const border = isPremium ? "border: 3px solid #FFD700;" : "border: 3px solid white;";
   return L.divIcon({
     className: "custom-marker-wrapper",
-    html: `<div class="custom-marker ${pulseClass}" style="width:32px;height:32px;background-color:${color};${border}"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div>`,
-    iconSize: [32, 32], iconAnchor: [16, 16]
+    html: `<div class="custom-marker ${pulseClass}" style="width:16px;height:16px;background-color:${color};${border}"><svg xmlns="http://www.w3.org/2000/svg" width="8" height="8" viewBox="0 0 24 24" fill="white" stroke="white" stroke-width="2"><circle cx="12" cy="12" r="3"/></svg></div>`,
+    iconSize: [16, 16], iconAnchor: [8, 8]
   });
 }
 
@@ -58,7 +58,7 @@ function MapMarkers({ reports, onMarkerClick }) {
     markersRef.current.forEach(m => map.removeLayer(m));
     markersRef.current = [];
     reports.forEach(report => {
-      const icon = createMarkerIcon(getMarkerCategory(report.created_at), report.is_premium_report);
+      const icon = createMarkerIcon(getMarkerCategory(report.refreshed_at || report.created_at), report.is_premium_report);
       const marker = L.marker([report.latitude, report.longitude], { icon }).addTo(map).on("click", () => onMarkerClick(report));
       markersRef.current.push(marker);
     });
@@ -990,7 +990,7 @@ export default function MapPage() {
               </div>
               <div className="bg-[#F8F9FA] rounded-xl p-4 mb-4">
                 <div className="flex items-center gap-2 text-[#8D99AE] mb-2">
-                  <Clock className="w-4 h-4" /><span className="text-sm">{formatDate(selectedReport.created_at)}</span>
+                  <Clock className="w-4 h-4" /><span className="text-sm">{formatDate(selectedReport.refreshed_at || selectedReport.created_at)}</span>
                   {selectedReport.municipality && <span className="text-xs bg-[#FF6B6B]/10 text-[#FF6B6B] px-2 py-0.5 rounded-full ml-auto">{selectedReport.municipality}</span>}
                 </div>
                 <div className="flex items-center gap-2 mb-2">
