@@ -60,3 +60,15 @@ Changes:
 Next deploy checklist:
 - Record the deployed commit hash and production bundle hash
 - Confirm `/api/version` returns web `1.1.1-web.1`, iOS `1.1.1 (3)`, Android `1.1.1 (3)`, backend `1.1.0-api.1`
+
+### 2026-04-20 — Pending deploy
+
+Impacted environments:
+- Web `1.1.2-web.1`
+- iOS `1.1.2 (4)`
+- Android `1.1.2 (4)`
+
+Changes:
+- Automated build tracking enabled for web and mobile builds.
+- Native iOS Google sign-in added and verified with Xcode build.
+
