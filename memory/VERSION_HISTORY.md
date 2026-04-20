@@ -72,3 +72,11 @@ Changes:
 - Automated build tracking enabled for web and mobile builds.
 - Native iOS Google sign-in added and verified with Xcode build.
 
+### 2026-04-20 — Pending deploy
+
+Impacted environments:
+- Android `1.1.3 (5)`
+
+Changes:
+- Android upload bundle rebuilt after iPhone Google sign-in validation.
+
