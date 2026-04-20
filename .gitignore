@@ -90,6 +90,10 @@ frontend/ios/capacitor-cordova-ios-plugins/
 frontend/android/.gradle/
 frontend/android/**/build/
 frontend/android/local.properties
+frontend/android/keystore/
+frontend/android/keystore.properties
+*.jks
+*.keystore
 frontend/android/app/src/main/assets/
 frontend/android/app/src/main/res/xml/config.xml
 frontend/android/app/capacitor.build.gradle
