@@ -896,7 +896,7 @@ export default function MapPage() {
         </button>
       </div>
 
-      {!showReportDrawer && !showDetailsDrawer && !showFlagDrawer && (
+      {!showReportDrawer && !showFlagDrawer && (
         <button
           onClick={() => setShowReportDrawer(true)}
           className="fixed left-1/2 -translate-x-1/2 px-8 py-4 bg-[#FF6B6B] text-white rounded-full shadow-lg font-bold text-lg flex items-center gap-2 z-[1000] hover:bg-[#FF5252] hover:-translate-y-1 transition-all duration-200"
@@ -989,7 +989,7 @@ export default function MapPage() {
 
       {/* Details Drawer */}
       <Drawer open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
-        <DrawerContent className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl max-h-[50vh] md:max-h-[25vh] bottom-[calc(env(safe-area-inset-bottom,0px)+1rem)]" data-testid="details-drawer">
+        <DrawerContent className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl max-h-[50vh] md:max-h-[25vh] bottom-[calc(env(safe-area-inset-bottom,0px)+10rem)] md:bottom-[calc(env(safe-area-inset-bottom,0px)+7.5rem)]" data-testid="details-drawer">
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</DrawerTitle>
           </DrawerHeader>
