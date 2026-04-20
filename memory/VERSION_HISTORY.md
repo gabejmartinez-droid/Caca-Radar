@@ -80,3 +80,11 @@ Impacted environments:
 Changes:
 - Android upload bundle rebuilt after iPhone Google sign-in validation.
 
+### 2026-04-20 — Pending deploy
+
+Impacted environments:
+- Android `1.1.4 (6)`
+
+Changes:
+- Android Gradle wrapper and Android Gradle Plugin settings aligned with the build toolchain used for the release bundle.
+
