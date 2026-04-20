@@ -607,6 +607,13 @@ export default function MapPage() {
     280,
     viewportHeight - (viewportWidth < 640 ? 240 : 180)
   );
+  const detailsDrawerBottomPx = user?.subscription_active ? 176 : 136;
+  const detailsDrawerMaxHeightPx = (() => {
+    if (viewportWidth < 768) {
+      return Math.min(Math.max(Math.round(viewportHeight * 0.34), 220), 280);
+    }
+    return Math.min(Math.max(Math.round(viewportHeight * 0.22), 190), 240);
+  })();
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -989,7 +996,14 @@ export default function MapPage() {
 
       {/* Details Drawer */}
       <Drawer open={showDetailsDrawer} onOpenChange={setShowDetailsDrawer}>
-        <DrawerContent className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl max-h-[50vh] md:max-h-[25vh] bottom-[calc(env(safe-area-inset-bottom,0px)+10rem)] md:bottom-[calc(env(safe-area-inset-bottom,0px)+7.5rem)]" data-testid="details-drawer">
+        <DrawerContent
+          className="inset-x-auto left-1/2 right-auto w-[min(calc(100vw-1rem),22rem)] -translate-x-1/2 rounded-t-3xl"
+          style={{
+            bottom: `calc(env(safe-area-inset-bottom, 0px) + ${detailsDrawerBottomPx}px)`,
+            maxHeight: `${detailsDrawerMaxHeightPx}px`,
+          }}
+          data-testid="details-drawer"
+        >
           <DrawerHeader>
             <DrawerTitle className="text-xl font-bold text-[#2B2D42]" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</DrawerTitle>
           </DrawerHeader>
