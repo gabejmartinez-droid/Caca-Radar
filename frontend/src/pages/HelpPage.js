@@ -31,8 +31,7 @@ export default function HelpPage() {
             {t("helpUi.intro")}
           </p>
           <div className="mt-4 rounded-2xl bg-[#F8F9FA] px-4 py-3 text-sm text-[#5C677D]">
-            Caca Radar es una herramienta privada, independiente y no oficial. No representa, sustituye ni está afiliada a ningún ayuntamiento,
-            administración pública ni entidad gubernamental.
+            {t("legalUi.nonOfficialDisclaimer")}
           </div>
         </section>
 
@@ -80,14 +79,14 @@ export default function HelpPage() {
           <section className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-3">
               <Activity className="w-5 h-5 text-[#42A5F5]" />
-              <h2 className="text-xl font-bold text-[#2B2D42]">Estado del servicio</h2>
+              <h2 className="text-xl font-bold text-[#2B2D42]">{t("statusUi.title")}</h2>
             </div>
             <Link
               to="/status"
               className="flex items-center justify-between rounded-xl border border-[#8D99AE]/20 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
               data-testid="help-status-link"
             >
-              <span className="font-medium">Ver estado público</span>
+              <span className="font-medium">{t("statusUi.openPublicStatus")}</span>
               <ChevronRight className="w-4 h-4 text-[#8D99AE]" />
             </Link>
           </section>
@@ -95,14 +94,14 @@ export default function HelpPage() {
           <section className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-3">
               <Cookie className="w-5 h-5 text-[#42A5F5]" />
-              <h2 className="text-xl font-bold text-[#2B2D42]">Cookies y tecnologías similares</h2>
+              <h2 className="text-xl font-bold text-[#2B2D42]">{t("helpUi.cookiesTitle")}</h2>
             </div>
             <Link
               to="/cookies"
               className="flex items-center justify-between rounded-xl border border-[#8D99AE]/20 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
               data-testid="help-cookies-link"
             >
-              <span className="font-medium">Política de Cookies</span>
+              <span className="font-medium">{t("legalUi.cookiesPolicy")}</span>
               <ChevronRight className="w-4 h-4 text-[#8D99AE]" />
             </Link>
           </section>
@@ -110,14 +109,14 @@ export default function HelpPage() {
           <section className="bg-white rounded-2xl shadow-sm p-6">
             <div className="flex items-center gap-3 mb-3">
               <Flag className="w-5 h-5 text-[#FF6B6B]" />
-              <h2 className="text-xl font-bold text-[#2B2D42]">Normas de la comunidad y moderación</h2>
+              <h2 className="text-xl font-bold text-[#2B2D42]">{t("helpUi.communityTitle")}</h2>
             </div>
             <Link
               to="/community"
               className="flex items-center justify-between rounded-xl border border-[#8D99AE]/20 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
               data-testid="help-community-link"
             >
-              <span className="font-medium">Normas de la comunidad</span>
+              <span className="font-medium">{t("legalUi.communityGuidelines")}</span>
               <ChevronRight className="w-4 h-4 text-[#8D99AE]" />
             </Link>
           </section>
@@ -144,7 +143,7 @@ export default function HelpPage() {
                 <a className="text-[#FF6B6B] font-medium" href="mailto:jefe@cacaradar.es">jefe@cacaradar.es</a>.
               </p>
               <p className="text-sm text-[#8D99AE]">
-                Si tienes una suscripción contratada en Apple App Store o Google Play, debes cancelarla también desde tu cuenta de la tienda.
+                {t("helpUi.storeCancellationNote")}
               </p>
             </div>
           </section>

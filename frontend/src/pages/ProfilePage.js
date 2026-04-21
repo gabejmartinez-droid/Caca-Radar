@@ -378,7 +378,7 @@ export default function ProfilePage() {
             >
               <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
                 <Cookie className="w-4 h-4 text-[#42A5F5]" />
-                Política de Cookies
+                {t("legalUi.cookiesPolicy")}
               </span>
             </button>
             <button
@@ -388,7 +388,7 @@ export default function ProfilePage() {
             >
               <span className="flex items-center gap-2 text-[#2B2D42] font-medium">
                 <Flag className="w-4 h-4 text-[#FF6B6B]" />
-                Normas de la comunidad
+                {t("legalUi.communityGuidelines")}
               </span>
             </button>
             <button

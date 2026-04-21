@@ -818,17 +818,17 @@ export default function MapPage() {
                   </DropdownMenuItem>
                   {user.subscription_active && (
                     <DropdownMenuItem onClick={() => navigate("/leaderboard")} className="cursor-pointer" data-testid="menu-leaderboard">
-                      <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />Leaderboard
+                      <Trophy className="w-4 h-4 mr-2 text-[#FF6B6B]" />{t("rankingUi.leaderboardTitle")}
                     </DropdownMenuItem>
                   )}
                   {!user.subscription_active && (
                     <DropdownMenuItem onClick={() => navigate("/subscribe")} className="cursor-pointer" data-testid="menu-subscribe">
-                      <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />Premium
+                      <Star className="w-4 h-4 mr-2 text-[#FF6B6B]" />{t("goPremium")}
                     </DropdownMenuItem>
                   )}
                   {(user.role === "municipality" || user.role === "admin") && (
                     <DropdownMenuItem onClick={() => navigate("/dashboard")} className="cursor-pointer" data-testid="menu-dashboard">
-                      <Building2 className="w-4 h-4 mr-2" />Dashboard
+                      <Building2 className="w-4 h-4 mr-2" />{t("municipalityUi.dashboardLabel")}
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />

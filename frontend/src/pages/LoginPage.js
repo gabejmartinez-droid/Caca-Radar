@@ -196,13 +196,13 @@ export default function LoginPage() {
           </p>
 
           <p className="text-center text-xs text-[#8D99AE] mt-4 leading-5">
-            Al iniciar sesión, puedes revisar la{" "}
+            {t("legalUi.loginNoticePrefix")}{" "}
             <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline" data-testid="login-privacy-link">
-              Política de Privacidad
+              {t("legalUi.privacyPolicy")}
             </Link>
-            {" "}y los{" "}
+            {" "}{t("legalUi.andTerms")}{" "}
             <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline" data-testid="login-terms-link">
-              Términos de uso
+              {t("legalUi.termsOfUse")}
             </Link>.
           </p>
         </div>

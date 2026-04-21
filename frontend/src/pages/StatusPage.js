@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
 import LegalLinksFooter from "../components/LegalLinksFooter";
+import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
 
 function StatusPill({ ok, children }) {
@@ -28,22 +29,22 @@ function StatRow({ label, value }) {
   );
 }
 
-function formatDateTime(value) {
-  if (!value) return "No disponible";
+function formatDateTime(value, language, fallback) {
+  if (!value) return fallback;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
-  return date.toLocaleString("es-ES", {
+  return date.toLocaleString(language, {
     dateStyle: "medium",
     timeStyle: "short",
   });
 }
 
-function formatRelativeUptime(value) {
-  if (!value) return "No disponible";
+function formatRelativeUptime(value, t) {
+  if (!value) return t("statusUi.notAvailable");
   const started = new Date(value);
-  if (Number.isNaN(started.getTime())) return "No disponible";
+  if (Number.isNaN(started.getTime())) return t("statusUi.notAvailable");
   const diffMs = Date.now() - started.getTime();
-  if (diffMs < 0) return "No disponible";
+  if (diffMs < 0) return t("statusUi.notAvailable");
 
   const totalMinutes = Math.floor(diffMs / 60000);
   const days = Math.floor(totalMinutes / (60 * 24));
@@ -54,11 +55,12 @@ function formatRelativeUptime(value) {
   if (days) parts.push(`${days}d`);
   if (hours) parts.push(`${hours}h`);
   if (!days && minutes) parts.push(`${minutes}m`);
-  return parts.length ? parts.join(" ") : "menos de 1 min";
+  return parts.length ? parts.join(" ") : t("statusUi.lessThanMinute");
 }
 
 export default function StatusPage() {
   const navigate = useNavigate();
+  const { t, language } = useLanguage();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [health, setHealth] = useState(null);
@@ -77,7 +79,7 @@ export default function StatusPage() {
         ]);
 
         if (!healthResponse.ok || !versionResponse.ok) {
-          throw new Error("No se pudo cargar el estado del servicio.");
+          throw new Error(t("statusUi.loadError"));
         }
 
         const [healthData, versionData] = await Promise.all([
@@ -91,7 +93,7 @@ export default function StatusPage() {
         }
       } catch (err) {
         if (!cancelled) {
-          setError(err.message || "No se pudo cargar el estado del servicio.");
+          setError(err.message || t("statusUi.loadError"));
         }
       } finally {
         if (!cancelled) {
@@ -104,7 +106,7 @@ export default function StatusPage() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [t]);
 
   const runtime = version?.runtime || health?.runtime || {};
   const appVersions = runtime.app_versions || {};
@@ -118,7 +120,7 @@ export default function StatusPage() {
       <div className="ios-safe-header p-4 flex justify-between items-center">
         <Button variant="ghost" onClick={() => navigate(-1)} className="text-[#8D99AE]" data-testid="back-btn">
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Volver
+          {t("backToMap")}
         </Button>
         <LanguageSelector />
       </div>
@@ -130,11 +132,11 @@ export default function StatusPage() {
               <div className="flex items-center gap-3 mb-3">
                 <Activity className="w-6 h-6 text-[#42A5F5]" />
                 <h1 className="text-3xl font-black text-[#2B2D42]" style={{ fontFamily: "Nunito, sans-serif" }}>
-                  Estado del servicio
+                  {t("statusUi.title")}
                 </h1>
               </div>
               <p className="text-[#5C677D] leading-7 max-w-2xl">
-                Esta página resume el estado operativo público de Caca Radar usando los endpoints reales de salud y versión del servicio.
+                {t("statusUi.intro")}
               </p>
             </div>
             <Button
@@ -144,23 +146,22 @@ export default function StatusPage() {
               data-testid="status-refresh-btn"
             >
               <RefreshCw className="w-4 h-4 mr-2" />
-              Actualizar
+              {t("statusUi.refresh")}
             </Button>
           </div>
 
           <div className="mt-4 rounded-2xl bg-[#F8F9FA] px-4 py-3 text-sm text-[#5C677D]">
-            Caca Radar es una herramienta privada, independiente y no oficial. No representa, sustituye ni está afiliada a ningún ayuntamiento,
-            administración pública ni entidad gubernamental.
+            {t("legalUi.nonOfficialDisclaimer")}
           </div>
         </section>
 
         {loading ? (
           <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-            <p className="text-[#5C677D]">Cargando estado del servicio...</p>
+            <p className="text-[#5C677D]">{t("statusUi.loading")}</p>
           </section>
         ) : error ? (
           <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
-            <StatusPill ok={false}>Incidencia al consultar el estado</StatusPill>
+            <StatusPill ok={false}>{t("statusUi.queryError")}</StatusPill>
             <p className="mt-4 text-[#5C677D]">{error}</p>
           </section>
         ) : (
@@ -168,35 +169,35 @@ export default function StatusPage() {
             <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
               <div className="flex flex-wrap items-center gap-3 mb-5">
                 <StatusPill ok={health?.status === "ok" && allChecksPassing}>
-                  {health?.status === "ok" && allChecksPassing ? "Operativo" : "Degradado"}
+                  {health?.status === "ok" && allChecksPassing ? t("statusUi.operational") : t("statusUi.degraded")}
                 </StatusPill>
-                <StatusPill ok={Boolean(health?.database)}>Base de datos</StatusPill>
-                <StatusPill ok={Boolean(health?.reports_readable)}>Lectura de reportes</StatusPill>
-                <StatusPill ok={Boolean(health?.users_readable)}>Lectura de usuarios</StatusPill>
-                <StatusPill ok={Boolean(health?.production_db_safe)}>Base de datos segura para producción</StatusPill>
+                <StatusPill ok={Boolean(health?.database)}>{t("statusUi.database")}</StatusPill>
+                <StatusPill ok={Boolean(health?.reports_readable)}>{t("statusUi.reportReads")}</StatusPill>
+                <StatusPill ok={Boolean(health?.users_readable)}>{t("statusUi.userReads")}</StatusPill>
+                <StatusPill ok={Boolean(health?.production_db_safe)}>{t("statusUi.productionSafe")}</StatusPill>
               </div>
 
               <div className="grid gap-6 md:grid-cols-2">
                 <div className="rounded-2xl bg-[#F8F9FA] p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Server className="w-5 h-5 text-[#42A5F5]" />
-                    <h2 className="text-lg font-bold text-[#2B2D42]">Runtime</h2>
+                    <h2 className="text-lg font-bold text-[#2B2D42]">{t("statusUi.runtimeTitle")}</h2>
                   </div>
-                  <StatRow label="Entorno" value={runtime.environment || "No disponible"} />
-                  <StatRow label="Uptime actual" value={formatRelativeUptime(runtime.started_at)} />
-                  <StatRow label="Arranque" value={formatDateTime(runtime.started_at)} />
-                  <StatRow label="Commit desplegado" value={runtime.commit || "unknown"} />
+                  <StatRow label={t("statusUi.environment")} value={runtime.environment || t("statusUi.notAvailable")} />
+                  <StatRow label={t("statusUi.currentUptime")} value={formatRelativeUptime(runtime.started_at, t)} />
+                  <StatRow label={t("statusUi.startedAt")} value={formatDateTime(runtime.started_at, language, t("statusUi.notAvailable"))} />
+                  <StatRow label={t("statusUi.deployedCommit")} value={runtime.commit || "unknown"} />
                 </div>
 
                 <div className="rounded-2xl bg-[#F8F9FA] p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Database className="w-5 h-5 text-[#66BB6A]" />
-                    <h2 className="text-lg font-bold text-[#2B2D42]">Base de datos</h2>
+                    <h2 className="text-lg font-bold text-[#2B2D42]">{t("statusUi.databaseTitle")}</h2>
                   </div>
-                  <StatRow label="Host" value={runtime.mongo_host || "No disponible"} />
-                  <StatRow label="Nombre lógico" value={runtime.db_name || "No disponible"} />
-                  <StatRow label="Mongo local" value={runtime.mongo_is_local ? "Sí" : "No"} />
-                  <StatRow label="Segura para producción" value={health?.production_db_safe ? "Sí" : "No"} />
+                  <StatRow label={t("statusUi.host")} value={runtime.mongo_host || t("statusUi.notAvailable")} />
+                  <StatRow label={t("statusUi.logicalName")} value={runtime.db_name || t("statusUi.notAvailable")} />
+                  <StatRow label={t("statusUi.localMongo")} value={runtime.mongo_is_local ? t("statusUi.yes") : t("statusUi.no")} />
+                  <StatRow label={t("statusUi.productionSafe")} value={health?.production_db_safe ? t("statusUi.yes") : t("statusUi.no")} />
                 </div>
               </div>
             </section>
@@ -204,39 +205,39 @@ export default function StatusPage() {
             <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
               <div className="flex items-center gap-2 mb-4">
                 <GitCommitHorizontal className="w-5 h-5 text-[#FF6B6B]" />
-                <h2 className="text-lg font-bold text-[#2B2D42]">Versiones publicadas</h2>
+                <h2 className="text-lg font-bold text-[#2B2D42]">{t("statusUi.publishedVersions")}</h2>
               </div>
               <div className="rounded-2xl bg-[#F8F9FA] p-5">
-                <StatRow label="Web" value={appVersions.web || "No disponible"} />
+                <StatRow label="Web" value={appVersions.web || t("statusUi.notAvailable")} />
                 <StatRow
                   label="iOS"
-                  value={appVersions.ios ? `${appVersions.ios.version} (${appVersions.ios.build})` : "No disponible"}
+                  value={appVersions.ios ? `${appVersions.ios.version} (${appVersions.ios.build})` : t("statusUi.notAvailable")}
                 />
                 <StatRow
                   label="Android"
-                  value={appVersions.android ? `${appVersions.android.version} (${appVersions.android.build})` : "No disponible"}
+                  value={appVersions.android ? `${appVersions.android.version} (${appVersions.android.build})` : t("statusUi.notAvailable")}
                 />
-                <StatRow label="Backend" value={runtime.backend_version || "No disponible"} />
+                <StatRow label="Backend" value={runtime.backend_version || t("statusUi.notAvailable")} />
               </div>
             </section>
 
             <section className="bg-white rounded-2xl shadow-sm p-6 md:p-8">
               <div className="flex items-center gap-2 mb-4">
                 <Globe className="w-5 h-5 text-[#FFA726]" />
-                <h2 className="text-lg font-bold text-[#2B2D42]">Comprobaciones públicas</h2>
+                <h2 className="text-lg font-bold text-[#2B2D42]">{t("statusUi.publicChecks")}</h2>
               </div>
               <div className="rounded-2xl bg-[#F8F9FA] p-5 space-y-3 text-sm text-[#5C677D]">
                 <p>
-                  API base: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/health`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/health</a>
+                  {t("statusUi.baseApi")}: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/health`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/health</a>
                 </p>
                 <p>
-                  Estado profundo: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/health/deep`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/health/deep</a>
+                  {t("statusUi.deepHealth")}: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/health/deep`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/health/deep</a>
                 </p>
                 <p>
-                  Metadata de versión: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/version`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/version</a>
+                  {t("statusUi.versionMetadata")}: <a className="text-[#FF6B6B] font-medium" href={`${HOSTED_WEB_URL}/api/version`} target="_blank" rel="noreferrer">{HOSTED_WEB_URL}/api/version</a>
                 </p>
                 <p className="text-[#8D99AE]">
-                  Esta página refleja lo que informan esos endpoints. No incluye métricas privadas ni datos personales de usuarios.
+                  {t("statusUi.publicChecksNote")}
                 </p>
               </div>
             </section>

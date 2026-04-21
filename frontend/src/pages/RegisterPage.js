@@ -202,9 +202,9 @@ export default function RegisterPage() {
             <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline" data-testid="register-privacy-link">
               {t("legalUi.privacyPolicy")}
             </Link>
-            {" "}y los{" "}
+            {" "}{t("legalUi.andTerms")}{" "}
             <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline" data-testid="register-terms-link">
-              Términos de uso
+              {t("legalUi.termsOfUse")}
             </Link>
           </p>
 
@@ -212,7 +212,7 @@ export default function RegisterPage() {
           <div className="mt-4 space-y-2">
             <div className="flex items-center gap-2 my-3">
               <div className="flex-1 h-px bg-[#8D99AE]/20" />
-              <span className="text-xs text-[#8D99AE]">o</span>
+              <span className="text-xs text-[#8D99AE]">{t("loginUi.or")}</span>
               <div className="flex-1 h-px bg-[#8D99AE]/20" />
             </div>
             <GoogleSignInButton
