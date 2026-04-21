@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { Loader2, ArrowLeft, BarChart3, TrendingUp, MapPin, Clock, Flag, CheckCircle, Calendar } from "lucide-react";
@@ -27,22 +27,22 @@ export default function AnalyticsPage() {
   const [analytics, setAnalytics] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || (user.role !== "municipality" && user.role !== "admin")) {
-      navigate("/dashboard/login");
-      return;
-    }
-    fetchAnalytics();
-  }, [user, navigate]);
-
-  const fetchAnalytics = async () => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await axios.get(`${API}/municipality/analytics`, { withCredentials: true });
       setAnalytics(data);
     } catch { navigate("/dashboard"); }
     finally { setLoading(false); }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!user || (user.role !== "municipality" && user.role !== "admin")) {
+      navigate("/dashboard/login");
+      return;
+    }
+    fetchAnalytics();
+  }, [fetchAnalytics, navigate, user]);
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#2B2D42]" /></div>;
   if (!analytics) return null;

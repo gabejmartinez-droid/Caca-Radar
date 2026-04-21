@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Trash2 } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -35,16 +35,7 @@ export default function AdminDashboardPage() {
   const [violationTotal, setViolationTotal] = useState(0);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    fetchDashboard();
-  }, []);
-
-  useEffect(() => {
-    if (tab === "users") fetchUsers();
-    if (tab === "violations") fetchViolations();
-  }, [tab, userPage, userSearch]);
-
-  const fetchDashboard = async () => {
+  const fetchDashboard = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/admin/dashboard`, { withCredentials: true });
       setDashboard(data);
@@ -57,23 +48,32 @@ export default function AdminDashboardPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [navigate]);
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/admin/users?skip=${userPage * 20}&limit=20&search=${encodeURIComponent(userSearch)}`, { withCredentials: true });
       setUsers(data.users);
       setUserTotal(data.total);
     } catch { toast.error("Error cargando usuarios"); }
-  };
+  }, [userPage, userSearch]);
 
-  const fetchViolations = async () => {
+  const fetchViolations = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/admin/photo-violations`, { withCredentials: true });
       setViolations(data.violations);
       setViolationTotal(data.total);
     } catch { toast.error("Error cargando violaciones"); }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchDashboard();
+  }, [fetchDashboard]);
+
+  useEffect(() => {
+    if (tab === "users") fetchUsers();
+    if (tab === "violations") fetchViolations();
+  }, [fetchUsers, fetchViolations, tab]);
 
   const handleModerate = async (reportId, action) => {
     try {

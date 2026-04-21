@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -38,12 +38,7 @@ export default function LeaderboardPage() {
   const [myProfile, setMyProfile] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user?.subscription_active) { navigate("/subscribe"); return; }
-    fetchData();
-  }, [user, navigate]);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true);
     try {
       const [natRes, citiesRes, profileRes] = await Promise.all([
@@ -57,15 +52,20 @@ export default function LeaderboardPage() {
     } catch (err) {
       if (err.response?.status === 403) navigate("/subscribe");
     } finally { setLoading(false); }
-  };
+  }, [navigate]);
 
-  const fetchCityLeaderboard = async (cityName) => {
+  const fetchCityLeaderboard = useCallback(async (cityName) => {
     setSelectedCity(cityName);
     try {
       const { data } = await axios.get(`${API}/leaderboard/city/${encodeURIComponent(cityName)}`, { withCredentials: true });
       setCityLeaderboard(data);
     } catch { toast.error(t("genericError")); }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    if (!user?.subscription_active) { navigate("/subscribe"); return; }
+    fetchData();
+  }, [fetchData, navigate, user]);
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
 

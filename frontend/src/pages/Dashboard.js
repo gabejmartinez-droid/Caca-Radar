@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -36,15 +36,15 @@ export default function Dashboard() {
   const [totalPages, setTotalPages] = useState(1);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (!user || (user.role !== "municipality" && user.role !== "admin")) {
-      navigate("/dashboard/login");
-      return;
-    }
-    fetchAll();
-  }, [user, navigate]);
+  const fetchReports = useCallback(async (filter, currentPage) => {
+    try {
+      const { data } = await axios.get(`${API}/municipality/reports?status=${filter}&page=${currentPage}`, { withCredentials: true });
+      setReports(data.reports);
+      setTotalPages(data.pages);
+    } catch (err) { console.error("Failed to fetch reports:", err); }
+  }, []);
 
-  const fetchAll = async () => {
+  const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
       const [statsRes, reportsRes, flagsRes, photoRes] = await Promise.all([
@@ -62,15 +62,15 @@ export default function Dashboard() {
       if (err.response?.status === 403) navigate("/dashboard/login");
       else toast.error("Error loading dashboard");
     } finally { setLoading(false); }
-  };
+  }, [navigate, page, reportFilter]);
 
-  const fetchReports = async (filter, p) => {
-    try {
-      const { data } = await axios.get(`${API}/municipality/reports?status=${filter}&page=${p}`, { withCredentials: true });
-      setReports(data.reports);
-      setTotalPages(data.pages);
-    } catch (err) { console.error("Failed to fetch reports:", err); }
-  };
+  useEffect(() => {
+    if (!user || (user.role !== "municipality" && user.role !== "admin")) {
+      navigate("/dashboard/login");
+      return;
+    }
+    fetchAll();
+  }, [fetchAll, navigate, user]);
 
   const handleFilterChange = (filter) => {
     setReportFilter(filter);

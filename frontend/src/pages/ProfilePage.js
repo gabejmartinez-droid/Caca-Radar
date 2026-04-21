@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
@@ -47,12 +47,7 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(() => localStorage.getItem("caca_notifications") !== "off");
 
-  useEffect(() => {
-    if (!user) { navigate("/login"); return; }
-    fetchProfile();
-  }, [user, navigate]);
-
-  const fetchProfile = async () => {
+  const fetchProfile = useCallback(async () => {
     setLoading(true);
     try {
       const { data } = await axios.get(`${API}/users/profile`, { withCredentials: true });
@@ -65,7 +60,12 @@ export default function ProfilePage() {
       } catch { /* ignore */ }
     } catch { navigate("/login"); }
     finally { setLoading(false); }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (!user) { navigate("/login"); return; }
+    fetchProfile();
+  }, [fetchProfile, navigate, user]);
 
   const handleSaveUsername = async () => {
     if (!newUsername.trim() || newUsername.length < 3) { toast.error(t("profileUi.usernameTooShort")); return; }
