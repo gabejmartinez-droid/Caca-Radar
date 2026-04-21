@@ -1,3 +1,16 @@
+export const nativeLanguageNames = {
+  es: "Español",
+  en: "English",
+  eu: "Euskara",
+  val: "Valencià",
+  ca: "Català",
+  de: "Deutsch",
+  nl: "Nederlands",
+  pl: "Polski",
+  uk: "Українська",
+  ru: "Русский",
+};
+
 export const translations = {
   es: {
     // App
@@ -123,18 +136,7 @@ export const translations = {
       signupNotice: "Al crear tu cuenta, puedes revisar nuestra",
       versions: "Versiones"
     },
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   en: {
@@ -229,18 +231,7 @@ export const translations = {
       signupNotice: "By creating your account, you can review our",
       versions: "Versions"
     },
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   de: {
@@ -336,18 +327,7 @@ export const translations = {
     saveUsername: "Speichern",
     usernameSaved: "Benutzername gespeichert",
     language: "Sprache",
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   nl: {
@@ -443,18 +423,7 @@ export const translations = {
     saveUsername: "Opslaan",
     usernameSaved: "Gebruikersnaam opgeslagen",
     language: "Taal",
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   pl: {
@@ -550,18 +519,7 @@ export const translations = {
     saveUsername: "Zapisz",
     usernameSaved: "Nazwa użytkownika zapisana",
     language: "Język",
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   
@@ -658,18 +616,7 @@ export const translations = {
     saveUsername: "Зберегти",
     usernameSaved: "Ім'я користувача збережено",
     language: "Мова",
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
   
   ru: {
@@ -765,21 +712,7 @@ export const translations = {
     saveUsername: "Сохранить",
     usernameSaved: "Имя пользователя сохранено",
     language: "Язык",
-    languages: {
-      es: "Español",
-      en: "English",
-      de: "Deutsch",
-      nl: "Nederlands",
-      pl: "Polski",
-      uk: "Українська",
-      ru: "Русский",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià",
-      eu: "Euskara",
-      ca: "Català",
-      val: "Valencià"
-    }
+    languages: nativeLanguageNames
   },
 
   eu: {

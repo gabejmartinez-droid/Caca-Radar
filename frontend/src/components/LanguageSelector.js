@@ -7,6 +7,7 @@ import {
   DropdownMenuTrigger,
 } from "./ui/dropdown-menu";
 import { useLanguage } from "../contexts/LanguageContext";
+import { nativeLanguageNames } from "../i18n/translations";
 
 function FlagIcon({ code, className = "w-5 h-3.5" }) {
   const flags = {
@@ -86,18 +87,8 @@ function FlagIcon({ code, className = "w-5 h-3.5" }) {
   return flags[code] || <Globe className="w-4 h-4" />;
 }
 
-const languages = [
-  { code: "es", name: "Español" },
-  { code: "en", name: "English" },
-  { code: "eu", name: "Euskara" },
-  { code: "val", name: "Valencià" },
-  { code: "ca", name: "Català" },
-  { code: "de", name: "Deutsch" },
-  { code: "nl", name: "Nederlands" },
-  { code: "pl", name: "Polski" },
-  { code: "uk", name: "Українська" },
-  { code: "ru", name: "Русский" },
-];
+const languageOrder = ["es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"];
+const languages = languageOrder.map((code) => ({ code, name: nativeLanguageNames[code] }));
 
 export function LanguageSelector({ compact = false, showLabel = true, className = "" }) {
   const { language, setLanguage } = useLanguage();
