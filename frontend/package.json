@@ -73,7 +73,7 @@
     "cap:sync": "cap sync",
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
-    "build:mobile:raw": "yarn run build:raw && cap sync",
+    "build:mobile:raw": "yarn run build:raw && cap sync android && cap copy ios",
     "build:mobile": "yarn run build:mobile:raw",
     "release:mobile": "python3 ../scripts/build_and_track.py --surface web --surface ios --surface android --note \"Prepared mobile release build\" -- yarn run build:mobile:raw"
   },
