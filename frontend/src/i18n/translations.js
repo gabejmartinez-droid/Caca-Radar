@@ -1239,6 +1239,169 @@ Object.keys(communityTranslations).forEach((lang) => {
   Object.assign(translations[lang], communityTranslations[lang]);
 });
 
+const menuLegalTranslations = {
+  es: {
+    legalUi: {
+      privacyPolicy: "Política de Privacidad",
+      help: "Ayuda",
+      legalAndHelp: "Ayuda y legal",
+      versions: "Versiones",
+      termsOfUse: "Términos de uso",
+      cookiesPolicy: "Política de Cookies",
+      communityGuidelines: "Normas de la comunidad",
+      mainMenuAdvisory: "Caca Radar es una herramienta privada, independiente y no oficial. Los avisos del mapa son aportaciones de la comunidad y pueden ser exactos, incompletos, desactualizados o retirados tras moderación.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Los avisos mostrados en Caca Radar son aportaciones de la comunidad. Pueden ser exactos, incompletos, desactualizados o retirados tras moderación.",
+    },
+  },
+  en: {
+    legalUi: {
+      privacyPolicy: "Privacy Policy",
+      help: "Help",
+      legalAndHelp: "Help & legal",
+      versions: "Versions",
+      termsOfUse: "Terms of use",
+      cookiesPolicy: "Cookie Policy",
+      communityGuidelines: "Community guidelines",
+      mainMenuAdvisory: "Caca Radar is a private, independent and unofficial tool. Map reports are community contributions and may be exact, incomplete, outdated or removed after moderation.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "The reports shown in Caca Radar are community contributions. They may be exact, incomplete, outdated or removed after moderation.",
+    },
+  },
+  de: {
+    legalUi: {
+      privacyPolicy: "Datenschutzrichtlinie",
+      help: "Hilfe",
+      legalAndHelp: "Hilfe & Rechtliches",
+      versions: "Versionen",
+      termsOfUse: "Nutzungsbedingungen",
+      cookiesPolicy: "Cookie-Richtlinie",
+      communityGuidelines: "Community-Richtlinien",
+      mainMenuAdvisory: "Caca Radar ist ein privates, unabhängiges und inoffizielles Tool. Kartenmeldungen sind Beiträge der Community und können exakt, unvollständig, veraltet oder nach der Moderation entfernt sein.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Die in Caca Radar angezeigten Meldungen sind Beiträge der Community. Sie können exakt, unvollständig, veraltet oder nach der Moderation entfernt sein.",
+    },
+  },
+  nl: {
+    legalUi: {
+      privacyPolicy: "Privacybeleid",
+      help: "Hulp",
+      legalAndHelp: "Hulp & juridisch",
+      versions: "Versies",
+      termsOfUse: "Gebruiksvoorwaarden",
+      cookiesPolicy: "Cookiebeleid",
+      communityGuidelines: "Communityrichtlijnen",
+      mainMenuAdvisory: "Caca Radar is een privé, onafhankelijke en niet-officiële tool. Meldingen op de kaart zijn bijdragen van de community en kunnen exact, onvolledig, verouderd of na moderatie verwijderd zijn.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "De meldingen die in Caca Radar worden getoond, zijn bijdragen van de community. Ze kunnen exact, onvolledig, verouderd of na moderatie verwijderd zijn.",
+    },
+  },
+  pl: {
+    legalUi: {
+      privacyPolicy: "Polityka prywatności",
+      help: "Pomoc",
+      legalAndHelp: "Pomoc i kwestie prawne",
+      versions: "Wersje",
+      termsOfUse: "Warunki korzystania",
+      cookiesPolicy: "Polityka cookies",
+      communityGuidelines: "Zasady społeczności",
+      mainMenuAdvisory: "Caca Radar to prywatne, niezależne i nieoficjalne narzędzie. Zgłoszenia na mapie są wkładem społeczności i mogą być dokładne, niepełne, nieaktualne lub usunięte po moderacji.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Zgłoszenia wyświetlane w Caca Radar są wkładem społeczności. Mogą być dokładne, niepełne, nieaktualne lub usunięte po moderacji.",
+    },
+  },
+  uk: {
+    legalUi: {
+      privacyPolicy: "Політика конфіденційності",
+      help: "Допомога",
+      legalAndHelp: "Допомога та правова інформація",
+      versions: "Версії",
+      termsOfUse: "Умови використання",
+      cookiesPolicy: "Політика cookies",
+      communityGuidelines: "Правила спільноти",
+      mainMenuAdvisory: "Caca Radar — це приватний, незалежний і неофіційний сервіс. Позначки на мапі є внеском спільноти й можуть бути точними, неповними, застарілими або видаленими після модерації.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Повідомлення, показані в Caca Radar, є внеском спільноти. Вони можуть бути точними, неповними, застарілими або видаленими після модерації.",
+    },
+  },
+  ru: {
+    legalUi: {
+      privacyPolicy: "Политика конфиденциальности",
+      help: "Помощь",
+      legalAndHelp: "Помощь и правовая информация",
+      versions: "Версии",
+      termsOfUse: "Условия использования",
+      cookiesPolicy: "Политика cookies",
+      communityGuidelines: "Правила сообщества",
+      mainMenuAdvisory: "Caca Radar — это частный, независимый и неофициальный сервис. Отметки на карте — это вклад сообщества, и они могут быть точными, неполными, устаревшими или удалёнными после модерации.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Сообщения, показанные в Caca Radar, являются вкладом сообщества. Они могут быть точными, неполными, устаревшими или удалёнными после модерации.",
+    },
+  },
+  eu: {
+    legalUi: {
+      privacyPolicy: "Pribatutasun Politika",
+      help: "Laguntza",
+      legalAndHelp: "Laguntza eta lege-oharrak",
+      versions: "Bertsioak",
+      termsOfUse: "Erabilera-baldintzak",
+      cookiesPolicy: "Cookie Politika",
+      communityGuidelines: "Komunitateko arauak",
+      mainMenuAdvisory: "Caca Radar tresna pribatu, independente eta ez-ofiziala da. Mapako abisuak komunitatearen ekarpenak dira, eta zehatzak, osatugabeak, zaharkituak edo moderazioaren ondoren kenduak izan daitezke.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Caca Radar-en agertzen diren abisuak komunitatearen ekarpenak dira. Zehatzak, osatugabeak, zaharkituak edo moderazioaren ondoren kenduak izan daitezke.",
+    },
+  },
+  ca: {
+    legalUi: {
+      privacyPolicy: "Política de Privacitat",
+      help: "Ajuda",
+      legalAndHelp: "Ajuda i legal",
+      versions: "Versions",
+      termsOfUse: "Termes d'ús",
+      cookiesPolicy: "Política de Cookies",
+      communityGuidelines: "Normes de la comunitat",
+      mainMenuAdvisory: "Caca Radar és una eina privada, independent i no oficial. Els avisos del mapa són aportacions de la comunitat i poden ser exactes, incomplets, desactualitzats o retirats després de la moderació.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Els avisos mostrats a Caca Radar són aportacions de la comunitat. Poden ser exactes, incomplets, desactualitzats o retirats després de la moderació.",
+    },
+  },
+  val: {
+    legalUi: {
+      privacyPolicy: "Política de Privacitat",
+      help: "Ajuda",
+      legalAndHelp: "Ajuda i legal",
+      versions: "Versions",
+      termsOfUse: "Termes d'ús",
+      cookiesPolicy: "Política de Cookies",
+      communityGuidelines: "Normes de la comunitat",
+      mainMenuAdvisory: "Caca Radar és una eina privada, independent i no oficial. Els avisos del mapa són aportacions de la comunitat i poden ser exactes, incomplets, desactualitzats o retirats després de la moderació.",
+    },
+    mapUi: {
+      communityReportsAdvisory: "Els avisos mostrats a Caca Radar són aportacions de la comunitat. Poden ser exactes, incomplets, desactualitzats o retirats després de la moderació.",
+    },
+  },
+};
+
+Object.keys(translations).forEach((lang) => {
+  const extra = menuLegalTranslations[lang] || menuLegalTranslations.es;
+  Object.entries(extra).forEach(([group, values]) => {
+    translations[lang][group] = {
+      ...(translations[lang][group] || {}),
+      ...values,
+    };
+  });
+});
+
 const premiumUiTranslations = {
   es: {
     cityRankingsFeature: "Ranking de ciudades más limpias/sucias",

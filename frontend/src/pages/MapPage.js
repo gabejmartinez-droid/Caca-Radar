@@ -740,7 +740,7 @@ export default function MapPage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/terms")} className="cursor-pointer gap-2" data-testid="menu-terms">
                 <FileText className="w-4 h-4 text-[#FFA726]" />
-                <span className="flex-1">Términos de uso</span>
+                <span className="flex-1">{t("legalUi.termsOfUse")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/privacy")} className="cursor-pointer gap-2" data-testid="menu-privacy">
                 <Shield className="w-4 h-4 text-[#66BB6A]" />
@@ -748,16 +748,15 @@ export default function MapPage() {
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/cookies")} className="cursor-pointer gap-2" data-testid="menu-cookies">
                 <Cookie className="w-4 h-4 text-[#42A5F5]" />
-                <span className="flex-1">Política de Cookies</span>
+                <span className="flex-1">{t("legalUi.cookiesPolicy")}</span>
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => navigate("/community")} className="cursor-pointer gap-2" data-testid="menu-community">
                 <Flag className="w-4 h-4 text-[#FF6B6B]" />
-                <span className="flex-1">Normas de la comunidad</span>
+                <span className="flex-1">{t("legalUi.communityGuidelines")}</span>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <div className="px-3 py-2 rounded-lg bg-[#F8F9FA] text-[11px] leading-5 text-[#5C677D]">
-                Caca Radar es una herramienta privada, independiente y no oficial. Los avisos del mapa son aportaciones de la comunidad y pueden
-                ser exactos, incompletos, desactualizados o retirados tras moderación.
+                {t("legalUi.mainMenuAdvisory")}
               </div>
               <DropdownMenuSeparator />
               <div className="px-3 py-2 space-y-1" data-testid="menu-versions">
@@ -1103,7 +1102,7 @@ export default function MapPage() {
               </div>
 
               <div className="mt-3 rounded-2xl bg-[#F8F9FA] px-3 py-2 text-[11px] leading-5 text-[#5C677D]">
-                Los avisos mostrados en Caca Radar son aportaciones de la comunidad. Pueden ser exactos, incompletos, desactualizados o retirados tras moderación.
+                {t("mapUi.communityReportsAdvisory")}
               </div>
 
               {selectedReport.contributor_rank && (
