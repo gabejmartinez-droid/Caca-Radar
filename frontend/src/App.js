@@ -27,6 +27,7 @@ import TermsPage from "./pages/TermsPage";
 import DeleteAccountPage from "./pages/DeleteAccountPage";
 import CookiesPage from "./pages/CookiesPage";
 import CommunityGuidelinesPage from "./pages/CommunityGuidelinesPage";
+import StatusPage from "./pages/StatusPage";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
 import { isCapacitorNative } from "./tokenManager";
@@ -147,6 +148,7 @@ function App() {
               <Route path="/privacy" element={<PrivacyPage />} />
               <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/cookies" element={<CookiesPage />} />
+              <Route path="/status" element={<StatusPage />} />
               <Route path="/community" element={<CommunityGuidelinesPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />

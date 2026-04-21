@@ -4,6 +4,7 @@ const LINKS = [
   { to: "/privacy", label: "Privacidad" },
   { to: "/terms", label: "Términos" },
   { to: "/cookies", label: "Cookies" },
+  { to: "/status", label: "Estado" },
   { to: "/delete-account", label: "Eliminar cuenta" },
   { to: "/community", label: "Normas de la comunidad" },
 ];
