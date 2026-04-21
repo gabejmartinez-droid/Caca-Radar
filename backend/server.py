@@ -2348,6 +2348,13 @@ async def admin_login_step1(request: Request):
     if not user or not verify_password(password, user["password_hash"]):
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
 
+    if not email_configured():
+        logger.error("Admin 2FA email requested for %s but email delivery is not configured", email)
+        raise HTTPException(
+            status_code=503,
+            detail="El envío de códigos por email no está configurado ahora mismo. Contacta con soporte."
+        )
+
     # Generate 6-digit code
     code = generate_verification_code()
     expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
@@ -2358,8 +2365,16 @@ async def admin_login_step1(request: Request):
     )
 
     # Send code via email
-    await send_admin_verification_code(email, code)
-    logger.info(f"Admin 2FA code sent to {email}")
+    email_result = await send_admin_verification_code(email, code)
+    if email_result.get("status") != "sent":
+        await db.admin_codes.delete_one({"email": email})
+        logger.error("Admin 2FA email failed for %s: %s", email, email_result)
+        raise HTTPException(
+            status_code=502,
+            detail="No hemos podido enviar el código de verificación. Inténtalo de nuevo en unos minutos."
+        )
+
+    logger.info("Admin 2FA code sent to %s", email)
 
     return {"message": "Código de verificación enviado a tu email", "email_sent": True}
 
