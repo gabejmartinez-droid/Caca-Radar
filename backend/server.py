@@ -5,6 +5,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import JSONResponse
 from bson import ObjectId
 import os
+import subprocess
 import logging
 import uuid
 import asyncio
@@ -1062,6 +1063,32 @@ async def create_report(request: Request, data: ReportCreate, response: Response
 
 # ==================== REPORT HELPERS ====================
 
+def resolve_runtime_commit() -> str:
+    env_commit = (
+        os.environ.get("GIT_SHA")
+        or os.environ.get("RENDER_GIT_COMMIT")
+        or os.environ.get("RAILWAY_GIT_COMMIT_SHA")
+    )
+    if env_commit:
+        return env_commit
+
+    repo_root = Path(__file__).resolve().parent.parent
+    try:
+        result = subprocess.run(
+            ["git", "-C", str(repo_root), "rev-parse", "HEAD"],
+            capture_output=True,
+            text=True,
+            check=True,
+            timeout=2,
+        )
+        commit = result.stdout.strip()
+        if commit:
+            return commit
+    except Exception:
+        pass
+
+    return "unknown"
+
 def get_runtime_metadata() -> dict:
     from urllib.parse import urlparse
     app_versions = load_app_versions()
@@ -1073,7 +1100,7 @@ def get_runtime_metadata() -> dict:
         "mongo_url": redacted_mongo_url(),
         "mongo_is_local": is_mongo_local(),
         "mongo_host": mongo_host,
-        "commit": os.environ.get("GIT_SHA") or os.environ.get("RENDER_GIT_COMMIT") or os.environ.get("RAILWAY_GIT_COMMIT_SHA") or "unknown",
+        "commit": resolve_runtime_commit(),
         "started_at": app.state.started_at,
         "backend_version": os.environ.get("BACKEND_VERSION") or app_versions.get("backend", "unknown"),
         "app_versions": app_versions,

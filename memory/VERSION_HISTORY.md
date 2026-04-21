@@ -4,6 +4,23 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ## Released
 
+### 2026-04-21 — Production deploy `commit unknown in runtime`
+
+- Web: `1.1.5-web.1`
+- iOS: `1.1.2 (4)`
+- Android: `1.1.4 (6)`
+- Backend: `1.1.0-api.1`
+
+Changes:
+- Legal/compliance pages are live in production.
+- Google sign-in works on web, Android, and iPhone production builds.
+- Android release bundle/toolchain alignment and native iOS Google sign-in changes are included in the deployed app versions.
+
+Production notes:
+- `https://cacaradar.es/api/health` returned `{"status":"ok"}`
+- `https://cacaradar.es/api/version` returned production metadata with the versions above
+- Runtime commit reporting is still `unknown` in production and should be replaced with an injected `GIT_SHA` on the next deploy
+- Repo metadata has been reconciled so web version tracking matches the deployed production version
 ### 2026-04-19 — Production deploy `ba36ba4`
 
 - Web: `1.1.0-web.1`
@@ -87,4 +104,3 @@ Impacted environments:
 
 Changes:
 - Android Gradle wrapper and Android Gradle Plugin settings aligned with the build toolchain used for the release bundle.
-
