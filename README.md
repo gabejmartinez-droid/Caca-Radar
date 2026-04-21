@@ -21,11 +21,30 @@ python3 scripts/release_prepare.py --bump-web --notes "Preview only" --dry-run
 
 ## Build tracking
 
-The standard frontend build scripts now auto-bump version metadata and append to the audit log before they run:
+The safe default build scripts now compile assets without changing version metadata:
 
 ```bash
 cd frontend
 yarn build
+```
+
+- builds the web bundle only
+- does not touch [frontend/src/appVersions.json](/Users/gabrielmartinez/Documents/New%20project/frontend/src/appVersions.json)
+- does not append to [memory/VERSION_HISTORY.md](/Users/gabrielmartinez/Documents/New%20project/memory/VERSION_HISTORY.md)
+
+```bash
+cd frontend
+yarn build:mobile
+```
+
+- builds the web bundle and runs `cap sync`
+- does not bump any tracked versions
+
+Use the release scripts only when you intentionally want to bump versions and append an audit entry before building:
+
+```bash
+cd frontend
+yarn release:web
 ```
 
 - bumps `web`
@@ -34,16 +53,11 @@ yarn build
 
 ```bash
 cd frontend
-yarn build:mobile
+yarn release:mobile
 ```
 
 - bumps `web`, `ios`, and `android`
 - updates platform version files plus the audit log
 - then runs the web build and `cap sync`
 
-If you need a build without touching version metadata, use:
-
-```bash
-cd frontend
-yarn build:raw
-```
+If you need the underlying compile step explicitly, `yarn build:raw` remains available.
