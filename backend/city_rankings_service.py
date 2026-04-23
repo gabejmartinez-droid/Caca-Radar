@@ -249,6 +249,35 @@ async def get_active_report_cities(db, limit: int = 500) -> dict:
     }
 
 
+async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
+    """Return barrios within a city that currently have active reports."""
+    pipeline = [
+        {"$match": {
+            "municipality": city,
+            "archived": {"$ne": True},
+            "flagged": {"$ne": True},
+            "barrio": {"$nin": [None, ""]},
+        }},
+        {"$group": {
+            "_id": "$barrio",
+            "active_reports": {"$sum": 1},
+        }},
+        {"$sort": {"active_reports": -1, "_id": 1}},
+    ]
+    results = await db.reports.aggregate(pipeline).to_list(limit)
+    return {
+        "city": city,
+        "barrios": [
+            {
+                "barrio": r["_id"],
+                "active_reports": r.get("active_reports", 0),
+            }
+            for r in results
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
 def _city_report_bucket(created_at: str, refreshed_at: Optional[str] = None) -> str:
     timestamp = refreshed_at or created_at
     try:
@@ -263,10 +292,14 @@ def _city_report_bucket(created_at: str, refreshed_at: Optional[str] = None) -> 
     return "fossil"
 
 
-async def get_city_report_summary(db, city: str, preview_limit: int = 250) -> dict:
-    """Return active report counts, freshness buckets, and preview points for a city."""
+async def get_city_report_summary(db, city: str, barrio: str | None = None, preview_limit: int = 250) -> dict:
+    """Return active report counts, freshness buckets, and preview points for a city or barrio."""
+    query = {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}}
+    if barrio:
+        query["barrio"] = barrio
+
     reports = await db.reports.find(
-        {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}},
+        query,
         {
             "_id": 0,
             "id": 1,
@@ -275,12 +308,14 @@ async def get_city_report_summary(db, city: str, preview_limit: int = 250) -> di
             "created_at": 1,
             "refreshed_at": 1,
             "province": 1,
+            "barrio": 1,
         },
     ).to_list(5000)
 
     if not reports:
         return {
             "city": city,
+            "barrio": barrio or "",
             "province": "",
             "total_active_reports": 0,
             "fresh_reports": 0,
@@ -336,6 +371,7 @@ async def get_city_report_summary(db, city: str, preview_limit: int = 250) -> di
 
     return {
         "city": city,
+        "barrio": barrio or "",
         "province": reports[0].get("province", ""),
         "total_active_reports": len(reports),
         "fresh_reports": fresh_reports,
