@@ -701,6 +701,15 @@ export default function MapPage() {
                 {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
               </DropdownMenuItem>
               <DropdownMenuItem
+                onClick={() => user?.subscription_active ? navigate(`/city-report${userCity ? `?city=${encodeURIComponent(userCity)}` : ""}`) : navigate("/subscribe")}
+                className="cursor-pointer gap-2"
+                data-testid="menu-city-report"
+              >
+                <BarChart3 className="w-4 h-4 text-[#FF6B6B]" />
+                <span className="flex-1">{t("cityReportUi.menuLabel")}</span>
+                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem
                 onClick={() => {
                   setHeatmapMode(isHeatmapMode ? MAP_MODES.REPORTS : MAP_MODES.HEATMAP);
                 }}

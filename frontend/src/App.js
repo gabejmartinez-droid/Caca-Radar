@@ -10,6 +10,7 @@ import LoginPage from "./pages/LoginPage";
 import RegisterPage from "./pages/RegisterPage";
 import LeaderboardPage from "./pages/LeaderboardPage";
 import RankingsPage from "./pages/RankingsPage";
+import CityReportPage from "./pages/CityReportPage";
 import SubscriptionPage from "./pages/SubscriptionPage";
 import DashboardLogin from "./pages/DashboardLogin";
 import Dashboard from "./pages/Dashboard";
@@ -134,6 +135,7 @@ function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/rankings" element={<RankingsPage />} />
+              <Route path="/city-report" element={<CityReportPage />} />
               <Route path="/subscribe" element={<SubscriptionPage />} />
               <Route path="/profile" element={<ProfilePage />} />
               <Route path="/dashboard/login" element={<DashboardLogin />} />

@@ -12,6 +12,7 @@ import asyncio
 import json
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from urllib.parse import quote
 
 # Shared dependencies — DB, auth, models, utilities
 from deps import (
@@ -52,7 +53,7 @@ from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
-from city_rankings_service import get_city_rankings, get_barrio_rankings
+from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_city_report_summary
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
@@ -1775,6 +1776,40 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
             f"{title} según Caca Radar. "
             f"Consulta el ranking y ayuda a mantener tu barrio limpio. {APP_STORE_URL}"
         ),
+    }
+
+
+@api_router.get("/city-reports/cities")
+async def api_city_report_cities(request: Request):
+    """Premium: list cities with active reports for the city report feature."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    return await get_active_report_cities(db)
+
+
+@api_router.get("/city-reports")
+async def api_city_report(request: Request, city: str):
+    """Premium: city report summary with freshness buckets and preview points."""
+    user = await get_current_user(request)
+    if not user or not user.get("subscription_active"):
+        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    return await get_city_report_summary(db, city)
+
+
+@api_router.get("/city-reports/share")
+async def api_city_report_share(city: str):
+    """Public shareable city report summary."""
+    data = await get_city_report_summary(db, city)
+    if data.get("total_active_reports", 0) == 0:
+        raise HTTPException(status_code=404, detail="Ciudad sin reportes activos")
+    return {
+        **data,
+        "app_url": "https://cacaradar.es/city-report?city=" + quote(city),
+        "download_links": {
+            "ios": APP_STORE_URL,
+            "android": PLAY_STORE_URL,
+        },
     }
 
 # ==================== NOTIFICATIONS ====================

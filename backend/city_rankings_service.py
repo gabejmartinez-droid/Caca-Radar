@@ -1,7 +1,8 @@
 """City & Barrio Rankings Service — Population data from Wikipedia, report density calculations."""
 import logging
 import requests
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -218,6 +219,130 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
         "city": city,
         "barrios": barrio_list,
         "total_reports": len(reports),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def get_active_report_cities(db, limit: int = 500) -> dict:
+    """Return cities that currently have active reports."""
+    pipeline = [
+        {"$match": {"archived": {"$ne": True}, "flagged": {"$ne": True}}},
+        {"$group": {
+            "_id": "$municipality",
+            "active_reports": {"$sum": 1},
+            "province": {"$first": "$province"},
+        }},
+        {"$match": {"_id": {"$nin": [None, "", "Desconocido"]}}},
+        {"$sort": {"active_reports": -1, "_id": 1}},
+    ]
+    results = await db.reports.aggregate(pipeline).to_list(limit)
+    return {
+        "cities": [
+            {
+                "city": r["_id"],
+                "province": r.get("province", ""),
+                "active_reports": r.get("active_reports", 0),
+            }
+            for r in results
+        ],
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _city_report_bucket(created_at: str, refreshed_at: Optional[str] = None) -> str:
+    timestamp = refreshed_at or created_at
+    try:
+        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
+    except Exception:
+        return "fossil"
+    hours_diff = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
+    if hours_diff < 48:
+        return "fresh"
+    if hours_diff < 144:
+        return "older"
+    return "fossil"
+
+
+async def get_city_report_summary(db, city: str, preview_limit: int = 250) -> dict:
+    """Return active report counts, freshness buckets, and preview points for a city."""
+    reports = await db.reports.find(
+        {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}},
+        {
+            "_id": 0,
+            "id": 1,
+            "latitude": 1,
+            "longitude": 1,
+            "created_at": 1,
+            "refreshed_at": 1,
+            "province": 1,
+        },
+    ).to_list(5000)
+
+    if not reports:
+        return {
+            "city": city,
+            "province": "",
+            "total_active_reports": 0,
+            "fresh_reports": 0,
+            "older_reports": 0,
+            "fossil_reports": 0,
+            "preview_points": [],
+            "map_bounds": None,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    fresh_reports = 0
+    older_reports = 0
+    fossil_reports = 0
+    preview_points = []
+    latitudes = []
+    longitudes = []
+
+    for report in reports:
+        bucket = _city_report_bucket(report.get("created_at", ""), report.get("refreshed_at"))
+        if bucket == "fresh":
+            fresh_reports += 1
+        elif bucket == "older":
+            older_reports += 1
+        else:
+            fossil_reports += 1
+
+        lat = report.get("latitude")
+        lng = report.get("longitude")
+        if lat is None or lng is None:
+            continue
+
+        latitudes.append(lat)
+        longitudes.append(lng)
+
+        if len(preview_points) < preview_limit:
+            preview_points.append({
+                "id": report.get("id"),
+                "lat": lat,
+                "lng": lng,
+                "bucket": bucket,
+            })
+
+    map_bounds = None
+    if latitudes and longitudes:
+        map_bounds = {
+            "south": min(latitudes),
+            "west": min(longitudes),
+            "north": max(latitudes),
+            "east": max(longitudes),
+            "center_lat": sum(latitudes) / len(latitudes),
+            "center_lng": sum(longitudes) / len(longitudes),
+        }
+
+    return {
+        "city": city,
+        "province": reports[0].get("province", ""),
+        "total_active_reports": len(reports),
+        "fresh_reports": fresh_reports,
+        "older_reports": older_reports,
+        "fossil_reports": fossil_reports,
+        "preview_points": preview_points,
+        "map_bounds": map_bounds,
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
