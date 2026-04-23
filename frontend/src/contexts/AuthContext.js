@@ -4,6 +4,7 @@ import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
 import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
 import { disableGoogleAutoSelect } from "../utils/googleIdentity";
 import { signOutGoogleNative } from "../utils/googleNative";
+import { getCurrentPlatform } from "../versionInfo";
 
 const AuthContext = createContext(null);
 
@@ -17,7 +18,7 @@ axios.interceptors.request.use((config) => {
     if (token) {
       config.headers["Authorization"] = `Bearer ${token}`;
     }
-    config.headers["X-Platform"] = "capacitor";
+    config.headers["X-Platform"] = getCurrentPlatform();
     // Don't send cookies on native (they won't work due to proxy CORS)
     config.withCredentials = false;
   } else {

@@ -1,8 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Trash2 } from "lucide-react";
+import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Globe, Smartphone, MonitorSmartphone } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
 import { toast } from "sonner";
 import axios from "axios";
 
@@ -20,6 +21,36 @@ function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
       <p className="text-2xl font-black text-[#2B2D42]">{value}</p>
       {sub && <p className="text-xs text-[#8D99AE] mt-0.5">{sub}</p>}
     </div>
+  );
+}
+
+function formatDateTime(value) {
+  if (!value) return "Nunca";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Nunca";
+  return new Intl.DateTimeFormat("es-ES", {
+    dateStyle: "short",
+    timeStyle: "short",
+  }).format(date);
+}
+
+function PlatformBadge({ platform }) {
+  const normalized = (platform || "unknown").toLowerCase();
+  const config = normalized === "ios"
+    ? { label: "iPhone", Icon: Smartphone, color: "#42A5F5", bg: "#42A5F515" }
+    : normalized === "android"
+      ? { label: "Android", Icon: Smartphone, color: "#66BB6A", bg: "#66BB6A15" }
+      : normalized === "web"
+        ? { label: "Web", Icon: Globe, color: "#8D99AE", bg: "#8D99AE15" }
+        : normalized === "native"
+          ? { label: "Nativo", Icon: MonitorSmartphone, color: "#FFA726", bg: "#FFA72615" }
+          : { label: "Desconocido", Icon: MonitorSmartphone, color: "#8D99AE", bg: "#8D99AE15" };
+
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: config.color, backgroundColor: config.bg }}>
+      <config.Icon className="w-3 h-3" />
+      {config.label}
+    </span>
   );
 }
 
@@ -179,30 +210,61 @@ export default function AdminDashboardPage() {
               </div>
             </div>
             <p className="text-xs text-[#8D99AE] mb-3">{userTotal} usuarios encontrados</p>
-
-            <div className="space-y-2">
-              {users.map((u, i) => (
-                <div key={u.email} className="bg-white rounded-xl p-3 flex items-center gap-3" data-testid={`user-row-${i}`}>
-                  <div className="w-8 h-8 bg-[#FF6B6B]/10 rounded-full flex items-center justify-center text-[#FF6B6B] font-bold text-xs">
-                    {(u.username || u.name || "?")[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-[#2B2D42] truncate">{u.username || u.name || u.email}</p>
-                    <p className="text-[10px] text-[#8D99AE] truncate">{u.email}</p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className="text-xs font-bold text-[#2B2D42]">{u.total_score || 0} pts</p>
-                    <p className="text-[10px] text-[#8D99AE]">{u.report_count || 0} rep · {u.vote_count || 0} vot</p>
-                  </div>
-                  <div className="shrink-0">
-                    {u.subscription_active ? (
-                      <span className="text-[10px] bg-[#66BB6A]/10 text-[#66BB6A] px-2 py-0.5 rounded-full font-bold">PRO</span>
-                    ) : (
-                      <span className="text-[10px] bg-gray-100 text-[#8D99AE] px-2 py-0.5 rounded-full">FREE</span>
-                    )}
-                  </div>
-                </div>
-              ))}
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="min-w-[220px]">Usuario</TableHead>
+                    <TableHead className="min-w-[120px]">Último login</TableHead>
+                    <TableHead className="min-w-[110px]">Plataforma</TableHead>
+                    <TableHead className="min-w-[90px]">Reportes</TableHead>
+                    <TableHead className="min-w-[80px]">Votos</TableHead>
+                    <TableHead className="min-w-[90px]">Puntos</TableHead>
+                    <TableHead className="min-w-[110px]">Acceso</TableHead>
+                    <TableHead className="min-w-[120px]">Auth</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {users.map((u, i) => (
+                    <TableRow key={u.email} data-testid={`user-row-${i}`}>
+                      <TableCell>
+                        <div className="min-w-0">
+                          <p className="font-bold text-[#2B2D42] truncate">{u.display_name}</p>
+                          <p className="text-[11px] text-[#8D99AE] truncate">{u.email}</p>
+                          <p className="text-[10px] text-[#8D99AE] truncate">
+                            {u.created_at ? `Alta ${formatDateTime(u.created_at)}` : "Sin fecha de alta"}
+                          </p>
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-xs text-[#2B2D42]">{formatDateTime(u.last_login_at)}</TableCell>
+                      <TableCell><PlatformBadge platform={u.last_platform} /></TableCell>
+                      <TableCell>
+                        <div className="text-xs font-bold text-[#2B2D42]">{u.reports_count || 0}</div>
+                        <div className="text-[10px] text-[#8D99AE]">racha {u.streak_days || 0}</div>
+                      </TableCell>
+                      <TableCell className="text-xs font-bold text-[#2B2D42]">{u.votes_count || 0}</TableCell>
+                      <TableCell>
+                        <div className="text-xs font-bold text-[#2B2D42]">{u.total_score || 0}</div>
+                        <div className="text-[10px] text-[#8D99AE]">trust {u.trust_score || 0}</div>
+                      </TableCell>
+                      <TableCell>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
+                          u.subscription_active ? "bg-[#66BB6A]/10 text-[#66BB6A]" : "bg-gray-100 text-[#8D99AE]"
+                        }`}>
+                          {u.subscription_label}
+                        </span>
+                        {u.subscription_type && (
+                          <div className="text-[10px] text-[#8D99AE] mt-1">{u.subscription_type}</div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <div className="text-[11px] text-[#2B2D42]">{(u.auth_methods || []).join(", ") || "—"}</div>
+                        <div className="text-[10px] text-[#8D99AE]">{u.rank || "—"}</div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
 
             {/* Pagination */}

@@ -12,6 +12,7 @@ import asyncio
 import json
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from typing import Optional
 from urllib.parse import quote
 
 # Shared dependencies — DB, auth, models, utilities
@@ -340,7 +341,51 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str) -> dic
     }
 
 
-async def complete_google_login_for_user(user: dict, response: Response) -> dict:
+def normalize_login_platform(request: Request) -> str:
+    context = get_request_context(request)
+    platform = (context.get("platform") or "").strip().strip('"').lower()
+    if platform in {"ios", "android", "web"}:
+        return platform
+    if platform == "capacitor":
+        user_agent = (context.get("user_agent") or "").lower()
+        if "iphone" in user_agent or "ios" in user_agent:
+            return "ios"
+        if "android" in user_agent:
+            return "android"
+        return "native"
+    if platform:
+        return platform
+    user_agent = (context.get("user_agent") or "").lower()
+    if "iphone" in user_agent or "ipad" in user_agent:
+        return "ios"
+    if "android" in user_agent:
+        return "android"
+    return "web"
+
+
+async def update_login_metadata(user_id: ObjectId, request: Request, existing_user: Optional[dict] = None) -> dict:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    updates = {
+        "last_login_at": now_iso,
+        "last_login_platform": normalize_login_platform(request),
+    }
+    context = get_request_context(request)
+    if context.get("app_version"):
+        updates["last_login_app_version"] = context["app_version"]
+    if context.get("app_environment"):
+        updates["last_login_app_environment"] = context["app_environment"]
+    if context.get("user_agent"):
+        updates["last_login_user_agent"] = context["user_agent"]
+    await db.users.update_one({"_id": user_id}, {"$set": updates})
+    if existing_user is not None:
+        existing_user.update(updates)
+        return existing_user
+    user = await db.users.find_one({"_id": user_id})
+    return user
+
+
+async def complete_google_login_for_user(user: dict, request: Request, response: Response) -> dict:
+    user = await update_login_metadata(user["_id"], request, user)
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, user["email"], user.get("role", "user"))
     refresh_token = create_refresh_token(user_id)
@@ -452,7 +497,7 @@ async def find_or_create_google_user(google_claims: dict) -> tuple[dict, bool]:
 
 
 @api_router.post("/auth/google/login")
-async def google_auth_login(data: GoogleTokenLogin, response: Response):
+async def google_auth_login(data: GoogleTokenLogin, request: Request, response: Response):
     google_claims = await verify_google_login_credential(data.credential)
     user, created = await find_or_create_google_user(google_claims)
     logger.info(
@@ -461,7 +506,7 @@ async def google_auth_login(data: GoogleTokenLogin, response: Response):
         user.get("email"),
         google_claims["sub"],
     )
-    return await complete_google_login_for_user(user, response)
+    return await complete_google_login_for_user(user, request, response)
 
 
 @api_router.post("/auth/google/link")
@@ -489,7 +534,7 @@ async def link_google_account(data: GoogleTokenLogin, request: Request):
 # ==================== AUTH ROUTES ====================
 
 @api_router.post("/auth/register")
-async def register(data: UserRegister, response: Response):
+async def register(data: UserRegister, request: Request, response: Response):
     import re
     email = data.email.lower()
     existing = await db.users.find_one({"email": email})
@@ -533,6 +578,8 @@ async def register(data: UserRegister, response: Response):
     }
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
+    user_doc["_id"] = result.inserted_id
+    user_doc = await update_login_metadata(result.inserted_id, request, user_doc)
     
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
@@ -587,6 +634,7 @@ async def login(data: UserLogin, request: Request, response: Response):
         if updates:
             await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
             user.update(updates)
+    user = await update_login_metadata(user["_id"], request, user)
     
     user_id = str(user["_id"])
     role = user.get("role", "user")
@@ -2458,6 +2506,7 @@ async def admin_login_step2(request: Request, response: Response):
     user = await db.users.find_one({"email": email, "role": "admin"})
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
+    user = await update_login_metadata(user["_id"], request, user)
 
     user_id = str(user["_id"])
     access_token = create_access_token(user_id, email, "admin")
@@ -2539,11 +2588,28 @@ async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: 
         ]
     users = await db.users.find(
         query,
-        {"_id": 0, "password_hash": 0}
-    ).sort("total_score", -1).skip(skip).limit(limit).to_list(limit)
+        {
+            "_id": 0,
+            "password_hash": 0,
+            "linked_providers": 0,
+        }
+    ).sort("last_login_at", -1).skip(skip).limit(limit).to_list(limit)
 
     total = await db.users.count_documents(query)
-    return {"users": users, "total": total, "skip": skip, "limit": limit}
+    serialized = []
+    for user in users:
+        auth_methods = normalize_auth_methods(user)
+        serialized.append({
+            **user,
+            "auth_methods": auth_methods,
+            "display_name": user.get("username") or user.get("name") or user.get("email"),
+            "reports_count": user.get("report_count", 0),
+            "votes_count": user.get("vote_count", 0),
+            "subscription_label": "PRO" if user.get("subscription_active") else "FREE",
+            "last_seen_at": user.get("last_login_at") or user.get("last_active_date"),
+            "last_platform": user.get("last_login_platform") or "unknown",
+        })
+    return {"users": serialized, "total": total, "skip": skip, "limit": limit}
 
 @api_router.get("/admin/photo-violations")
 async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 50):
