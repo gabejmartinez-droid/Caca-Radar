@@ -247,6 +247,7 @@ app.state.started_at = datetime.now(timezone.utc).isoformat()
 api_router = APIRouter(prefix="/api")
 
 ACTION_PROXIMITY_METERS = 5
+REPORT_CLEARED_VOTES_NEEDED = 2
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 
 
@@ -1218,13 +1219,14 @@ async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str
 
 def build_report_doc(report_id: str, data: ReportCreate, user_id: str, user: dict, geo: dict, is_duplicate: bool) -> dict:
     """Build the report document for insertion."""
+    now = datetime.now(timezone.utc).isoformat()
     category = data.category if data.category in REPORT_CATEGORIES else "dog_feces"
     doc = {
         "id": report_id, "latitude": data.latitude, "longitude": data.longitude,
         "photo_url": None, "description": data.description, "category": category,
-        "created_at": datetime.now(timezone.utc).isoformat(), "status": "pending",
-        "status_score": 0, "still_there_count": 0, "cleaned_count": 0,
-        "upvotes": 0, "downvotes": 0, "validation_count": 0,
+        "created_at": now, "refreshed_at": now, "status": "verified",
+        "status_score": 1, "still_there_count": 1, "cleaned_count": 0,
+        "upvotes": 0, "downvotes": 0, "validation_count": 1,
         "user_id": user_id, "contributor_name": "Anónimo", "contributor_rank": None,
         "municipality": geo["municipality"], "province": geo["province"], "country": geo["country"],
         "barrio": geo.get("barrio", ""),
@@ -1432,10 +1434,10 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     if user:
         await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$inc": {"vote_count": 1}})
     
-    # Auto-archive if cleaned votes >= 3
+    # Auto-archive once the report is treated as cleared/cleaned up
     updated_report = await db.reports.find_one({"id": report_id})
-    if updated_report.get("cleaned_count", 0) >= 3:
-        await db.reports.update_one({"id": report_id}, {"$set": {"archived": True}})
+    if updated_report.get("cleaned_count", 0) >= REPORT_CLEARED_VOTES_NEEDED:
+        await db.reports.update_one({"id": report_id}, {"$set": {"archived": True, "status": "archived"}})
     
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
@@ -1533,23 +1535,12 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
         "vote_type": vote_type, "created_at": datetime.now(timezone.utc).isoformat()
     })
 
-    # Update report vote counts
-    inc_field = "upvotes" if vote_type == "upvote" else "downvotes"
-    await db.reports.update_one({"id": report_id}, {"$inc": {inc_field: 1}})
-
-    validation_result = None
-    if report.get("user_id") != user_id:
-        existing_validation = await db.validations.find_one({"report_id": report_id, "user_id": user_id})
-        if not existing_validation:
-            is_sub = user.get("subscription_active", False) if user else False
-            validation_result = await process_validation(
-                db,
-                report_id,
-                user_id,
-                "confirm" if vote_type == "upvote" else "reject",
-                is_sub,
-                sync_report_vote_counts=False,
-            )
+    # Update report vote counts and treat downvotes as "no longer there" signals.
+    report_updates = {"upvotes": 1} if vote_type == "upvote" else {"downvotes": 1, "cleaned_count": 1, "status_score": -1}
+    update_doc = {"$inc": report_updates}
+    if vote_type == "upvote":
+        update_doc["$set"] = {"refreshed_at": datetime.now(timezone.utc).isoformat(), "status": "verified"}
+    await db.reports.update_one({"id": report_id}, update_doc)
 
     # Award/deduct points to reporter
     reporter_id = report.get("user_id", "")
@@ -1569,14 +1560,23 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     except Exception:
         pass
 
+    updated_report = await db.reports.find_one({"id": report_id})
+    cleared = False
+    if vote_type == "downvote" and updated_report and updated_report.get("cleaned_count", 0) >= REPORT_CLEARED_VOTES_NEEDED:
+        await db.reports.update_one({"id": report_id}, {"$set": {"archived": True, "status": "archived"}})
+        updated_report = await db.reports.find_one({"id": report_id})
+        cleared = True
+
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
 
     return {
         "message": "Voto registrado",
         "vote_type": vote_type,
-        "validation_synced": bool(validation_result),
-        "consensus": validation_result.get("consensus") if validation_result else None,
+        "validation_synced": False,
+        "consensus": None,
+        "cleared": cleared,
+        "cleaned_count": updated_report.get("cleaned_count", 0) if updated_report else report.get("cleaned_count", 0),
     }
 
 # ==================== USER GAMIFICATION ====================
@@ -1642,7 +1642,7 @@ async def get_user_impact(request: Request):
 
     # Compute stats
     total_reports = len(user_reports)
-    cleaned_reports = sum(1 for r in user_reports if r.get("archived") or r.get("cleaned_count", 0) >= 3)
+    cleaned_reports = sum(1 for r in user_reports if r.get("archived") or r.get("cleaned_count", 0) >= REPORT_CLEARED_VOTES_NEEDED)
     active_reports = sum(1 for r in user_reports if not r.get("archived"))
     total_confirmations = len(voted_ids)
     total_upvotes_received = sum(r.get("upvotes", 0) for r in user_reports)
@@ -1668,7 +1668,7 @@ async def get_user_impact(request: Request):
     # Mark each report with its type for the map
     map_points = []
     for r in user_reports:
-        is_cleaned = r.get("archived") or r.get("cleaned_count", 0) >= 3
+        is_cleaned = r.get("archived") or r.get("cleaned_count", 0) >= REPORT_CLEARED_VOTES_NEEDED
         map_points.append({
             "id": r["id"], "lat": r["latitude"], "lng": r["longitude"],
             "type": "cleaned" if is_cleaned else "active",
