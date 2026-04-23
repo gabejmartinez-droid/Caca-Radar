@@ -113,3 +113,11 @@ Impacted environments:
 Changes:
 - Automated web build
 
+### 2026-04-22 — Pending deploy
+
+Impacted environments:
+- Android `1.1.5 (7)`
+
+Changes:
+- Iterated Android upload bundle after Google Play version conflict
+
