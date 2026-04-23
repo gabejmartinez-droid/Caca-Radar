@@ -43,11 +43,11 @@ function BarrioCard({ barrio, index }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[#2B2D42] text-sm truncate">{barrio.barrio}</p>
-        <p className="text-xs text-[#8D99AE]">{barrio.verified_reports} verificados</p>
+        <p className="text-xs text-[#8D99AE]">{barrio.verified_reports} {barrio.verified_label}</p>
       </div>
       <div className="text-right shrink-0">
         <p className="font-black text-lg text-[#FF6B6B]">{barrio.active_reports}</p>
-        <p className="text-[10px] text-[#8D99AE]">reportes</p>
+        <p className="text-[10px] text-[#8D99AE]">{barrio.reports_label}</p>
       </div>
       <div className="w-12 h-2 bg-gray-100 rounded-full overflow-hidden">
         <div className="h-full bg-[#FF6B6B] rounded-full" style={{ width: `${intensity}%` }} />
@@ -100,7 +100,11 @@ export default function RankingsPage() {
 
   const handleShare = async (type) => {
     try {
-      const { data } = await axios.get(`${API}/rankings/cities/share?list_type=${type}`);
+      const { data } = await axios.get(
+        type === "barrios"
+          ? `${API}/rankings/barrios/share?city=${encodeURIComponent(selectedCity)}`
+          : `${API}/rankings/cities/share?list_type=${type}`
+      );
       if (navigator.share) {
         await navigator.share({ title: data.title, text: data.share_text, url: data.app_url });
       } else {
@@ -230,12 +234,26 @@ export default function RankingsPage() {
 
             <div className="space-y-2">
               {barrioData?.barrios?.map((b, i) => (
-                <BarrioCard key={b.barrio} barrio={b} index={i} />
+                <BarrioCard
+                  key={b.barrio}
+                  barrio={{
+                    ...b,
+                    verified_label: t("rankingUi.verifiedReportsShort"),
+                    reports_label: t("rankingUi.reportsLabel"),
+                  }}
+                  index={i}
+                />
               ))}
               {(!barrioData?.barrios || barrioData.barrios.length === 0) && (
                 <p className="text-center text-[#8D99AE] py-8">{t("rankingUi.noNeighborhoodData")}</p>
               )}
             </div>
+
+            {!!barrioData?.barrios?.length && (
+              <Button onClick={() => handleShare("barrios")} variant="outline" className="w-full mt-4 border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-barrio-rankings-btn">
+                <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
+              </Button>
+            )}
           </>
         )}
       </div>

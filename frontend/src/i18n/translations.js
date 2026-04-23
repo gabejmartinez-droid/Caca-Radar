@@ -2092,6 +2092,8 @@ const extraUiTranslations = {
       cityLabel: "Ciudad",
       activeReportsInCity: "{count} reportes activos en {city}",
       noNeighborhoodData: "No hay datos de barrios para esta ciudad",
+      verifiedReportsShort: "verificados",
+      reportsLabel: "reportes",
     },
     impactUi: {
       loadError: "Error cargando datos de impacto",
@@ -2177,6 +2179,8 @@ const extraUiTranslations = {
       cityLabel: "City",
       activeReportsInCity: "{count} active reports in {city}",
       noNeighborhoodData: "No neighborhood data for this city",
+      verifiedReportsShort: "verified",
+      reportsLabel: "reports",
     },
     impactUi: {
       loadError: "Error loading impact data",

@@ -1755,6 +1755,28 @@ async def api_barrio_rankings(request: Request, city: str = "Madrid"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
     return await get_barrio_rankings(db, city)
 
+@api_router.get("/rankings/barrios/share")
+async def api_barrio_rankings_share(city: str = "Madrid"):
+    """Public shareable barrio ranking data (top 10 only) for a city."""
+    data = await get_barrio_rankings(db, city, limit=10)
+    title = f"Los barrios con más avisos en {city}"
+    return {
+        "title": title,
+        "city": city,
+        "barrios": data.get("barrios", [])[:10],
+        "total_reports": data.get("total_reports", 0),
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "app_url": "https://cacaradar.es",
+        "download_links": {
+            "ios": APP_STORE_URL,
+            "android": PLAY_STORE_URL,
+        },
+        "share_text": (
+            f"{title} según Caca Radar. "
+            f"Consulta el ranking y ayuda a mantener tu barrio limpio. {APP_STORE_URL}"
+        ),
+    }
+
 # ==================== NOTIFICATIONS ====================
 
 @api_router.get("/notifications")
