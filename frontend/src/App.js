@@ -29,6 +29,7 @@ import DeleteAccountPage from "./pages/DeleteAccountPage";
 import CookiesPage from "./pages/CookiesPage";
 import CommunityGuidelinesPage from "./pages/CommunityGuidelinesPage";
 import StatusPage from "./pages/StatusPage";
+import DownloadPage from "./pages/DownloadPage";
 import SpainLocationGate from "./components/SpainLocationGate";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
@@ -152,6 +153,7 @@ function App() {
               <Route path="/delete-account" element={<DeleteAccountPage />} />
               <Route path="/cookies" element={<CookiesPage />} />
               <Route path="/status" element={<StatusPage />} />
+              <Route path="/download" element={<DownloadPage />} />
               <Route path="/community" element={<CommunityGuidelinesPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/reset-password" element={<ResetPasswordPage />} />

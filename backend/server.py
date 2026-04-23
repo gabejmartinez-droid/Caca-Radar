@@ -251,6 +251,10 @@ REPORT_CLEARED_VOTES_NEEDED = 2
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 
 
+def get_frontend_url() -> str:
+    return os.environ.get("FRONTEND_URL", "https://cacaradar.es").rstrip("/")
+
+
 def load_app_versions() -> dict:
     try:
         with APP_VERSIONS_PATH.open("r", encoding="utf-8") as fh:
@@ -1784,12 +1788,13 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
     data = await get_city_rankings(db, limit=10)
     cities = data.get(list_type, data["dirtiest"])[:10]
     title = "Las ciudades más sucias de España" if list_type == "dirtiest" else "Las ciudades más limpias de España"
+    frontend_url = get_frontend_url()
     return {
         "title": title,
         "cities": cities,
         "total_cities": data["total_cities"],
         "generated_at": data["generated_at"],
-        "app_url": "https://cacaradar.es",
+        "app_url": f"{frontend_url}/download?kind=city-rankings&list_type={quote(list_type)}",
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1810,13 +1815,14 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     """Public shareable barrio ranking data (top 10 only) for a city."""
     data = await get_barrio_rankings(db, city, limit=10)
     title = f"Los barrios con más avisos en {city}"
+    frontend_url = get_frontend_url()
     return {
         "title": title,
         "city": city,
         "barrios": data.get("barrios", [])[:10],
         "total_reports": data.get("total_reports", 0),
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "app_url": "https://cacaradar.es",
+        "app_url": f"{frontend_url}/download?kind=barrio-rankings&city={quote(city)}",
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1861,12 +1867,13 @@ async def api_city_report_share(city: str, barrio: str | None = None):
     data = await get_city_report_summary(db, city, barrio=barrio)
     if data.get("total_active_reports", 0) == 0:
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
-    query = f"city={quote(city)}"
+    frontend_url = get_frontend_url()
+    query = f"kind=city-report&city={quote(city)}"
     if barrio:
         query += f"&barrio={quote(barrio)}"
     return {
         **data,
-        "app_url": "https://cacaradar.es/city-report?" + query,
+        "app_url": f"{frontend_url}/download?{query}",
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -2338,7 +2345,7 @@ async def get_user_share_data(user_id_param: str):
 
     display_name = u.get("username") or u.get("name", "Usuario")
     badge_count = len(u.get("badges", []))
-    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.emergent.host")
+    frontend_url = get_frontend_url()
 
     return {
         "title": f"{display_name} en Caca Radar",
@@ -2348,7 +2355,7 @@ async def get_user_share_data(user_id_param: str):
         "total_score": u.get("total_score", 0),
         "report_count": u.get("report_count", 0),
         "badge_count": badge_count,
-        "url": f"{frontend_url}/profile",
+        "url": f"{frontend_url}/download?kind=profile&name={quote(display_name)}",
         "app_store_url": APP_STORE_URL,
         "play_store_url": PLAY_STORE_URL,
         "download_text": f"Descarga Caca Radar:\niOS: {APP_STORE_URL}\nAndroid: {PLAY_STORE_URL}"
@@ -2860,9 +2867,9 @@ async def get_share_data(report_id: str, request: Request):
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
-    frontend_url = os.environ.get("FRONTEND_URL", "https://caca-radar.emergent.host")
-    share_url = f"{frontend_url}/?report={report_id}"
+    frontend_url = get_frontend_url()
     municipality = report.get("municipality", "España")
+    share_url = f"{frontend_url}/download?kind=report&report_id={quote(report_id)}&city={quote(municipality)}"
     created = report.get("created_at", "")
     contributor = report.get("contributor_name", "Anónimo")
 

@@ -535,7 +535,7 @@ export default function MapPage() {
       if (navigator.share) {
         await navigator.share({ title: data.title, text: data.text, url: data.url });
       } else {
-        await navigator.clipboard.writeText(data.url);
+        await navigator.clipboard.writeText(`${data.text}\n\n${data.url}`);
         toast.success(t("mapUi.linkCopied"));
       }
     } catch (err) {

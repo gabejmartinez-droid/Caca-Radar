@@ -125,7 +125,7 @@ export default function ProfilePage() {
       if (navigator.share) {
         await navigator.share({ title, text: shareText, url: data.url });
       } else {
-        await navigator.clipboard.writeText(shareText);
+        await navigator.clipboard.writeText(`${shareText}\n\n${data.url}`);
         toast.success(t("rankUi.profileCopied"));
       }
     } catch (err) {

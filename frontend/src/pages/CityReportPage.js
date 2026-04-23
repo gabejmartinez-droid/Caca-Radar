@@ -244,9 +244,9 @@ export default function CityReportPage() {
 
   const handleShare = async () => {
     if (!summary?.city) return;
-    const query = new URLSearchParams({ city: summary.city });
+    const query = new URLSearchParams({ kind: "city-report", city: summary.city });
     if (summary.barrio) query.set("barrio", summary.barrio);
-    const shareUrl = `${HOSTED_WEB_URL}/city-report?${query.toString()}`;
+    const shareUrl = `${HOSTED_WEB_URL}/download?${query.toString()}`;
     const shareText = formatTranslation(t, "cityReportUi.shareText", {
       location: summary.barrio
         ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })

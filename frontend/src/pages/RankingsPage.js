@@ -108,7 +108,7 @@ export default function RankingsPage() {
       if (navigator.share) {
         await navigator.share({ title: data.title, text: data.share_text, url: data.app_url });
       } else {
-        await navigator.clipboard.writeText(data.share_text);
+        await navigator.clipboard.writeText(`${data.share_text}\n\n${data.app_url}`);
         toast.success(t("rankingUi.copied"));
       }
     } catch (err) {
