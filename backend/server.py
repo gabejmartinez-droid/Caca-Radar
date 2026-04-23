@@ -26,7 +26,8 @@ from deps import (
     UsernameUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code,
-    APP_STORE_URL, PLAY_STORE_URL, VIP_EMAILS,
+    APP_STORE_URL, PLAY_STORE_URL,
+    is_vip_email,
     GOOGLE_WEB_CLIENT_ID, GOOGLE_ALLOWED_CLIENT_IDS,
     APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url,
 )
@@ -373,7 +374,7 @@ async def verify_google_login_credential(credential: str) -> dict:
 async def find_or_create_google_user(google_claims: dict) -> tuple[dict, bool]:
     provider_profile = build_google_provider_profile(google_claims)
     email = google_claims["email"]
-    is_vip = email in VIP_EMAILS
+    is_vip = is_vip_email(email)
 
     user = await db.users.find_one({"linked_providers.google.subject": google_claims["sub"]})
     if user:
@@ -505,7 +506,7 @@ async def register(data: UserRegister, response: Response):
         raise HTTPException(status_code=400, detail="El nombre de usuario ya está en uso")
     
     hashed = hash_password(data.password)
-    is_vip = email in VIP_EMAILS
+    is_vip = is_vip_email(email)
     user_doc = {
         "email": email,
         "password_hash": hashed,
@@ -576,7 +577,7 @@ async def login(data: UserLogin, request: Request, response: Response):
     await db.login_attempts.delete_one({"identifier": identifier})
     
     # Ensure VIP users always have premium and healthy trust
-    if email in VIP_EMAILS:
+    if is_vip_email(email):
         updates = {}
         if not user.get("subscription_active"):
             updates["subscription_active"] = True
@@ -1162,7 +1163,7 @@ async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str
     if user is not None and await check_cooldown(db, user_id):
         raise HTTPException(status_code=429, detail="Espera al menos 30 segundos entre reportes")
     # VIP users bypass trust restrictions
-    if user is not None and user.get("email", "").lower() not in VIP_EMAILS:
+    if user is not None and not is_vip_email(user.get("email", "")):
         tier = get_trust_tier(user.get("trust_score", 50))
         if tier == "restricted":
             raise HTTPException(status_code=403, detail="Tu cuenta está restringida por comportamiento sospechoso")

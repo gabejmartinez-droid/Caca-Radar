@@ -176,7 +176,23 @@ GOOGLE_WEB_CLIENT_ID = os.environ.get("GOOGLE_WEB_CLIENT_ID", "").strip()
 GOOGLE_ALLOWED_CLIENT_IDS = os.environ.get("GOOGLE_ALLOWED_CLIENT_IDS", "").strip()
 
 # ── VIP / Owner emails — permanent premium access ────
-VIP_EMAILS = {"gabejmartinez@gmail.com"}
+VIP_EMAILS = {
+    "alexhmartinez27@gmail.com",
+    "anavlopez888@gmail.com",
+    "arcatasio@gmail.com",
+    "doughboymarine@gmail.com",
+    "gabejmartinez@gmail.com",
+    "lhminvestigations@yahoo.com",
+    "martinez.maria.maggie@gmail.com",
+    "olesiamartinez@gmail.com",
+    "paulshareshisfreedom@gmail.com",
+    "pem_es@yahoo.es",
+    "tgrazini@gmail.com",
+}
+
+
+def is_vip_email(email: Optional[str]) -> bool:
+    return (email or "").strip().lower() in VIP_EMAILS
 
 # ── Auth Middleware ───────────────────────────────────
 async def get_current_user(request: Request) -> Optional[dict]:
@@ -194,6 +210,18 @@ async def get_current_user(request: Request) -> Optional[dict]:
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             return None
+        email = (user.get("email") or "").strip().lower()
+        if is_vip_email(email):
+            updates = {}
+            if not user.get("subscription_active"):
+                updates["subscription_active"] = True
+                updates["subscription_type"] = "lifetime"
+                updates["subscription_expires"] = None
+            if user.get("trust_score", 50) < 50:
+                updates["trust_score"] = 50
+            if updates:
+                await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+                user.update(updates)
         user["_id"] = str(user["_id"])
         user.pop("password_hash", None)
         return user
