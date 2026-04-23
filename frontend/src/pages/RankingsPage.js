@@ -198,6 +198,9 @@ export default function RankingsPage() {
               {formatTranslation(t, "rankingUi.citySummary", { count: cityData?.total_cities || 0 })}
             </p>
 
+            <p className="text-center text-sm font-semibold text-[#5C677D] px-4 mb-3">
+              {t("shareUi.tagline")}
+            </p>
             <div className="space-y-2 mb-4">
               {currentList.map((city, i) => (
                 <CityRankingCard key={city.city} city={city} index={i} type={listType} />
@@ -232,6 +235,9 @@ export default function RankingsPage() {
               {formatTranslation(t, "rankingUi.activeReportsInCity", { count: barrioData?.total_reports || 0, city: selectedCity })}
             </p>
 
+            <p className="text-center text-sm font-semibold text-[#5C677D] px-4 mb-3">
+              {t("shareUi.tagline")}
+            </p>
             <div className="space-y-2">
               {barrioData?.barrios?.map((b, i) => (
                 <BarrioCard

@@ -416,6 +416,9 @@ export default function CityReportPage() {
           <div className="flex justify-center py-12"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>
         ) : summary ? (
           <div className="space-y-4">
+            <p className="text-center text-sm font-semibold text-[#5C677D] px-4">
+              {t("shareUi.tagline")}
+            </p>
             <div className="bg-white rounded-2xl border border-[#8D99AE]/10 shadow-sm p-5">
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">

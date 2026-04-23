@@ -3144,6 +3144,29 @@ Object.keys(translations).forEach((lang) => {
   });
 });
 
+const shareUiTranslations = {
+  es: { shareUi: { tagline: "¿Cuánta caca de perro hay en nuestras aceras?" } },
+  en: { shareUi: { tagline: "How much dog poop is on our sidewalks?" } },
+  de: { shareUi: { tagline: "Wie viel Hundekot liegt auf unseren Gehwegen?" } },
+  nl: { shareUi: { tagline: "Hoeveel hondenpoep ligt er op onze stoepen?" } },
+  pl: { shareUi: { tagline: "Ile psich kup jest na naszych chodnikach?" } },
+  uk: { shareUi: { tagline: "Скільки собачих какашок на наших тротуарах?" } },
+  ru: { shareUi: { tagline: "Сколько собачьих какашек на наших тротуарах?" } },
+  eu: { shareUi: { tagline: "Zenbat txakur kaka dago gure espaloietan?" } },
+  ca: { shareUi: { tagline: "Quanta caca de gos hi ha a les nostres voreres?" } },
+  val: { shareUi: { tagline: "Quanta caca de gos hi ha en les nostres voreres?" } },
+};
+
+Object.keys(translations).forEach((lang) => {
+  const extra = shareUiTranslations[lang] || shareUiTranslations.en;
+  Object.entries(extra).forEach(([group, values]) => {
+    translations[lang][group] = {
+      ...(translations[lang][group] || {}),
+      ...values,
+    };
+  });
+});
+
 const navigationTranslations = {
   es: {
     legalUi: {
