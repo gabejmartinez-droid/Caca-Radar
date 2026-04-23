@@ -3167,6 +3167,159 @@ Object.keys(translations).forEach((lang) => {
   });
 });
 
+const appGateTranslations = {
+  es: {
+    appGateUi: {
+      checkingTitle: "Comprobando ubicación",
+      checkingBody: "Necesitamos tu ubicación actual para confirmar que estás dentro de España.",
+      blockedTitle: "Disponible solo en España",
+      outsideSpain: "Caca Radar solo funciona cuando tu ubicación GPS actual está dentro del territorio nacional de España.",
+      permissionDenied: "Necesitamos permiso de ubicación para comprobar si estás en España.",
+      unavailable: "No pudimos obtener tu ubicación actual. Inténtalo de nuevo en unos segundos.",
+      timeout: "La comprobación de ubicación tardó demasiado. Vuelve a intentarlo.",
+      noGeolocation: "Este dispositivo no ofrece geolocalización, así que no podemos habilitar la app.",
+      spainOnlyNotice: "El acceso a la app está limitado a personas cuya ubicación actual esté en {country}.",
+      retry: "Volver a comprobar",
+    },
+  },
+  en: {
+    appGateUi: {
+      checkingTitle: "Checking location",
+      checkingBody: "We need your current location to confirm you're inside Spain.",
+      blockedTitle: "Available only in Spain",
+      outsideSpain: "Caca Radar only works when your current GPS location is within Spain's national territory.",
+      permissionDenied: "We need location permission to check whether you're in Spain.",
+      unavailable: "We couldn't get your current location. Please try again in a few seconds.",
+      timeout: "The location check took too long. Please try again.",
+      noGeolocation: "This device doesn't provide geolocation, so we can't enable the app.",
+      spainOnlyNotice: "App access is limited to people whose current location is inside {country}.",
+      retry: "Check again",
+    },
+  },
+  de: {
+    appGateUi: {
+      checkingTitle: "Standort wird geprüft",
+      checkingBody: "Wir brauchen deinen aktuellen Standort, um zu bestätigen, dass du dich in Spanien befindest.",
+      blockedTitle: "Nur in Spanien verfügbar",
+      outsideSpain: "Caca Radar funktioniert nur, wenn sich dein aktueller GPS-Standort innerhalb des spanischen Staatsgebiets befindet.",
+      permissionDenied: "Wir brauchen Standortzugriff, um zu prüfen, ob du dich in Spanien befindest.",
+      unavailable: "Dein aktueller Standort konnte nicht ermittelt werden. Bitte versuche es in ein paar Sekunden erneut.",
+      timeout: "Die Standortprüfung hat zu lange gedauert. Bitte versuche es erneut.",
+      noGeolocation: "Dieses Gerät bietet keine Geolokalisierung, daher können wir die App nicht freischalten.",
+      spainOnlyNotice: "Der Zugriff auf die App ist auf Personen beschränkt, deren aktueller Standort sich in {country} befindet.",
+      retry: "Erneut prüfen",
+    },
+  },
+  nl: {
+    appGateUi: {
+      checkingTitle: "Locatie controleren",
+      checkingBody: "We hebben je huidige locatie nodig om te bevestigen dat je in Spanje bent.",
+      blockedTitle: "Alleen beschikbaar in Spanje",
+      outsideSpain: "Caca Radar werkt alleen als je huidige GPS-locatie zich binnen het nationale grondgebied van Spanje bevindt.",
+      permissionDenied: "We hebben locatietoegang nodig om te controleren of je in Spanje bent.",
+      unavailable: "We konden je huidige locatie niet ophalen. Probeer het over een paar seconden opnieuw.",
+      timeout: "De locatiecontrole duurde te lang. Probeer het opnieuw.",
+      noGeolocation: "Dit apparaat biedt geen geolocatie, dus we kunnen de app niet inschakelen.",
+      spainOnlyNotice: "Toegang tot de app is beperkt tot mensen van wie de huidige locatie zich in {country} bevindt.",
+      retry: "Opnieuw controleren",
+    },
+  },
+  pl: {
+    appGateUi: {
+      checkingTitle: "Sprawdzanie lokalizacji",
+      checkingBody: "Potrzebujemy Twojej bieżącej lokalizacji, aby potwierdzić, że jesteś w Hiszpanii.",
+      blockedTitle: "Dostępne tylko w Hiszpanii",
+      outsideSpain: "Caca Radar działa tylko wtedy, gdy Twoja bieżąca lokalizacja GPS znajduje się na terytorium Hiszpanii.",
+      permissionDenied: "Potrzebujemy dostępu do lokalizacji, aby sprawdzić, czy jesteś w Hiszpanii.",
+      unavailable: "Nie udało się pobrać Twojej bieżącej lokalizacji. Spróbuj ponownie za kilka sekund.",
+      timeout: "Sprawdzanie lokalizacji trwało zbyt długo. Spróbuj ponownie.",
+      noGeolocation: "To urządzenie nie udostępnia geolokalizacji, więc nie możemy włączyć aplikacji.",
+      spainOnlyNotice: "Dostęp do aplikacji jest ograniczony do osób, których bieżąca lokalizacja znajduje się w {country}.",
+      retry: "Sprawdź ponownie",
+    },
+  },
+  uk: {
+    appGateUi: {
+      checkingTitle: "Перевірка місцезнаходження",
+      checkingBody: "Нам потрібне ваше поточне місцезнаходження, щоб підтвердити, що ви перебуваєте в Іспанії.",
+      blockedTitle: "Доступно лише в Іспанії",
+      outsideSpain: "Caca Radar працює лише тоді, коли ваше поточне місцезнаходження GPS знаходиться в межах національної території Іспанії.",
+      permissionDenied: "Нам потрібен дозвіл на доступ до місцезнаходження, щоб перевірити, чи ви в Іспанії.",
+      unavailable: "Не вдалося отримати ваше поточне місцезнаходження. Спробуйте ще раз за кілька секунд.",
+      timeout: "Перевірка місцезнаходження тривала надто довго. Спробуйте ще раз.",
+      noGeolocation: "Цей пристрій не надає геолокацію, тому ми не можемо увімкнути застосунок.",
+      spainOnlyNotice: "Доступ до застосунку обмежено для людей, чия поточна локація знаходиться в {country}.",
+      retry: "Перевірити ще раз",
+    },
+  },
+  ru: {
+    appGateUi: {
+      checkingTitle: "Проверка местоположения",
+      checkingBody: "Нам нужно ваше текущее местоположение, чтобы подтвердить, что вы находитесь в Испании.",
+      blockedTitle: "Доступно только в Испании",
+      outsideSpain: "Caca Radar работает только тогда, когда ваше текущее GPS-местоположение находится в пределах национальной территории Испании.",
+      permissionDenied: "Нам нужен доступ к геолокации, чтобы проверить, находитесь ли вы в Испании.",
+      unavailable: "Не удалось получить ваше текущее местоположение. Попробуйте снова через несколько секунд.",
+      timeout: "Проверка местоположения заняла слишком много времени. Попробуйте снова.",
+      noGeolocation: "Это устройство не предоставляет геолокацию, поэтому мы не можем включить приложение.",
+      spainOnlyNotice: "Доступ к приложению ограничен для людей, чьё текущее местоположение находится в {country}.",
+      retry: "Проверить снова",
+    },
+  },
+  eu: {
+    appGateUi: {
+      checkingTitle: "Kokalekua egiaztatzen",
+      checkingBody: "Zure uneko kokalekua behar dugu Espainiaren barruan zaudela baieztatzeko.",
+      blockedTitle: "Espainian bakarrik erabilgarri",
+      outsideSpain: "Caca Radar-ek zure uneko GPS kokapena Espainiako lurralde nazionalean dagoenean bakarrik funtzionatzen du.",
+      permissionDenied: "Kokaleku-baimena behar dugu Espainian zauden ala ez egiaztatzeko.",
+      unavailable: "Ezin izan dugu zure uneko kokalekua lortu. Saiatu berriro segundo batzuk barru.",
+      timeout: "Kokaleku-egiaztapenak gehiegi iraun du. Saiatu berriro.",
+      noGeolocation: "Gailu honek ez du geolokalizaziorik eskaintzen, eta ezin dugu aplikazioa gaitu.",
+      spainOnlyNotice: "Aplikaziorako sarbidea {country}-n dagoen uneko kokalekua duten pertsonentzat bakarrik da.",
+      retry: "Egiaztatu berriro",
+    },
+  },
+  ca: {
+    appGateUi: {
+      checkingTitle: "Comprovant la ubicació",
+      checkingBody: "Necessitem la teva ubicació actual per confirmar que ets dins d'Espanya.",
+      blockedTitle: "Disponible només a Espanya",
+      outsideSpain: "Caca Radar només funciona quan la teva ubicació GPS actual és dins del territori nacional d'Espanya.",
+      permissionDenied: "Necessitem permís d'ubicació per comprovar si ets a Espanya.",
+      unavailable: "No hem pogut obtenir la teva ubicació actual. Torna-ho a provar d'aquí a uns segons.",
+      timeout: "La comprovació d'ubicació ha trigat massa. Torna-ho a provar.",
+      noGeolocation: "Aquest dispositiu no ofereix geolocalització, així que no podem habilitar l'app.",
+      spainOnlyNotice: "L'accés a l'app està limitat a persones la ubicació actual de les quals és dins de {country}.",
+      retry: "Torna a comprovar",
+    },
+  },
+  val: {
+    appGateUi: {
+      checkingTitle: "Comprovant la ubicació",
+      checkingBody: "Necessitem la teua ubicació actual per confirmar que estàs dins d'Espanya.",
+      blockedTitle: "Disponible només a Espanya",
+      outsideSpain: "Caca Radar només funciona quan la teua ubicació GPS actual és dins del territori nacional d'Espanya.",
+      permissionDenied: "Necessitem permís d'ubicació per comprovar si estàs a Espanya.",
+      unavailable: "No hem pogut obtindre la teua ubicació actual. Torna-ho a provar d'ací a uns segons.",
+      timeout: "La comprovació d'ubicació ha tardat massa. Torna-ho a provar.",
+      noGeolocation: "Este dispositiu no oferix geolocalització, així que no podem habilitar l'app.",
+      spainOnlyNotice: "L'accés a l'app està limitat a persones la ubicació actual de les quals és dins de {country}.",
+      retry: "Tornar a comprovar",
+    },
+  },
+};
+
+Object.keys(translations).forEach((lang) => {
+  const extra = appGateTranslations[lang] || appGateTranslations.en;
+  Object.entries(extra).forEach(([group, values]) => {
+    translations[lang][group] = {
+      ...(translations[lang][group] || {}),
+      ...values,
+    };
+  });
+});
+
 const navigationTranslations = {
   es: {
     legalUi: {

@@ -29,6 +29,7 @@ import DeleteAccountPage from "./pages/DeleteAccountPage";
 import CookiesPage from "./pages/CookiesPage";
 import CommunityGuidelinesPage from "./pages/CommunityGuidelinesPage";
 import StatusPage from "./pages/StatusPage";
+import SpainLocationGate from "./components/SpainLocationGate";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
 import { isCapacitorNative } from "./tokenManager";
@@ -130,21 +131,21 @@ function App() {
         <BrowserRouter>
           <UsernameGate>
             <Routes>
-              <Route path="/" element={<MapPage />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/leaderboard" element={<LeaderboardPage />} />
-              <Route path="/rankings" element={<RankingsPage />} />
-              <Route path="/city-report" element={<CityReportPage />} />
-              <Route path="/subscribe" element={<SubscriptionPage />} />
-              <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/" element={<SpainLocationGate><MapPage /></SpainLocationGate>} />
+              <Route path="/login" element={<SpainLocationGate><LoginPage /></SpainLocationGate>} />
+              <Route path="/register" element={<SpainLocationGate><RegisterPage /></SpainLocationGate>} />
+              <Route path="/leaderboard" element={<SpainLocationGate><LeaderboardPage /></SpainLocationGate>} />
+              <Route path="/rankings" element={<SpainLocationGate><RankingsPage /></SpainLocationGate>} />
+              <Route path="/city-report" element={<SpainLocationGate><CityReportPage /></SpainLocationGate>} />
+              <Route path="/subscribe" element={<SpainLocationGate><SubscriptionPage /></SpainLocationGate>} />
+              <Route path="/profile" element={<SpainLocationGate><ProfilePage /></SpainLocationGate>} />
               <Route path="/dashboard/login" element={<DashboardLogin />} />
               <Route path="/dashboard/register" element={<MunicipalityRegister />} />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />
               <Route path="/admin" element={<AdminDashboardPage />} />
-              <Route path="/impact" element={<ImpactPage />} />
+              <Route path="/impact" element={<SpainLocationGate><ImpactPage /></SpainLocationGate>} />
               <Route path="/help" element={<HelpPage />} />
               <Route path="/terms" element={<TermsPage />} />
               <Route path="/privacy" element={<PrivacyPage />} />
