@@ -121,3 +121,13 @@ Impacted environments:
 Changes:
 - Iterated Android upload bundle after Google Play version conflict
 
+### 2026-04-23 — Pending deploy
+
+Impacted environments:
+- iOS `1.1.3 (5)`
+- Android `1.1.6 (8)`
+
+Changes:
+- Rebuilt iOS bundle
+- Rebuilt Android bundle
+
