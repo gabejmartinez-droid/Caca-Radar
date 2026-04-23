@@ -182,11 +182,11 @@ VIP_EMAILS = {
     "arcatasio@gmail.com",
     "doughboymarine@gmail.com",
     "gabejmartinez@gmail.com",
-    "lhminvestigations@yahoo.com",
+    "lmpi2727@gmail.com",
     "martinez.maria.maggie@gmail.com",
     "olesiamartinez@gmail.com",
     "paulshareshisfreedom@gmail.com",
-    "pem_es@yahoo.es",
+    "pedroege@gmail.com",
     "tgrazini@gmail.com",
 }
 
