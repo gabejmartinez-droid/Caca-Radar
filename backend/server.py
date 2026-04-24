@@ -2143,6 +2143,61 @@ async def get_municipality_stats(request: Request):
         "pending_flags": pending_flags
     }
 
+@api_router.get("/municipality/map")
+async def get_municipality_map(request: Request):
+    user = await require_municipality(request)
+    muni_name = user.get("municipality_name", "")
+
+    reports = await db.reports.find(
+        {"municipality": muni_name},
+        {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "archived": 1, "flagged": 1, "created_at": 1}
+    ).sort("created_at", -1).to_list(1000)
+
+    points = []
+    lats = []
+    lngs = []
+    for report in reports:
+        lat = report.get("latitude")
+        lng = report.get("longitude")
+        if lat is None or lng is None:
+            continue
+        lats.append(lat)
+        lngs.append(lng)
+        if report.get("archived"):
+            marker_type = "archived"
+        elif report.get("flagged"):
+            marker_type = "flagged"
+        else:
+            marker_type = "active"
+        points.append({
+            "id": report.get("id"),
+            "lat": lat,
+            "lng": lng,
+            "type": marker_type,
+            "created_at": report.get("created_at"),
+        })
+
+    bounds = None
+    if lats and lngs:
+        bounds = {
+            "south": min(lats),
+            "north": max(lats),
+            "west": min(lngs),
+            "east": max(lngs),
+            "center_lat": sum(lats) / len(lats),
+            "center_lng": sum(lngs) / len(lngs),
+        }
+
+    return {
+        "municipality": muni_name,
+        "points": points,
+        "bounds": bounds,
+        "total_reports": len(points),
+        "active_reports": sum(1 for point in points if point["type"] == "active"),
+        "flagged_reports": sum(1 for point in points if point["type"] == "flagged"),
+        "archived_reports": sum(1 for point in points if point["type"] == "archived"),
+    }
+
 @api_router.get("/municipality/reports")
 async def get_municipality_reports(request: Request, status: Optional[str] = None, page: int = 1, limit: int = 20):
     user = await require_municipality(request)

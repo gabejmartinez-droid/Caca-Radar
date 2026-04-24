@@ -3,12 +3,14 @@ import { useNavigate } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { Building2, MapPin, Flag, Archive, Eye, EyeOff, CheckCircle, XCircle, Loader2, BarChart3, AlertTriangle, LogOut, RefreshCw, Camera, Shield, TrendingUp } from "lucide-react";
+import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import { Button } from "../components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../components/ui/tabs";
 import { Badge } from "../components/ui/badge";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { getRankLabel } from "../utils/ranks";
+import "leaflet/dist/leaflet.css";
 
 import { API } from "../config";
 
@@ -22,6 +24,84 @@ const FLAG_REASON_LABELS = {
   other: "Otro"
 };
 
+const MAP_MARKER_STYLES = {
+  active: { color: "#FF6B6B", radius: 7, fillOpacity: 0.8 },
+  flagged: { color: "#FFA726", radius: 6, fillOpacity: 0.7 },
+  archived: { color: "#66BB6A", radius: 5, fillOpacity: 0.45 },
+};
+
+function MunicipalityMapCard({ mapData }) {
+  if (!mapData?.points?.length || !mapData?.bounds) {
+    return (
+      <div className="bg-white rounded-2xl shadow-sm p-6 text-center text-[#8D99AE]">
+        No hay reportes geolocalizados para mostrar en el mapa.
+      </div>
+    );
+  }
+
+  const bounds = [
+    [mapData.bounds.south, mapData.bounds.west],
+    [mapData.bounds.north, mapData.bounds.east],
+  ];
+  const isSinglePoint =
+    mapData.bounds.south === mapData.bounds.north &&
+    mapData.bounds.west === mapData.bounds.east;
+  const center = [mapData.bounds.center_lat, mapData.bounds.center_lng];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+      <div className="p-5 border-b border-[#8D99AE]/10">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
+          <div>
+            <h2 className="text-lg font-bold text-[#2B2D42]">Mapa del municipio</h2>
+            <p className="text-sm text-[#8D99AE]">Vista general de los reportes en {mapData.municipality} a nivel ciudad.</p>
+          </div>
+          <div className="flex gap-2 flex-wrap text-xs">
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#FF6B6B]/10 text-[#FF6B6B] px-3 py-1 font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#FF6B6B]" /> Activos {mapData.active_reports}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#FFA726]/10 text-[#C77800] px-3 py-1 font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#FFA726]" /> Reportados {mapData.flagged_reports}
+            </span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-[#66BB6A]/10 text-[#2E7D32] px-3 py-1 font-bold">
+              <span className="w-2 h-2 rounded-full bg-[#66BB6A]" /> Archivados {mapData.archived_reports}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <div className="h-[420px]">
+        <MapContainer
+          {...(isSinglePoint ? { center, zoom: 14 } : { bounds, boundsOptions: { padding: [28, 28] } })}
+          className="h-full w-full"
+          scrollWheelZoom={true}
+        >
+          <TileLayer
+            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+          />
+          {mapData.points.map((point) => {
+            const style = MAP_MARKER_STYLES[point.type] || MAP_MARKER_STYLES.active;
+            return (
+              <CircleMarker
+                key={point.id}
+                center={[point.lat, point.lng]}
+                radius={style.radius}
+                pathOptions={{
+                  color: style.color,
+                  fillColor: style.color,
+                  fillOpacity: style.fillOpacity,
+                  weight: 2,
+                }}
+              />
+            );
+          })}
+        </MapContainer>
+      </div>
+    </div>
+  );
+}
+
 export default function Dashboard() {
   const { user, logout } = useAuth();
   const { t } = useLanguage();
@@ -34,6 +114,7 @@ export default function Dashboard() {
   const [reportFilter, setReportFilter] = useState("active");
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [mapData, setMapData] = useState(null);
   const [loading, setLoading] = useState(true);
 
   const fetchReports = useCallback(async (filter, currentPage) => {
@@ -47,16 +128,18 @@ export default function Dashboard() {
   const fetchAll = useCallback(async () => {
     setLoading(true);
     try {
-      const [statsRes, reportsRes, flagsRes, photoRes] = await Promise.all([
+      const [statsRes, reportsRes, flagsRes, mapRes, photoRes] = await Promise.all([
         axios.get(`${API}/municipality/stats`, { withCredentials: true }),
         axios.get(`${API}/municipality/reports?status=${reportFilter}&page=${page}`, { withCredentials: true }),
         axios.get(`${API}/municipality/flags?status=pending`, { withCredentials: true }),
+        axios.get(`${API}/municipality/map`, { withCredentials: true }),
         axios.get(`${API}/municipality/photo-reviews`, { withCredentials: true }).catch(() => ({ data: [] }))
       ]);
       setStats(statsRes.data);
       setReports(reportsRes.data.reports);
       setTotalPages(reportsRes.data.pages);
       setFlags(flagsRes.data);
+      setMapData(mapRes.data);
       setPhotoReviews(photoRes.data);
     } catch (err) {
       if (err.response?.status === 403) navigate("/dashboard/login");
@@ -99,7 +182,7 @@ export default function Dashboard() {
             <Building2 className="w-6 h-6" />
             <div>
               <h1 className="font-bold text-lg" style={{ fontFamily: 'Nunito, sans-serif' }}>{user?.municipality_name || "Dashboard"}</h1>
-              <p className="text-white/60 text-xs">Panel de Ayuntamiento — €49/mes</p>
+              <p className="text-white/60 text-xs">Panel de Ayuntamiento — €50/mes</p>
             </div>
           </div>
           <div className="flex gap-2">
@@ -136,8 +219,9 @@ export default function Dashboard() {
           </div>
         )}
 
-        <Tabs defaultValue="reports" className="w-full">
+        <Tabs defaultValue="map" className="w-full">
           <TabsList className="mb-4">
+            <TabsTrigger value="map" data-testid="tab-map">Mapa</TabsTrigger>
             <TabsTrigger value="reports" data-testid="tab-reports">Reportes</TabsTrigger>
             <TabsTrigger value="photos" data-testid="tab-photos">
               Revisión Fotos {photoReviews.length > 0 && <Badge variant="destructive" className="ml-2 text-xs">{photoReviews.length}</Badge>}
@@ -146,6 +230,10 @@ export default function Dashboard() {
               Moderación {flags.length > 0 && <Badge variant="destructive" className="ml-2 text-xs">{flags.length}</Badge>}
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="map">
+            <MunicipalityMapCard mapData={mapData} />
+          </TabsContent>
 
           {/* Reports Tab */}
           <TabsContent value="reports">

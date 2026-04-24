@@ -114,6 +114,11 @@ export default function MunicipalityRegister() {
             <>
               <h1 className="text-xl font-bold text-[#2B2D42] text-center mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.registerTitle")}</h1>
               <p className="text-sm text-[#8D99AE] text-center mb-6">{t("municipalityUi.registerSubtitle")}</p>
+              <div className="bg-[#F8F9FA] border border-[#8D99AE]/15 rounded-xl p-4 text-xs text-[#5C677D] mb-5 space-y-2">
+                <p>{t("municipalityUi.appStoreSubscriptionNote")}</p>
+                <p>{t("municipalityUi.billingWarning")}</p>
+                <p>{t("municipalityUi.manualActivationNote")}</p>
+              </div>
 
               {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4" data-testid="error-message">{error}</div>}
 
@@ -186,6 +191,7 @@ export default function MunicipalityRegister() {
               <CheckCircle className="w-16 h-16 text-[#66BB6A] mx-auto mb-4" />
               <h1 className="text-xl font-bold text-[#2B2D42] mb-2" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("municipalityUi.completedTitle")}</h1>
               <p className="text-sm text-[#8D99AE] mb-6">{t("municipalityUi.completedBody")}</p>
+              <p className="text-xs text-[#8D99AE] mb-6">{t("municipalityUi.manualActivationNote")}</p>
               <Button onClick={() => navigate("/dashboard")} className="bg-[#2B2D42] hover:bg-[#1a1b2e] text-white py-5 rounded-xl font-bold px-8" data-testid="go-to-dashboard-btn">
                 {t("municipalityUi.goToDashboard")}
               </Button>

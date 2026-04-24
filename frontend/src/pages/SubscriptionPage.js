@@ -152,12 +152,17 @@ export default function SubscriptionPage() {
         <div className="bg-[#2B2D42] rounded-2xl p-5 text-white mt-6">
           <h2 className="font-bold mb-1" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("subscriptionUi.municipalities")}</h2>
           <p className="text-white/60 text-xs mb-3">{t("subscriptionUi.municipalitySubtitle")}</p>
+          <div className="rounded-xl bg-white/8 border border-white/10 p-3 mb-3 text-xs text-white/80 space-y-2">
+            <p>{t("subscriptionUi.municipalityAppStoreNote")}</p>
+            <p>{t("subscriptionUi.municipalityBillingWarning")}</p>
+            <p>{t("subscriptionUi.municipalityManualSetup")}</p>
+          </div>
           <div className="flex justify-between items-center">
             <div className="flex items-baseline gap-1">
               <span className="text-2xl font-black">50</span><span className="text-white/60">€/mes</span>
             </div>
             <Button onClick={() => navigate("/dashboard/register")} variant="outline" className="border-white/30 text-white hover:bg-white/10 rounded-xl font-bold" data-testid="municipality-subscribe-btn">
-              {t("subscriptionUi.registerMunicipality")}
+              {t("subscriptionUi.createMunicipalityDashboard")}
             </Button>
           </div>
         </div>
