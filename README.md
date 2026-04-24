@@ -21,14 +21,14 @@ python3 scripts/release_prepare.py --bump-web --notes "Preview only" --dry-run
 
 ## Build tracking
 
-The default build scripts now bump tracked versions automatically before building:
+The default build scripts now bump tracked versions automatically before building, but only for surfaces that actually changed in the current worktree:
 
 ```bash
 cd frontend
 yarn build
 ```
 
-- bumps `web`
+- bumps `web` only when web/shared frontend files changed
 - updates [frontend/src/appVersions.json](/Users/gabrielmartinez/Documents/New%20project/frontend/src/appVersions.json)
 - appends a structured entry to [memory/VERSION_HISTORY.md](/Users/gabrielmartinez/Documents/New%20project/memory/VERSION_HISTORY.md)
 - builds the web bundle
@@ -38,9 +38,11 @@ cd frontend
 yarn build:mobile
 ```
 
-- bumps `web`, `ios`, and `android`
+- bumps only the affected surfaces among `web`, `ios`, and `android`
 - updates platform version files plus the audit log
 - builds the web bundle and runs native sync/copy steps
+
+Shared frontend changes under `frontend/src` or `frontend/public` count as changes for web, iOS, and Android because those assets ship in all three surfaces. Native-only changes under `frontend/ios` or `frontend/android` only bump that native platform.
 
 The release aliases point to those same versioned build flows:
 

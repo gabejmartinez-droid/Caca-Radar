@@ -6,6 +6,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from surface_changes import classify_changed_surfaces
 
 ROOT = Path(__file__).resolve().parent.parent
 RELEASE_PREPARE = ROOT / "scripts" / "release_prepare.py"
@@ -49,22 +50,28 @@ def main() -> int:
         raise SystemExit("Pass the build command after --, for example: -- yarn run build:raw")
 
     command = args.command[1:]
-
-    prep_command = [sys.executable, str(RELEASE_PREPARE), "--status", args.status]
-    seen = set()
+    changed_surfaces = classify_changed_surfaces(ROOT)
+    requested_surfaces = []
+    seen_requested = set()
     for surface in args.surface:
-        if surface in seen:
+        if surface in seen_requested:
             continue
-        seen.add(surface)
-        prep_command.append(f"--bump-{surface}")
+        seen_requested.add(surface)
+        requested_surfaces.append(surface)
+    bump_surfaces = [surface for surface in requested_surfaces if surface in changed_surfaces]
 
-    if args.note:
-        for note in args.note:
-            prep_command.extend(["--notes", note])
-    else:
-        prep_command.extend(["--notes", f"Automated build for: {', '.join(seen)}"])
+    if bump_surfaces:
+        prep_command = [sys.executable, str(RELEASE_PREPARE), "--status", args.status]
+        for surface in bump_surfaces:
+            prep_command.append(f"--bump-{surface}")
 
-    subprocess.run(prep_command, cwd=ROOT, check=True)
+        if args.note:
+            for note in args.note:
+                prep_command.extend(["--notes", note])
+        else:
+            prep_command.extend(["--notes", f"Automated build for: {', '.join(bump_surfaces)}"])
+
+        subprocess.run(prep_command, cwd=ROOT, check=True)
     completed = subprocess.run(command, cwd=ROOT / "frontend")
     return completed.returncode
 

@@ -7,6 +7,7 @@ import subprocess
 import sys
 from pathlib import Path
 
+from surface_changes import classify_changed_surfaces
 
 ROOT = Path(__file__).resolve().parent.parent
 FRONTEND = ROOT / "frontend"
@@ -33,12 +34,16 @@ def run(cmd: list[str], cwd: Path) -> None:
 
 
 def bump_versions(surface: str) -> None:
+    changed_surfaces = classify_changed_surfaces(ROOT)
     cmd = [sys.executable, str(RELEASE_PREPARE), "--status", "pending"]
-    if surface in {"ios", "mobile"}:
+    should_bump_ios = surface in {"ios", "mobile"} and "ios" in changed_surfaces
+    should_bump_android = surface in {"android", "mobile"} and "android" in changed_surfaces
+    if should_bump_ios:
         cmd.extend(["--bump-ios", "--notes", "Rebuilt iOS bundle"])
-    if surface in {"android", "mobile"}:
+    if should_bump_android:
         cmd.extend(["--bump-android", "--notes", "Rebuilt Android bundle"])
-    run(cmd, ROOT)
+    if len(cmd) > 3:
+        run(cmd, ROOT)
 
 
 def rebuild_shared_assets() -> None:
