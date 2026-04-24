@@ -76,7 +76,7 @@ export default function AdminLoginPage() {
                 <Label className="text-[#2B2D42]">Email</Label>
                 <div className="relative mt-1">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#8D99AE]" />
-                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="jefe@cacaradar.es" className="pl-10" required data-testid="admin-email-input" />
+                  <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="pl-10" required data-testid="admin-email-input" />
                 </div>
               </div>
               <div>
@@ -94,7 +94,7 @@ export default function AdminLoginPage() {
         ) : (
           <>
             <h2 className="text-lg font-bold text-[#2B2D42] text-center mb-1">{t("adminUi.verification")}</h2>
-            <p className="text-xs text-[#8D99AE] text-center mb-5">{formatTranslation(t, "adminUi.stepCode", { email })}</p>
+            <p className="text-xs text-[#8D99AE] text-center mb-5">{t("adminUi.stepCode")}</p>
 
             {error && <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4" data-testid="error-message">{error}</div>}
 

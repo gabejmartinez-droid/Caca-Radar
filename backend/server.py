@@ -2598,13 +2598,21 @@ async def admin_dashboard(request: Request):
 async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: str = ""):
     """List all users with stats."""
     await _require_admin(request)
-    query = {"role": "user"}
+    user_scope_query = {"$or": [{"role": "user"}, {"role": None}]}
+    query = user_scope_query
     if search:
-        query["$or"] = [
-            {"email": {"$regex": search, "$options": "i"}},
-            {"username": {"$regex": search, "$options": "i"}},
-            {"name": {"$regex": search, "$options": "i"}},
-        ]
+        query = {
+            "$and": [
+                user_scope_query,
+                {
+                    "$or": [
+                        {"email": {"$regex": search, "$options": "i"}},
+                        {"username": {"$regex": search, "$options": "i"}},
+                        {"name": {"$regex": search, "$options": "i"}},
+                    ]
+                },
+            ]
+        }
     users = await db.users.find(
         query,
         {
