@@ -21,43 +21,47 @@ python3 scripts/release_prepare.py --bump-web --notes "Preview only" --dry-run
 
 ## Build tracking
 
-The safe default build scripts now compile assets without changing version metadata:
+The default build scripts now bump tracked versions automatically before building:
 
 ```bash
 cd frontend
 yarn build
 ```
 
-- builds the web bundle only
-- does not touch [frontend/src/appVersions.json](/Users/gabrielmartinez/Documents/New%20project/frontend/src/appVersions.json)
-- does not append to [memory/VERSION_HISTORY.md](/Users/gabrielmartinez/Documents/New%20project/memory/VERSION_HISTORY.md)
+- bumps `web`
+- updates [frontend/src/appVersions.json](/Users/gabrielmartinez/Documents/New%20project/frontend/src/appVersions.json)
+- appends a structured entry to [memory/VERSION_HISTORY.md](/Users/gabrielmartinez/Documents/New%20project/memory/VERSION_HISTORY.md)
+- builds the web bundle
 
 ```bash
 cd frontend
 yarn build:mobile
 ```
 
-- builds the web bundle and runs `cap sync`
-- does not bump any tracked versions
+- bumps `web`, `ios`, and `android`
+- updates platform version files plus the audit log
+- builds the web bundle and runs native sync/copy steps
 
-Use the release scripts only when you intentionally want to bump versions and append an audit entry before building:
+The release aliases point to those same versioned build flows:
 
 ```bash
 cd frontend
 yarn release:web
 ```
 
-- bumps `web`
-- updates [frontend/src/appVersions.json](/Users/gabrielmartinez/Documents/New%20project/frontend/src/appVersions.json)
-- updates [memory/VERSION_HISTORY.md](/Users/gabrielmartinez/Documents/New%20project/memory/VERSION_HISTORY.md)
+- same as `yarn build`
 
 ```bash
 cd frontend
 yarn release:mobile
 ```
 
-- bumps `web`, `ios`, and `android`
-- updates platform version files plus the audit log
-- then runs the web build and `cap sync`
+- same as `yarn build:mobile`
 
-If you need the underlying compile step explicitly, `yarn build:raw` remains available.
+If you need the underlying compile step explicitly without bumping versions, the raw paths remain available:
+
+```bash
+cd frontend
+yarn build:raw
+yarn build:mobile:raw
+```

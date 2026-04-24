@@ -66,19 +66,19 @@
   "scripts": {
     "start": "craco start",
     "build:raw": "craco build",
-    "build": "yarn run build:raw",
+    "build": "python3 ../scripts/build_and_track.py --surface web --note \"Prepared web build\" -- yarn run build:raw",
     "rebuild:ios": "python3 ../scripts/rebuild_bundle.py --surface ios",
     "rebuild:android": "python3 ../scripts/rebuild_bundle.py --surface android",
     "rebuild:mobile": "python3 ../scripts/rebuild_bundle.py --surface mobile",
-    "release:web": "python3 ../scripts/build_and_track.py --surface web --note \"Prepared web release build\" -- yarn run build:raw",
+    "release:web": "yarn run build",
     "test": "craco test",
     "cap:copy": "cap copy",
     "cap:sync": "cap sync",
     "cap:open:ios": "cap open ios",
     "cap:open:android": "cap open android",
     "build:mobile:raw": "yarn run build:raw && cap sync android && cap copy ios",
-    "build:mobile": "yarn run build:mobile:raw",
-    "release:mobile": "python3 ../scripts/build_and_track.py --surface web --surface ios --surface android --note \"Prepared mobile release build\" -- yarn run build:mobile:raw"
+    "build:mobile": "python3 ../scripts/build_and_track.py --surface web --surface ios --surface android --note \"Prepared mobile build\" -- yarn run build:mobile:raw",
+    "release:mobile": "yarn run build:mobile"
   },
   "browserslist": {
     "production": [
