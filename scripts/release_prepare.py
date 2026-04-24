@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import subprocess
 from datetime import date
 from pathlib import Path
 
@@ -20,12 +21,14 @@ SEMVER_RE = re.compile(r"^(?P<major>\d+)\.(?P<minor>\d+)\.(?P<patch>\d+)$")
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Prepare a Caca Radar release by bumping platform versions and appending a version-history entry."
+        description="Prepare a Caca Radar release by bumping platform versions and appending a structured version-history entry."
     )
     parser.add_argument("--date", default=str(date.today()), help="Entry date in YYYY-MM-DD format")
     parser.add_argument("--status", default="pending", choices=["pending", "released"], help="History entry status")
-    parser.add_argument("--notes", action="append", default=[], help="Release note bullet. Repeat for multiple bullets.")
+    parser.add_argument("--notes", action="append", default=[], help="Internal release note bullet. Repeat for multiple bullets.")
+    parser.add_argument("--user-note", action="append", default=[], help="Optional concise user-facing release note bullet. Repeat for multiple bullets.")
     parser.add_argument("--commit", help="Optional commit hash to include in the history entry")
+    parser.add_argument("--rollback-target", help="Optional rollback target commit hash")
     parser.add_argument("--bundle-hash", help="Optional production frontend bundle hash to include in the history entry")
     parser.add_argument("--dry-run", action="store_true", help="Print changes without writing files")
 
@@ -41,6 +44,26 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--set-android-build", type=int, help="Explicit Android versionCode")
     parser.add_argument("--set-backend", help="Explicit backend version, e.g. 1.1.1-api.1")
     return parser.parse_args()
+
+
+def run_git(*args: str) -> str:
+    return subprocess.check_output(["git", *args], cwd=ROOT, text=True).strip()
+
+
+def current_commit(default: str = "unknown") -> str:
+    try:
+        commit = run_git("rev-parse", "HEAD")
+        status = run_git("status", "--porcelain")
+        return f"{commit}-dirty" if status else commit
+    except Exception:
+        return default
+
+
+def previous_commit(default: str = "unknown") -> str:
+    try:
+        return run_git("rev-parse", "HEAD^")
+    except Exception:
+        return default
 
 
 def bump_web_or_backend(version: str) -> str:
@@ -72,33 +95,99 @@ def replace_one(text: str, pattern: str, replacement: str) -> str:
     return new_text
 
 
-def build_history_entry(args: argparse.Namespace, versions: dict, changed_envs: list[str]) -> str:
-    status_text = "Released" if args.status == "released" else "Pending deploy"
-    commit_text = f" `{args.commit}`" if args.commit else ""
-    lines = [
-        f"### {args.date} — {status_text}{commit_text}",
-        "",
-        "Impacted environments:",
+def format_versions(versions: dict) -> list[str]:
+    return [
+        f"- Web: `{versions['web']}`",
+        f"- iOS: `{versions['ios']['version']} ({versions['ios']['build']})`",
+        f"- Android: `{versions['android']['version']} ({versions['android']['build']})`",
+        f"- Backend: `{versions['backend']}`",
     ]
-    for env in changed_envs:
-        if env == "web":
-            lines.append(f"- Web `{versions['web']}`")
-        elif env == "ios":
-            lines.append(f"- iOS `{versions['ios']['version']} ({versions['ios']['build']})`")
-        elif env == "android":
-            lines.append(f"- Android `{versions['android']['version']} ({versions['android']['build']})`")
-        elif env == "backend":
-            lines.append(f"- Backend `{versions['backend']}`")
-    lines.append("")
-    lines.append("Changes:")
-    if args.notes:
-        for note in args.notes:
-            lines.append(f"- {note}")
-    else:
-        lines.append("- Version bump prepared with the automated release script.")
+
+
+def dedupe_preserve(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    result: list[str] = []
+    for value in values:
+        cleaned = value.strip()
+        if not cleaned or cleaned in seen:
+            continue
+        seen.add(cleaned)
+        result.append(cleaned)
+    return result
+
+
+def to_store_notes(notes: list[str], changed_envs: list[str]) -> list[str]:
+    if notes:
+        concise = []
+        for note in notes[:3]:
+            cleaned = note.strip().rstrip(".")
+            if cleaned:
+                concise.append(cleaned + ".")
+        if concise:
+            return concise
+    surfaces = ", ".join(env.capitalize() for env in changed_envs) or "Web"
+    return [f"{surfaces} maintenance update with stability and feature improvements."]
+
+
+def to_internal_notes(notes: list[str], changed_envs: list[str]) -> list[str]:
+    if notes:
+        return dedupe_preserve(notes)
+    return [f"Automated release preparation for: {', '.join(changed_envs) or 'web'}."]
+
+
+def build_history_entry(args: argparse.Namespace, versions: dict, changed_envs: list[str]) -> str:
+    deployment_status = "released" if args.status == "released" else "pending"
+    commit_sha = args.commit or current_commit()
+    rollback_target = args.rollback_target or previous_commit()
+    internal_notes = to_internal_notes(args.notes, changed_envs)
+    user_notes = dedupe_preserve(args.user_note) or to_store_notes(args.notes, changed_envs)
+    store_notes = to_store_notes(args.user_note or args.notes, changed_envs)
+
+    lines = [
+        f"### {args.date} — {deployment_status.capitalize()}",
+        "",
+        "Release metadata:",
+        f"- Commit SHA: `{commit_sha}`",
+        f"- Deployment status: `{deployment_status}`",
+        f"- Rollback target: `{rollback_target}`",
+    ]
     if args.bundle_hash:
-        lines.extend(["", f"Bundle hash: `{args.bundle_hash}`"])
-    lines.append("")
+        lines.append(f"- Bundle hash: `{args.bundle_hash}`")
+
+    lines.extend([
+        "",
+        "Exact versions:",
+        *format_versions(versions),
+        "",
+        "User-facing release notes:",
+    ])
+    lines.extend(f"- {note}" for note in user_notes)
+
+    lines.extend([
+        "",
+        "Internal release notes:",
+    ])
+    lines.extend(f"- {note}" for note in internal_notes)
+
+    lines.extend([
+        "",
+        "Store submission notes:",
+        "```text",
+        "\n".join(f"- {note}" for note in store_notes),
+        "```",
+        "",
+        "Internal release notes block:",
+        "```text",
+        f"Commit SHA: {commit_sha}",
+        f"Deployment status: {deployment_status}",
+        f"Rollback target: {rollback_target}",
+        "Versions:",
+        *[line.replace("- ", "• ", 1) for line in format_versions(versions)],
+        "Notes:",
+        *[f"- {note}" for note in internal_notes],
+        "```",
+        "",
+    ])
     return "\n".join(lines)
 
 
