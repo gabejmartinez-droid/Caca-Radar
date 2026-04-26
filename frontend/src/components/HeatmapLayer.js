@@ -7,7 +7,7 @@ const HEAT_OPTIONS = {
   radius: 26,
   blur: 18,
   maxZoom: 17,
-  max: 1.0,
+  max: 0.5,
   minOpacity: 0.18,
   gradient: {
     0.0: "rgba(66, 165, 245, 0)",
