@@ -77,11 +77,23 @@ export default function DownloadPage() {
 
   const contextTitle = useMemo(() => buildContextTitle(kind, searchParams, t), [kind, searchParams, t]);
   const shareUrl = useMemo(() => `${HOSTED_WEB_URL}/download?${searchParams.toString()}`, [searchParams]);
+  const previewImageUrl = useMemo(() => {
+    if (kind === "city-rankings") {
+      const listType = searchParams.get("list_type") || "dirtiest";
+      return `${API}/rankings/cities/share-image?list_type=${encodeURIComponent(listType)}`;
+    }
+    if (kind === "barrio-rankings") {
+      const city = searchParams.get("city") || "Madrid";
+      return `${API}/rankings/barrios/share-image?city=${encodeURIComponent(city)}`;
+    }
+    return "/share-example-es.png";
+  }, [kind, searchParams]);
   const sharePayload = useMemo(() => ({
     title: contextTitle,
     text: `${t("shareUi.tagline")}\n\n${contextTitle}`,
     url: shareUrl,
-  }), [contextTitle, shareUrl, t]);
+    imageUrl: kind === "city-rankings" || kind === "barrio-rankings" ? previewImageUrl : undefined,
+  }), [contextTitle, kind, previewImageUrl, shareUrl, t]);
 
   const handleShare = async () => {
     try {
@@ -127,7 +139,7 @@ export default function DownloadPage() {
             <p className="text-sm text-[#8D99AE] mb-5">{t("downloadUi.previewNote")}</p>
             <div className="overflow-hidden rounded-2xl border border-[#8D99AE]/10 bg-[#F8F9FA]">
               <img
-                src="/share-example-es.png"
+                src={previewImageUrl}
                 alt={t("downloadUi.previewAlt")}
                 className="block w-full h-auto"
               />

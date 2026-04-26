@@ -1,6 +1,6 @@
 import { Facebook, Instagram, MessageCircle } from "lucide-react";
 import { Button } from "./ui/button";
-import { openFacebookShare, openWhatsAppShare, shareToInstagram } from "../utils/socialShare";
+import { openFacebookShare, openWhatsAppShare, shareToInstagram, shareWithNativeOrCopy } from "../utils/socialShare";
 
 function SocialShareButtons({ loadShareData, onError, onCopied, className = "", prefix = "social-share" }) {
   const runShare = async (action) => {
@@ -19,7 +19,12 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
         type="button"
         variant="outline"
         className="rounded-xl border-[#1877F2]/25 text-[#1877F2] hover:bg-[#1877F2]/10"
-        onClick={() => runShare(({ url }) => openFacebookShare(url))}
+        onClick={() => runShare((shareData) => {
+          if (navigator.share) {
+            return shareWithNativeOrCopy({ ...shareData, onCopied });
+          }
+          return openFacebookShare(shareData.url);
+        })}
         data-testid={`${prefix}-facebook`}
       >
         <Facebook className="w-4 h-4 mr-1.5" />
@@ -39,7 +44,12 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
         type="button"
         variant="outline"
         className="rounded-xl border-[#25D366]/25 text-[#25D366] hover:bg-[#25D366]/10"
-        onClick={() => runShare(({ text, url }) => openWhatsAppShare(text, url))}
+        onClick={() => runShare((shareData) => {
+          if (navigator.share) {
+            return shareWithNativeOrCopy({ ...shareData, onCopied });
+          }
+          return openWhatsAppShare(shareData.text, shareData.url);
+        })}
         data-testid={`${prefix}-whatsapp`}
       >
         <MessageCircle className="w-4 h-4 mr-1.5" />

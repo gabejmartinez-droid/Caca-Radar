@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from bson import ObjectId
 import os
 import subprocess
@@ -56,6 +56,7 @@ from badges_service import check_and_award_badges, get_user_badges, calc_confide
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_active_report_barrios, get_city_report_summary
+from share_image_service import build_rankings_share_png
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
@@ -1840,12 +1841,32 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
         "total_cities": data["total_cities"],
         "generated_at": data["generated_at"],
         "app_url": f"{frontend_url}/download?kind=city-rankings&list_type={quote(list_type)}",
+        "image_url": f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(list_type)}",
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
         },
         "share_text": f"{title} según Caca Radar. ¡Descarga la app y ayuda a mantener tu ciudad limpia! {APP_STORE_URL}",
     }
+
+
+@api_router.get("/rankings/cities/share-image")
+async def api_city_rankings_share_image(list_type: str = "dirtiest"):
+    data = await get_city_rankings(db, limit=10)
+    cities = data.get(list_type, data["dirtiest"])[:5]
+    title = "Ciudades más sucias de España" if list_type == "dirtiest" else "Ciudades más limpias de España"
+    subtitle = "¿Cuánta caca de perro hay en nuestras aceras?"
+    rows = [
+        {
+            "rank": city.get("rank", index + 1),
+            "label": city.get("city", ""),
+            "meta": city.get("province", ""),
+            "value": f'{city.get("reports_per_10k", 0)} / 10k',
+        }
+        for index, city in enumerate(cities)
+    ]
+    png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
+    return Response(content=png, media_type="image/png")
 
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
@@ -1865,6 +1886,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
         "total_reports": data.get("total_reports", 0),
         "generated_at": datetime.now(timezone.utc).isoformat(),
         "app_url": f"{frontend_url}/download?kind=barrio-rankings&city={quote(city)}",
+        "image_url": f"{frontend_url}/api/rankings/barrios/share-image?city={quote(city)}",
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1874,6 +1896,25 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
             f"Consulta el ranking y ayuda a mantener tu barrio limpio. {APP_STORE_URL}"
         ),
     }
+
+
+@api_router.get("/rankings/barrios/share-image")
+async def api_barrio_rankings_share_image(city: str = "Madrid"):
+    data = await get_barrio_rankings(db, city, limit=10)
+    barrios = data.get("barrios", [])[:5]
+    title = f"Barrios con más avisos en {city}"
+    subtitle = "¿Cuánta caca de perro hay en nuestras aceras?"
+    rows = [
+        {
+            "rank": barrio.get("rank", index + 1),
+            "label": barrio.get("barrio", ""),
+            "meta": f'{barrio.get("verified_reports", 0)} verificados',
+            "value": str(barrio.get("active_reports", 0)),
+        }
+        for index, barrio in enumerate(barrios)
+    ]
+    png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
+    return Response(content=png, media_type="image/png")
 
 
 @api_router.get("/city-reports/cities")

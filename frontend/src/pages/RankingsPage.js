@@ -103,7 +103,7 @@ export default function RankingsPage() {
         ? `${API}/rankings/barrios/share?city=${encodeURIComponent(selectedCity)}`
         : `${API}/rankings/cities/share?list_type=${type}`
     );
-    return { title: data.title, text: data.share_text, url: data.app_url };
+    return { title: data.title, text: data.share_text, url: data.app_url, imageUrl: data.image_url };
   };
 
   const handleShare = async (type) => {
