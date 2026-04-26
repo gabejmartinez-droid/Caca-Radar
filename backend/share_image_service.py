@@ -15,6 +15,13 @@ TEXT_MUTED = "#5C677D"
 ACCENT = "#FF6B6B"
 ACCENT_SOFT = "#FFE7E1"
 CARD_BG = "#FFFFFF"
+FRESH = "#4CAF50"
+OLDER = "#FF9800"
+FOSSIL = "#E53935"
+MAP_BG = "#F7F0E6"
+MAP_WATER = "#C9E7FF"
+MAP_ROAD = "#FFFFFF"
+MAP_REGION = "#FAD6D0"
 
 
 def _load_font(size: int, bold: bool = False) -> ImageFont.FreeTypeFont | ImageFont.ImageFont:
@@ -114,6 +121,123 @@ def build_rankings_share_png(
         draw.text((width - 58 - value_width, y1 + 18), value, font=row_value_font, fill=ACCENT)
 
     draw.text((40, height - 42), footer, font=footer_font, fill=TEXT_MUTED)
+
+    output = BytesIO()
+    image.save(output, format="PNG", optimize=True)
+    return output.getvalue()
+
+
+def _draw_stat_box(draw: ImageDraw.ImageDraw, box: tuple[int, int, int, int], label: str, value: str, note: str, color: str) -> None:
+    x1, y1, x2, y2 = box
+    label_font = _load_font(22, bold=False)
+    value_font = _load_font(42, bold=True)
+    note_font = _load_font(18, bold=False)
+    draw.rounded_rectangle(box, radius=22, fill=CARD_BG)
+    draw.text((x1 + 18, y1 + 16), label, font=label_font, fill=TEXT_DARK)
+    draw.text((x1 + 18, y1 + 52), value, font=value_font, fill=color)
+    if note:
+        draw.text((x1 + 18, y2 - 30), note, font=note_font, fill=TEXT_MUTED)
+
+
+def _draw_map_panel(draw: ImageDraw.ImageDraw, image: Image.Image, box: tuple[int, int, int, int], summary: dict) -> None:
+    x1, y1, x2, y2 = box
+    panel = Image.new("RGB", (x2 - x1, y2 - y1), MAP_BG)
+    panel_draw = ImageDraw.Draw(panel)
+
+    # soft "water" block to keep the map from feeling too flat
+    panel_draw.polygon(
+        [(panel.width * 0.72, 0), (panel.width, 0), (panel.width, panel.height), (panel.width * 0.84, panel.height * 0.72)],
+        fill=MAP_WATER,
+    )
+
+    # simple road grid
+    for offset in range(20, panel.width, 58):
+        panel_draw.line([(offset, 0), (offset - 110, panel.height)], fill=MAP_ROAD, width=7)
+    for offset in range(10, panel.height, 54):
+        panel_draw.line([(0, offset), (panel.width, offset + 26)], fill=MAP_ROAD, width=7)
+
+    bounds = summary.get("map_bounds") or {}
+    south = bounds.get("south")
+    north = bounds.get("north")
+    west = bounds.get("west")
+    east = bounds.get("east")
+    points = summary.get("preview_points") or []
+
+    if points and None not in {south, north, west, east} and east != west and north != south:
+        pad_x = 36
+        pad_y = 24
+        normalized = []
+        for point in points[:40]:
+            px = pad_x + ((point["lng"] - west) / (east - west)) * (panel.width - pad_x * 2)
+            py = pad_y + (1 - ((point["lat"] - south) / (north - south))) * (panel.height - pad_y * 2)
+            normalized.append((px, py, point.get("bucket", "fossil")))
+
+        if normalized:
+            min_x = min(p[0] for p in normalized)
+            max_x = max(p[0] for p in normalized)
+            min_y = min(p[1] for p in normalized)
+            max_y = max(p[1] for p in normalized)
+            region = [
+                (min_x - 34, min_y + 18),
+                ((min_x + max_x) / 2, min_y - 24),
+                (max_x + 28, min_y + 24),
+                (max_x + 16, max_y - 28),
+                ((min_x + max_x) / 2, max_y + 26),
+                (min_x - 28, max_y - 8),
+            ]
+            panel_draw.polygon(region, fill=MAP_REGION, outline="#E8A5A0")
+
+            dot_colors = {"fresh": FRESH, "older": OLDER, "fossil": FOSSIL}
+            for px, py, bucket in normalized:
+                color = dot_colors.get(bucket, FOSSIL)
+                panel_draw.ellipse((px - 9, py - 9, px + 9, py + 9), fill=color, outline="white", width=2)
+
+    label_font = _load_font(28, bold=True)
+    city_font = _load_font(18, bold=False)
+    panel_draw.text((18, 14), str(summary.get("city", "")).upper(), font=label_font, fill=TEXT_DARK)
+    if summary.get("barrio"):
+        panel_draw.text((18, 48), str(summary["barrio"]), font=city_font, fill=TEXT_MUTED)
+
+    image.paste(panel, box)
+
+
+def build_barrio_snapshot_png(summary: dict) -> bytes:
+    image = Image.new("RGB", IMAGE_SIZE, BG_TOP)
+    draw = ImageDraw.Draw(image)
+    _draw_vertical_gradient(draw, *IMAGE_SIZE)
+
+    title_font = _load_font(32, bold=True)
+    location_font = _load_font(54, bold=True)
+    summary_font = _load_font(26, bold=False)
+    footer_font = _load_font(18, bold=False)
+
+    draw.rounded_rectangle((28, 24, 1172, 606), radius=34, fill="#FFFDFC", outline="#E7DED8", width=3)
+    draw.text((82, 54), "¿Cuánta caca de perro hay en nuestras aceras?", font=title_font, fill="#A21414")
+
+    location = summary.get("city", "")
+    if summary.get("barrio"):
+        location = f'{summary.get("city", "")} — {summary.get("barrio", "")}'
+    draw.text((72, 118), location, font=location_font, fill=TEXT_DARK)
+
+    line_y = 190
+    draw.text((166, line_y), str(summary.get("fresh_reports", 0)), font=_load_font(34, bold=True), fill=FRESH)
+    draw.text((240, line_y + 4), "frescos,", font=summary_font, fill=TEXT_DARK)
+    draw.text((418, line_y), str(summary.get("older_reports", 0)), font=_load_font(34, bold=True), fill=OLDER)
+    draw.text((500, line_y + 4), "antiguos,", font=summary_font, fill=TEXT_DARK)
+    draw.text((744, line_y), str(summary.get("fossil_reports", 0)), font=_load_font(34, bold=True), fill=FOSSIL)
+    draw.text((834, line_y + 4), "fósiles", font=summary_font, fill=TEXT_DARK)
+
+    stat_y1, stat_y2 = 248, 414
+    widths = [(64, 330), (346, 612), (628, 894), (910, 1136)]
+    _draw_stat_box(draw, (widths[0][0], stat_y1, widths[0][1], stat_y2), "Reportes activos", str(summary.get("total_active_reports", 0)), "", FOSSIL)
+    _draw_stat_box(draw, (widths[1][0], stat_y1, widths[1][1], stat_y2), "Frescos", str(summary.get("fresh_reports", 0)), "(≤ 48h)", FRESH)
+    _draw_stat_box(draw, (widths[2][0], stat_y1, widths[2][1], stat_y2), "Antiguos", str(summary.get("older_reports", 0)), "(2–6 días)", OLDER)
+    _draw_stat_box(draw, (widths[3][0], stat_y1, widths[3][1], stat_y2), "Fósiles", str(summary.get("fossil_reports", 0)), "(≥ 7 días)", FOSSIL)
+
+    _draw_map_panel(draw, image, (64, 434, 1136, 564), summary)
+
+    draw.text((74, 576), "Caca Radar", font=_load_font(26, bold=True), fill=TEXT_DARK)
+    draw.text((274, 580), "Mapa colaborativo · Reporta. Mejora. Respeta.", font=footer_font, fill=TEXT_MUTED)
 
     output = BytesIO()
     image.save(output, format="PNG", optimize=True)

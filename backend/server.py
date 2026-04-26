@@ -56,7 +56,7 @@ from badges_service import check_and_award_badges, get_user_badges, calc_confide
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_active_report_barrios, get_city_report_summary
-from share_image_service import build_rankings_share_png
+from share_image_service import build_rankings_share_png, build_barrio_snapshot_png
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
@@ -1901,19 +1901,18 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
 @api_router.get("/rankings/barrios/share-image")
 async def api_barrio_rankings_share_image(city: str = "Madrid"):
     data = await get_barrio_rankings(db, city, limit=10)
-    barrios = data.get("barrios", [])[:5]
-    title = f"Barrios con más avisos en {city}"
-    subtitle = "¿Cuánta caca de perro hay en nuestras aceras?"
-    rows = [
-        {
-            "rank": barrio.get("rank", index + 1),
-            "label": barrio.get("barrio", ""),
-            "meta": f'{barrio.get("verified_reports", 0)} verificados',
-            "value": str(barrio.get("active_reports", 0)),
-        }
-        for index, barrio in enumerate(barrios)
-    ]
-    png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
+    top_barrio = (data.get("barrios") or [None])[0]
+    if not top_barrio:
+        png = build_rankings_share_png(
+            f"Barrios con más avisos en {city}",
+            "¿Cuánta caca de perro hay en nuestras aceras?",
+            [],
+            footer="Comparte y descarga Caca Radar",
+        )
+        return Response(content=png, media_type="image/png")
+
+    summary = await get_city_report_summary(db, city, barrio=top_barrio.get("barrio"))
+    png = build_barrio_snapshot_png(summary)
     return Response(content=png, media_type="image/png")
 
 
