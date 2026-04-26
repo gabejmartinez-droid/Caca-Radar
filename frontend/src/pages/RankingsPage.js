@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Trophy, MapPin, Share2, Building2, ChevronDown, Lock, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Trophy, MapPin, Share2, Building2, ChevronDown, Loader2, BarChart3 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -69,10 +69,7 @@ export default function RankingsPage() {
   const [loading, setLoading] = useState(true);
   const [cities, setCities] = useState([]);
 
-  const isPremium = user?.subscription_active;
-
   useEffect(() => {
-    if (!isPremium) { setLoading(false); return; }
     const fetchCities = async () => {
       try {
         const { data } = await axios.get(`${API}/rankings/cities`, { withCredentials: true });
@@ -83,10 +80,10 @@ export default function RankingsPage() {
       finally { setLoading(false); }
     };
     fetchCities();
-  }, [isPremium, t]);
+  }, [t]);
 
   useEffect(() => {
-    if (!isPremium || tab !== "barrios") return;
+    if (tab !== "barrios") return;
     const fetchBarrios = async () => {
       setLoading(true);
       try {
@@ -96,7 +93,7 @@ export default function RankingsPage() {
       finally { setLoading(false); }
     };
     fetchBarrios();
-  }, [isPremium, tab, selectedCity, t]);
+  }, [tab, selectedCity, t]);
 
   const handleShare = async (type) => {
     try {
@@ -115,27 +112,6 @@ export default function RankingsPage() {
       if (err.name !== "AbortError") toast.error(t("rankingUi.shareError"));
     }
   };
-
-  if (!isPremium) {
-    return (
-      <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="rankings-page">
-        <div className="ios-safe-header p-4 flex justify-between items-center">
-          <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]" data-testid="back-btn">
-            <ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}
-          </Button>
-          <LanguageSelector />
-        </div>
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Lock className="w-12 h-12 text-[#8D99AE] mb-4" />
-          <h2 className="text-xl font-bold text-[#2B2D42] mb-2">{t("rankingUi.premiumTitle")}</h2>
-          <p className="text-[#8D99AE] text-sm mb-6">{t("rankingUi.premiumBody")}</p>
-          <Button onClick={() => navigate("/subscribe")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-8 py-5" data-testid="upgrade-btn">
-            {t("rankingUi.viewPremiumPlans")}
-          </Button>
-        </div>
-      </div>
-    );
-  }
 
   const currentList = cityData ? (listType === "dirtiest" ? cityData.dirtiest : cityData.cleanest) : [];
 

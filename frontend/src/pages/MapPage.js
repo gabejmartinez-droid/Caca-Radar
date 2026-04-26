@@ -707,22 +707,20 @@ export default function MapPage() {
                 </>
               )}
               <DropdownMenuItem
-                onClick={() => user?.subscription_active ? navigate("/rankings") : navigate("/subscribe")}
+                onClick={() => navigate("/rankings")}
                 className="cursor-pointer gap-2"
                 data-testid="menu-city-rankings"
               >
                 <Building2 className="w-4 h-4 text-[#FF6B6B]" />
                 <span className="flex-1">{t("cityRankings")}</span>
-                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
               </DropdownMenuItem>
               <DropdownMenuItem
-                onClick={() => user?.subscription_active ? navigate(`/rankings?tab=barrios&city=${encodeURIComponent(userCity || "Madrid")}`) : navigate("/subscribe")}
+                onClick={() => navigate(`/rankings?tab=barrios&city=${encodeURIComponent(userCity || "Madrid")}`)}
                 className="cursor-pointer gap-2"
                 data-testid="menu-barrio-rankings"
               >
                 <MapPin className="w-4 h-4 text-[#FF6B6B]" />
                 <span className="flex-1">{t("barrioRankings")}</span>
-                {!user?.subscription_active && <Lock className="w-3.5 h-3.5 text-[#8D99AE]" />}
               </DropdownMenuItem>
               <DropdownMenuItem
                 onClick={() => user?.subscription_active ? navigate(`/city-report${userCity ? `?city=${encodeURIComponent(userCity)}` : ""}`) : navigate("/subscribe")}

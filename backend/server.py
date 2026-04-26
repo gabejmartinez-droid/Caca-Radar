@@ -1824,10 +1824,7 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
 
 @api_router.get("/rankings/cities")
 async def api_city_rankings(request: Request):
-    """Premium: Get cleanest/dirtiest cities ranked by reports per 10k residents."""
-    user = await get_current_user(request)
-    if not user or not user.get("subscription_active"):
-        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    """Get cleanest/dirtiest cities ranked by reports per 10k residents."""
     return await get_city_rankings(db)
 
 @api_router.get("/rankings/cities/share")
@@ -1852,10 +1849,7 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
 
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
-    """Premium: Get barrio rankings within a city."""
-    user = await get_current_user(request)
-    if not user or not user.get("subscription_active"):
-        raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    """Get barrio rankings within a city."""
     return await get_barrio_rankings(db, city)
 
 @api_router.get("/rankings/barrios/share")
