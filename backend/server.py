@@ -984,6 +984,7 @@ async def get_subscription_status(request: Request):
 # ==================== REPORTS ====================
 
 PUBLIC_REGISTERED_USER_LABEL = "registered_user"
+PUBLIC_UNRANKED_LABEL = "unranked"
 PUBLIC_ANONYMOUS_REPORTER_NAMES = {"", "Anónimo", "Anonymous", "Anonym", "Anoniem", "Anonim"}
 
 
@@ -1002,6 +1003,32 @@ def sanitize_public_report_identity(report: dict) -> dict:
         sanitized["contributor_rank"] = None
         sanitized["contributor_rank_key"] = None
     return sanitized
+
+
+async def apply_current_public_report_ranks(reports: list[dict]) -> list[dict]:
+    user_ids = list({report.get("user_id") for report in reports if report.get("user_id")})
+    if not user_ids:
+        return reports
+
+    users = await db.users.find(
+        {"_id": {"$in": user_ids}},
+        {"_id": 1, "subscription_active": 1, "rank": 1, "rank_key": 1},
+    ).to_list(len(user_ids))
+    user_map = {user["_id"]: user for user in users}
+
+    for report in reports:
+        user = user_map.get(report.get("user_id"))
+        if not user:
+            report["contributor_rank"] = PUBLIC_UNRANKED_LABEL
+            report["contributor_rank_key"] = PUBLIC_UNRANKED_LABEL
+            continue
+        if user.get("subscription_active"):
+            report["contributor_rank"] = user.get("rank", DEFAULT_RANK_NAME)
+            report["contributor_rank_key"] = user.get("rank_key", get_rank_key(report["contributor_rank"]))
+        else:
+            report["contributor_rank"] = PUBLIC_UNRANKED_LABEL
+            report["contributor_rank_key"] = PUBLIC_UNRANKED_LABEL
+    return reports
 
 @api_router.get("/reports")
 async def get_reports(
@@ -1028,6 +1055,7 @@ async def get_reports(
         "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
         "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1, "user_id": 1,
     }).to_list(2000)
+    reports = await apply_current_public_report_ranks(reports)
 
     # Add freshness labels and confidence scores
     for index, report in enumerate(reports):
@@ -1048,6 +1076,7 @@ async def get_report(report_id: str):
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    [report] = await apply_current_public_report_ranks([report])
     report = sanitize_public_report_identity(report)
     report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)

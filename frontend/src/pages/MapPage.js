@@ -185,6 +185,18 @@ export default function MapPage() {
     }
     return t("mapUi.anonymous");
   };
+  const publicRankLabel = (report) => {
+    const contributorName = `${report?.contributor_name || ""}`.trim();
+    const isRegisteredReporter =
+      contributorName === "registered_user" ||
+      report?.contributor_rank ||
+      (contributorName && !PUBLIC_ANONYMOUS_REPORTER_NAMES.has(contributorName));
+    if (!isRegisteredReporter) return null;
+    if ((report?.contributor_rank_key || report?.contributor_rank) === "unranked") {
+      return t("mapUi.unranked");
+    }
+    return getRankLabel(report?.contributor_rank_key || report?.contributor_rank, t);
+  };
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
   const isNativeApp = isCapacitorNative();
   const currentPlatform = getCurrentPlatform();
@@ -1086,7 +1098,12 @@ export default function MapPage() {
 
                   <div className="flex items-center gap-2 mb-2 min-w-0">
                     <User className="w-4 h-4 text-[#8D99AE] shrink-0" />
-                    <span className="text-sm text-[#2B2D42] font-medium truncate">{publicContributorLabel(selectedReport)}</span>
+                    <div className="min-w-0">
+                      <span className="block text-sm text-[#2B2D42] font-medium truncate">{publicContributorLabel(selectedReport)}</span>
+                      {publicRankLabel(selectedReport) ? (
+                        <span className="block text-xs text-[#FF6B6B] font-medium truncate">{publicRankLabel(selectedReport)}</span>
+                      ) : null}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2 text-[#8D99AE] mb-2 min-w-0">
@@ -1125,14 +1142,6 @@ export default function MapPage() {
               <div className="mt-3 rounded-2xl bg-[#F8F9FA] px-3 py-2 text-[11px] leading-5 text-[#5C677D]">
                 {t("mapUi.communityReportsAdvisory")}
               </div>
-
-              {selectedReport.contributor_rank && (
-                <div className="mt-2 mb-2">
-                  <span className="inline-flex text-[10px] text-[#FF6B6B] bg-[#FF6B6B]/10 px-2 py-1 rounded-full max-w-full truncate">
-                    {getRankLabel(selectedReport.contributor_rank_key || selectedReport.contributor_rank, t)}
-                  </span>
-                </div>
-              )}
 
               <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
                 {tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS })}
