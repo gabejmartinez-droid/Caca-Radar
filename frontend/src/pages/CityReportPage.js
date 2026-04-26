@@ -246,15 +246,16 @@ export default function CityReportPage() {
 
   const getSharePayload = async () => {
     if (!summary?.city) return null;
-    const query = new URLSearchParams({ kind: "city-report", city: summary.city });
+    const query = new URLSearchParams({ city: summary.city });
     if (summary.barrio) query.set("barrio", summary.barrio);
+    const { data } = await axios.get(`${API}/city-reports/share?${query.toString()}`);
     return {
-      title: formatTranslation(t, "cityReportUi.shareTitle", {
+      title: data.title || formatTranslation(t, "cityReportUi.shareTitle", {
         location: summary.barrio
           ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
           : summary.city,
       }),
-      text: formatTranslation(t, "cityReportUi.shareText", {
+      text: data.share_text || formatTranslation(t, "cityReportUi.shareText", {
         location: summary.barrio
           ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
           : summary.city,
@@ -262,7 +263,8 @@ export default function CityReportPage() {
         older: summary.older_reports,
         fossils: summary.fossil_reports,
       }),
-      url: `${HOSTED_WEB_URL}/download?${query.toString()}`,
+      url: data.app_url || `${HOSTED_WEB_URL}/download?kind=city-report&${query.toString()}`,
+      imageUrl: data.image_url,
     };
   };
 

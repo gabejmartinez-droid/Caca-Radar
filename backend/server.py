@@ -1953,14 +1953,35 @@ async def api_city_report_share(city: str, barrio: str | None = None):
     query = f"kind=city-report&city={quote(city)}"
     if barrio:
         query += f"&barrio={quote(barrio)}"
+    location = f"{city} — {barrio}" if barrio else city
+    title = f"Avisos activos en {location}"
     return {
         **data,
+        "title": title,
         "app_url": f"{frontend_url}/download?{query}",
+        "image_url": f"{frontend_url}/api/city-reports/share-image?city={quote(city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
         },
+        "share_text": f"{location}: {data['fresh_reports']} frescos, {data['older_reports']} antiguos, {data['fossil_reports']} fósiles. {APP_STORE_URL}",
     }
+
+
+@api_router.get("/city-reports/share-image")
+async def api_city_report_share_image(city: str, barrio: str | None = None):
+    summary = await get_city_report_summary(db, city, barrio=barrio)
+    if summary.get("total_active_reports", 0) == 0:
+        png = build_rankings_share_png(
+            f"Avisos activos en {city}",
+            "¿Cuánta caca de perro hay en nuestras aceras?",
+            [],
+            footer="Comparte y descarga Caca Radar",
+        )
+        return Response(content=png, media_type="image/png")
+
+    png = build_barrio_snapshot_png(summary)
+    return Response(content=png, media_type="image/png")
 
 # ==================== NOTIFICATIONS ====================
 

@@ -86,13 +86,18 @@ export default function DownloadPage() {
       const city = searchParams.get("city") || "Madrid";
       return `${API}/rankings/barrios/share-image?city=${encodeURIComponent(city)}`;
     }
+    if (kind === "city-report") {
+      const city = searchParams.get("city") || "Madrid";
+      const barrio = searchParams.get("barrio");
+      return `${API}/city-reports/share-image?city=${encodeURIComponent(city)}${barrio ? `&barrio=${encodeURIComponent(barrio)}` : ""}`;
+    }
     return "/share-example-es.png";
   }, [kind, searchParams]);
   const sharePayload = useMemo(() => ({
     title: contextTitle,
     text: `${t("shareUi.tagline")}\n\n${contextTitle}`,
     url: shareUrl,
-    imageUrl: kind === "city-rankings" || kind === "barrio-rankings" ? previewImageUrl : undefined,
+    imageUrl: kind === "city-rankings" || kind === "barrio-rankings" || kind === "city-report" ? previewImageUrl : undefined,
   }), [contextTitle, kind, previewImageUrl, shareUrl, t]);
 
   const handleShare = async () => {
