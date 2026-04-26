@@ -105,6 +105,7 @@ const MAP_MODES = {
   REPORTS: "reports",
   HEATMAP: "heatmap",
 };
+const PUBLIC_ANONYMOUS_REPORTER_NAMES = new Set(["", "Anónimo", "Anonymous", "Anonym", "Anoniem", "Anonim"]);
 
 function scheduleAfterFirstPaint(callback, delay = 0) {
   if (typeof window === "undefined") {
@@ -174,8 +175,15 @@ export default function MapPage() {
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
   const publicContributorLabel = (report) => {
-    if (report?.contributor_name === "registered_user") return t("mapUi.registeredUser");
-    return report?.contributor_name || t("mapUi.anonymous");
+    const contributorName = `${report?.contributor_name || ""}`.trim();
+    if (
+      contributorName === "registered_user" ||
+      report?.contributor_rank ||
+      (contributorName && !PUBLIC_ANONYMOUS_REPORTER_NAMES.has(contributorName))
+    ) {
+      return t("mapUi.registeredUser");
+    }
+    return t("mapUi.anonymous");
   };
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
   const isNativeApp = isCapacitorNative();

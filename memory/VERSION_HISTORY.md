@@ -207,3 +207,41 @@ Notes:
 - Prepared web build
 ```
 
+### 2026-04-26 — Pending
+
+Release metadata:
+- Commit SHA: `3ce842a12ac3a0080a95b39ccbef66450c4cd615-dirty`
+- Deployment status: `pending`
+- Rollback target: `091f63092624d8ac8385a3058084f098275453db`
+
+Exact versions:
+- Web: `1.1.9-web.1`
+- iOS: `1.1.4 (6)`
+- Android: `1.1.7 (9)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Prepared mobile build.
+
+Internal release notes:
+- Prepared mobile build
+
+Store submission notes:
+```text
+- Prepared mobile build.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 3ce842a12ac3a0080a95b39ccbef66450c4cd615-dirty
+Deployment status: pending
+Rollback target: 091f63092624d8ac8385a3058084f098275453db
+Versions:
+• Web: `1.1.9-web.1`
+• iOS: `1.1.4 (6)`
+• Android: `1.1.7 (9)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Prepared mobile build
+```
+

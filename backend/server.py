@@ -984,11 +984,18 @@ async def get_subscription_status(request: Request):
 # ==================== REPORTS ====================
 
 PUBLIC_REGISTERED_USER_LABEL = "registered_user"
+PUBLIC_ANONYMOUS_REPORTER_NAMES = {"", "Anónimo", "Anonymous", "Anonym", "Anoniem", "Anonim"}
 
 
 def sanitize_public_report_identity(report: dict) -> dict:
     sanitized = dict(report)
-    if sanitized.get("user_id"):
+    contributor_name = str(sanitized.get("contributor_name") or "").strip()
+    has_registered_identity = bool(
+        sanitized.get("user_id")
+        or sanitized.get("contributor_rank")
+        or contributor_name not in PUBLIC_ANONYMOUS_REPORTER_NAMES
+    )
+    if has_registered_identity:
         sanitized["contributor_name"] = PUBLIC_REGISTERED_USER_LABEL
     elif not sanitized.get("contributor_name"):
         sanitized["contributor_name"] = "Anónimo"
@@ -2953,7 +2960,7 @@ async def get_share_data(report_id: str, request: Request):
         "text": f"Nuevo reporte en {municipality}. ¡Ayuda a mantener las calles limpias!",
         "report_id": report_id,
         "municipality": municipality,
-        "contributor": PUBLIC_REGISTERED_USER_LABEL if report.get("user_id") else "Anónimo",
+        "contributor": sanitize_public_report_identity(report).get("contributor_name", "Anónimo"),
         "created_at": created,
         "photo_url": f"{os.environ.get('FRONTEND_URL', '')}/api/files/{report['photo_url']}" if report.get("photo_url") else None
     }
