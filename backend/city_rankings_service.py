@@ -1,6 +1,7 @@
 """City & Barrio Rankings Service — Population data from Wikipedia, report density calculations."""
 import logging
 import requests
+from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -159,17 +160,16 @@ async def get_city_rankings(db, limit: int = 50) -> dict:
 
 async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
     """Get barrio/neighborhood rankings within a city by report density."""
-    # Get reports for this city with their display_name (contains barrio info)
+    normalized_city = (city or "").strip()
     reports = await db.reports.find(
-        {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}},
-        {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "status": 1, "created_at": 1}
+        {"municipality": normalized_city, "archived": {"$ne": True}, "flagged": {"$ne": True}},
+        {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "status": 1, "created_at": 1, "barrio": 1}
     ).to_list(10000)
 
     if not reports:
-        return {"city": city, "barrios": [], "total_reports": 0}
+        return {"city": normalized_city, "barrios": [], "total_reports": 0}
 
     # Group reports into grid cells (~500m) to identify neighborhoods
-    from collections import defaultdict
     grid = defaultdict(list)
     for r in reports:
         # Grid cell at ~500m resolution
@@ -184,8 +184,9 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
         if count == 0:
             continue
 
-        # Use the cluster center for naming
-        barrio_name = await _get_barrio_name(db, lat, lng, city)
+        barrio_name = _cluster_barrio_name(cluster_reports)
+        if not barrio_name:
+            barrio_name = await _get_barrio_name(db, lat, lng, normalized_city)
 
         verified = sum(1 for r in cluster_reports if r.get("status") == "verified")
         barrios.append({
@@ -216,7 +217,7 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
         b["rank"] = i + 1
 
     return {
-        "city": city,
+        "city": normalized_city,
         "barrios": barrio_list,
         "total_reports": len(reports),
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -387,7 +388,7 @@ async def _get_barrio_name(db, lat: float, lng: float, city: str) -> str:
     """Get barrio name from cache or Nominatim reverse geocode."""
     # Check cache first
     cached = await db.barrio_cache.find_one(
-        {"lat": lat, "lng": lng},
+        {"lat": lat, "lng": lng, "city": city},
         {"_id": 0, "barrio": 1}
     )
     if cached:
@@ -404,22 +405,47 @@ async def _get_barrio_name(db, lat: float, lng: float, city: str) -> str:
         resp.raise_for_status()
         data = resp.json()
         address = data.get("address", {})
-        barrio = (
-            address.get("neighbourhood") or
-            address.get("suburb") or
-            address.get("quarter") or
-            address.get("city_district") or
-            address.get("district") or
-            f"{city} Centro"
-        )
+        resolved_city = (
+            address.get("city") or
+            address.get("town") or
+            address.get("village") or
+            address.get("municipality") or
+            ""
+        ).strip()
+        if not _matches_city(resolved_city, city):
+            barrio = f"Zona {lat:.3f},{lng:.3f}"
+        else:
+            barrio = (
+                address.get("neighbourhood") or
+                address.get("suburb") or
+                address.get("quarter") or
+                address.get("city_district") or
+                address.get("district") or
+                f"{city} Centro"
+            )
     except Exception:
         barrio = f"Zona {lat:.3f},{lng:.3f}"
 
     # Cache it
     await db.barrio_cache.update_one(
-        {"lat": lat, "lng": lng},
+        {"lat": lat, "lng": lng, "city": city},
         {"$set": {"barrio": barrio, "city": city, "cached_at": datetime.now(timezone.utc).isoformat()}},
         upsert=True
     )
 
     return barrio
+
+
+def _matches_city(resolved_city: str, requested_city: str) -> bool:
+    return resolved_city.strip().lower() == requested_city.strip().lower()
+
+
+def _cluster_barrio_name(cluster_reports: list[dict]) -> str:
+    names = [
+        (report.get("barrio") or "").strip()
+        for report in cluster_reports
+        if (report.get("barrio") or "").strip()
+    ]
+    if not names:
+        return ""
+    return Counter(names).most_common(1)[0][0]
