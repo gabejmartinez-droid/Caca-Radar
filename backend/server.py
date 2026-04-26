@@ -57,7 +57,7 @@ from badges_service import check_and_award_badges, get_user_badges, calc_confide
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_active_report_barrios, get_city_report_summary
-from share_image_service import build_rankings_share_png, build_barrio_snapshot_png
+from share_image_service import build_rankings_share_png, build_barrio_snapshot_png, get_share_image_media_type
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
@@ -1994,7 +1994,7 @@ async def api_city_rankings_share_image(list_type: str = "dirtiest"):
         for index, city in enumerate(cities)
     ]
     png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
-    return Response(content=png, media_type="image/svg+xml")
+    return Response(content=png, media_type=get_share_image_media_type())
 
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
@@ -2040,11 +2040,11 @@ async def api_barrio_rankings_share_image(city: str = "Madrid"):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type="image/svg+xml")
+        return Response(content=png, media_type=get_share_image_media_type())
 
     summary = await get_city_report_summary(db, city, barrio=top_barrio.get("barrio"))
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type="image/svg+xml")
+    return Response(content=png, media_type=get_share_image_media_type())
 
 
 @api_router.get("/city-reports/cities")
@@ -2109,10 +2109,10 @@ async def api_city_report_share_image(city: str, barrio: str | None = None):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type="image/svg+xml")
+        return Response(content=png, media_type=get_share_image_media_type())
 
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type="image/svg+xml")
+    return Response(content=png, media_type=get_share_image_media_type())
 
 
 @api_router.get("/share", response_class=HTMLResponse)

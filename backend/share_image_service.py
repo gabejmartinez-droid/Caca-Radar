@@ -1,7 +1,15 @@
 from __future__ import annotations
 
+import io
 from html import escape
 from typing import Iterable
+
+try:
+    from PIL import Image, ImageDraw, ImageFont
+except ImportError:  # pragma: no cover - production installs pillow, local fallback stays SVG
+    Image = None
+    ImageDraw = None
+    ImageFont = None
 
 
 IMAGE_WIDTH = 1200
@@ -21,6 +29,10 @@ MAP_BG = "#F7F0E6"
 MAP_WATER = "#C9E7FF"
 MAP_ROAD = "#FFFFFF"
 MAP_REGION = "#FAD6D0"
+
+
+def get_share_image_media_type() -> str:
+    return "image/png" if Image is not None else "image/svg+xml"
 
 
 def _truncate(text: str, max_chars: int) -> str:
@@ -47,7 +59,145 @@ def _svg_footer() -> str:
     return "</svg>"
 
 
+def _get_font(size: int, bold: bool = False):
+    if ImageFont is None:
+        return None
+    candidates = [
+        "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
+        "/Library/Fonts/Arial Bold.ttf" if bold else "/Library/Fonts/Arial.ttf",
+        "/System/Library/Fonts/SFNS.ttf",
+    ]
+    for path in candidates:
+        try:
+            return ImageFont.truetype(path, size=size)
+        except Exception:
+            continue
+    return ImageFont.load_default()
+
+
+def _hex_to_rgb(value: str):
+    value = value.lstrip("#")
+    return tuple(int(value[i:i + 2], 16) for i in (0, 2, 4))
+
+
+def _draw_text(draw, xy, text, *, font, fill, anchor=None):
+    draw.text(xy, str(text or ""), font=font, fill=fill, anchor=anchor)
+
+
+def _render_gradient_background(image):
+    top = _hex_to_rgb(BG_TOP)
+    bottom = _hex_to_rgb(BG_BOTTOM)
+    draw = ImageDraw.Draw(image)
+    for y in range(IMAGE_HEIGHT):
+        ratio = y / max(IMAGE_HEIGHT - 1, 1)
+        color = tuple(int(top[i] + (bottom[i] - top[i]) * ratio) for i in range(3))
+        draw.line([(0, y), (IMAGE_WIDTH, y)], fill=color)
+
+
+def _rounded(draw, box, radius, fill, outline=None, width=1):
+    draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
+
+
+def _draw_map_png(draw, summary: dict):
+    map_x, map_y, map_w, map_h = 64, 434, 1072, 130
+    _rounded(draw, (map_x, map_y, map_x + map_w, map_y + map_h), 20, MAP_BG)
+    draw.polygon(
+        [
+            (map_x + map_w * 0.72, map_y),
+            (map_x + map_w, map_y),
+            (map_x + map_w, map_y + map_h),
+            (map_x + map_w * 0.84, map_y + map_h * 0.72),
+        ],
+        fill=MAP_WATER,
+    )
+    for offset in range(20, map_w, 58):
+        draw.line(
+            [(map_x + offset, map_y), (map_x + offset - 110, map_y + map_h)],
+            fill=MAP_ROAD,
+            width=7,
+        )
+    for offset in range(10, map_h, 54):
+        draw.line(
+            [(map_x, map_y + offset), (map_x + map_w, map_y + offset + 26)],
+            fill=MAP_ROAD,
+            width=7,
+        )
+
+    bounds = summary.get("map_bounds") or {}
+    south, north = bounds.get("south"), bounds.get("north")
+    west, east = bounds.get("west"), bounds.get("east")
+    points = summary.get("preview_points") or []
+    normalized = []
+    if points and None not in {south, north, west, east} and east != west and north != south:
+        for point in points[:40]:
+            px = map_x + 36 + ((point["lng"] - west) / (east - west)) * (map_w - 72)
+            py = map_y + 24 + (1 - ((point["lat"] - south) / (north - south))) * (map_h - 48)
+            normalized.append((px, py, point.get("bucket", "fossil")))
+
+    if normalized:
+        min_x = min(p[0] for p in normalized)
+        max_x = max(p[0] for p in normalized)
+        min_y = min(p[1] for p in normalized)
+        max_y = max(p[1] for p in normalized)
+        region = [
+            (min_x - 34, min_y + 18),
+            ((min_x + max_x) / 2, min_y - 24),
+            (max_x + 28, min_y + 24),
+            (max_x + 16, max_y - 28),
+            ((min_x + max_x) / 2, max_y + 26),
+            (min_x - 28, max_y - 8),
+        ]
+        draw.polygon(region, fill=MAP_REGION, outline="#E8A5A0")
+        colors = {"fresh": FRESH, "older": OLDER, "fossil": FOSSIL}
+        for px, py, bucket in normalized:
+            color = colors.get(bucket, FOSSIL)
+            draw.ellipse((px - 8, py - 8, px + 8, py + 8), fill=color, outline="white", width=2)
+
+    title_font = _get_font(28, bold=True)
+    barrio_font = _get_font(18)
+    _draw_text(draw, (map_x + 18, map_y + 8), _truncate(str(summary.get("city", "")).upper(), 24), font=title_font, fill=TEXT_DARK)
+    if summary.get("barrio"):
+        _draw_text(draw, (map_x + 18, map_y + 36), _truncate(summary.get("barrio", ""), 28), font=barrio_font, fill=TEXT_MUTED)
+
+
+def _image_bytes(image) -> bytes:
+    buf = io.BytesIO()
+    image.save(buf, format="PNG", optimize=True)
+    return buf.getvalue()
+
+
+def _stat_box_png(draw, x: int, label: str, value: str, note: str, color: str):
+    _rounded(draw, (x, 248, x + 266, 414), 22, CARD_BG)
+    label_font = _get_font(22)
+    value_font = _get_font(42, bold=True)
+    note_font = _get_font(18)
+    _draw_text(draw, (x + 18, 260), label, font=label_font, fill=TEXT_DARK)
+    _draw_text(draw, (x + 18, 320), value, font=value_font, fill=color)
+    _draw_text(draw, (x + 18, 372), note, font=note_font, fill=TEXT_MUTED)
+
+
 def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], footer: str = "Caca Radar") -> bytes:
+    if Image is not None:
+        rows = list(rows)[:5]
+        image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), BG_TOP)
+        _render_gradient_background(image)
+        draw = ImageDraw.Draw(image)
+        _rounded(draw, (40, 38, 220, 110), 26, ACCENT_SOFT)
+        _draw_text(draw, (62, 56), "Caca Radar", font=_get_font(28, bold=True), fill=ACCENT)
+        _draw_text(draw, (40, 122), _truncate(title, 34), font=_get_font(58, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (40, 190), _truncate(subtitle, 70), font=_get_font(26), fill=TEXT_MUTED)
+        top = 276
+        for index, row in enumerate(rows):
+            y = top + index * 80
+            _rounded(draw, (40, y, 1160, y + 66), 24, CARD_BG)
+            _rounded(draw, (58, y + 13, 104, y + 53), 18, ACCENT_SOFT)
+            _draw_text(draw, (81, y + 22), str(row.get("rank", index + 1)), font=_get_font(28, bold=True), fill=ACCENT, anchor="ma")
+            _draw_text(draw, (126, y + 10), _truncate(row.get("label", ""), 34), font=_get_font(30, bold=True), fill=TEXT_DARK)
+            _draw_text(draw, (126, y + 38), _truncate(row.get("meta", ""), 52), font=_get_font(20), fill=TEXT_MUTED)
+            _draw_text(draw, (1102, y + 19), str(row.get("value", "")), font=_get_font(28, bold=True), fill=ACCENT, anchor="ra")
+        _draw_text(draw, (40, 568), _truncate(footer, 80), font=_get_font(20), fill=TEXT_MUTED)
+        return _image_bytes(image)
+
     rows = list(rows)[:5]
     parts = [_svg_header()]
     parts.append(
@@ -139,6 +289,31 @@ def _build_map_svg(summary: dict) -> str:
 
 
 def build_barrio_snapshot_png(summary: dict) -> bytes:
+    if Image is not None:
+        image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), BG_TOP)
+        _render_gradient_background(image)
+        draw = ImageDraw.Draw(image)
+        _rounded(draw, (28, 24, 1172, 606), 34, "#FFFDFC", outline="#E7DED8", width=3)
+        location = summary.get("city", "")
+        if summary.get("barrio"):
+            location = f'{summary.get("city", "")} — {summary.get("barrio", "")}'
+        _draw_text(draw, (82, 52), "¿Cuánta caca de perro hay en nuestras aceras?", font=_get_font(32, bold=True), fill="#A21414")
+        _draw_text(draw, (72, 110), _truncate(location, 28), font=_get_font(54, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (166, 196), str(summary.get("fresh_reports", 0)), font=_get_font(34, bold=True), fill=FRESH)
+        _draw_text(draw, (240, 200), "frescos,", font=_get_font(26), fill=TEXT_DARK)
+        _draw_text(draw, (418, 196), str(summary.get("older_reports", 0)), font=_get_font(34, bold=True), fill=OLDER)
+        _draw_text(draw, (500, 200), "antiguos,", font=_get_font(26), fill=TEXT_DARK)
+        _draw_text(draw, (744, 196), str(summary.get("fossil_reports", 0)), font=_get_font(34, bold=True), fill=FOSSIL)
+        _draw_text(draw, (834, 200), "fósiles", font=_get_font(26), fill=TEXT_DARK)
+        _stat_box_png(draw, 64, "Reportes activos", str(summary.get("total_active_reports", 0)), "", FOSSIL)
+        _stat_box_png(draw, 346, "Frescos", str(summary.get("fresh_reports", 0)), "(≤ 48h)", FRESH)
+        _stat_box_png(draw, 628, "Antiguos", str(summary.get("older_reports", 0)), "(2–6 días)", OLDER)
+        _stat_box_png(draw, 910, "Fósiles", str(summary.get("fossil_reports", 0)), "(≥ 7 días)", FOSSIL)
+        _draw_map_png(draw, summary)
+        _draw_text(draw, (74, 566), "Caca Radar", font=_get_font(26, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (274, 570), "Mapa colaborativo · Reporta. Mejora. Respeta.", font=_get_font(18), fill=TEXT_MUTED)
+        return _image_bytes(image)
+
     location = summary.get("city", "")
     if summary.get("barrio"):
         location = f'{summary.get("city", "")} — {summary.get("barrio", "")}'
