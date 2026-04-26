@@ -124,7 +124,7 @@ export default function ProfilePage() {
         ios: data.app_store_url,
         android: data.play_store_url,
       })}`,
-      url: data.url,
+      url: data.url || data.app_url,
     };
   };
 

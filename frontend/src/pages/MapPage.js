@@ -557,7 +557,7 @@ export default function MapPage() {
   const getReportSharePayload = async () => {
     if (!selectedReport) return null;
     const { data } = await axios.get(`${API}/reports/${selectedReport.id}/share`, { withCredentials: true });
-    return { title: data.title, text: data.text, url: data.url };
+    return { title: data.title, text: data.text, url: data.url || data.app_url };
   };
 
   const handleShare = async () => {

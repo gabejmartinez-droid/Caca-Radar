@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, Response
 from bson import ObjectId
 import os
 import subprocess
@@ -10,6 +10,7 @@ import logging
 import uuid
 import asyncio
 import json
+from html import escape
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
@@ -254,6 +255,130 @@ APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" 
 
 def get_frontend_url() -> str:
     return os.environ.get("FRONTEND_URL", "https://cacaradar.es").rstrip("/")
+
+
+def build_download_url(kind: str, **params) -> str:
+    frontend_url = get_frontend_url()
+    query_parts = [f"kind={quote(kind)}"]
+    for key, value in params.items():
+        if value is None or value == "":
+            continue
+        query_parts.append(f"{quote(str(key))}={quote(str(value))}")
+    return f"{frontend_url}/download?{'&'.join(query_parts)}"
+
+
+def build_share_page_url(kind: str, **params) -> str:
+    frontend_url = get_frontend_url()
+    query_parts = [f"kind={quote(kind)}"]
+    for key, value in params.items():
+        if value is None or value == "":
+            continue
+        query_parts.append(f"{quote(str(key))}={quote(str(value))}")
+    return f"{frontend_url}/api/share?{'&'.join(query_parts)}"
+
+
+def render_share_page(*, title: str, description: str, image_url: str, share_url: str, redirect_url: str) -> str:
+    safe_title = escape(title)
+    safe_description = escape(description)
+    safe_image = escape(image_url)
+    safe_share = escape(share_url)
+    safe_redirect = escape(redirect_url)
+    safe_app_store = escape(APP_STORE_URL)
+    safe_play_store = escape(PLAY_STORE_URL)
+    return f"""<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{safe_title}</title>
+    <meta name="description" content="{safe_description}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="{safe_title}" />
+    <meta property="og:description" content="{safe_description}" />
+    <meta property="og:image" content="{safe_image}" />
+    <meta property="og:url" content="{safe_share}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="{safe_title}" />
+    <meta name="twitter:description" content="{safe_description}" />
+    <meta name="twitter:image" content="{safe_image}" />
+    <meta http-equiv="refresh" content="1;url={safe_redirect}" />
+    <style>
+      body {{
+        margin: 0;
+        font-family: Arial, Helvetica, sans-serif;
+        background: #f8f9fa;
+        color: #2b2d42;
+      }}
+      main {{
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }}
+      .card {{
+        width: min(100%, 640px);
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 10px 30px rgba(43,45,66,0.08);
+        overflow: hidden;
+      }}
+      .preview {{
+        width: 100%;
+        display: block;
+        background: #f8f9fa;
+      }}
+      .body {{
+        padding: 24px;
+      }}
+      h1 {{
+        margin: 0 0 12px 0;
+        font-size: 28px;
+        line-height: 1.15;
+      }}
+      p {{
+        margin: 0 0 18px 0;
+        color: #5c677d;
+        line-height: 1.5;
+      }}
+      .actions {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }}
+      .button {{
+        display: inline-block;
+        padding: 12px 16px;
+        border-radius: 14px;
+        text-decoration: none;
+        font-weight: 700;
+      }}
+      .primary {{ background: #ff6b6b; color: white; }}
+      .secondary {{ background: #f8f9fa; color: #2b2d42; }}
+    </style>
+    <script>
+      window.setTimeout(function () {{
+        window.location.replace({json.dumps(redirect_url)});
+      }}, 600);
+    </script>
+  </head>
+  <body>
+    <main>
+      <section class="card">
+        <img class="preview" src="{safe_image}" alt="{safe_title}" />
+        <div class="body">
+          <h1>{safe_title}</h1>
+          <p>{safe_description}</p>
+          <div class="actions">
+            <a class="button primary" href="{safe_redirect}">Abrir Caca Radar</a>
+            <a class="button secondary" href="{safe_app_store}">App Store</a>
+            <a class="button secondary" href="{safe_play_store}">Google Play</a>
+          </div>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>"""
 
 
 def load_app_versions() -> dict:
@@ -1834,14 +1959,17 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
     data = await get_city_rankings(db, limit=10)
     cities = data.get(list_type, data["dirtiest"])[:10]
     title = "Las ciudades más sucias de España" if list_type == "dirtiest" else "Las ciudades más limpias de España"
-    frontend_url = get_frontend_url()
+    app_url = build_download_url("city-rankings", list_type=list_type)
+    share_url = build_share_page_url("city-rankings", list_type=list_type)
+    image_url = f"{get_frontend_url()}/api/rankings/cities/share-image?list_type={quote(list_type)}"
     return {
         "title": title,
         "cities": cities,
         "total_cities": data["total_cities"],
         "generated_at": data["generated_at"],
-        "app_url": f"{frontend_url}/download?kind=city-rankings&list_type={quote(list_type)}",
-        "image_url": f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(list_type)}",
+        "app_url": app_url,
+        "share_url": share_url,
+        "image_url": image_url,
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1878,15 +2006,18 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     """Public shareable barrio ranking data (top 10 only) for a city."""
     data = await get_barrio_rankings(db, city, limit=10)
     title = f"Los barrios con más avisos en {city}"
-    frontend_url = get_frontend_url()
+    app_url = build_download_url("barrio-rankings", city=city)
+    share_url = build_share_page_url("barrio-rankings", city=city)
+    image_url = f"{get_frontend_url()}/api/rankings/barrios/share-image?city={quote(city)}"
     return {
         "title": title,
         "city": city,
         "barrios": data.get("barrios", [])[:10],
         "total_reports": data.get("total_reports", 0),
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "app_url": f"{frontend_url}/download?kind=barrio-rankings&city={quote(city)}",
-        "image_url": f"{frontend_url}/api/rankings/barrios/share-image?city={quote(city)}",
+        "app_url": app_url,
+        "share_url": share_url,
+        "image_url": image_url,
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1949,17 +2080,17 @@ async def api_city_report_share(city: str, barrio: str | None = None):
     data = await get_city_report_summary(db, city, barrio=barrio)
     if data.get("total_active_reports", 0) == 0:
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
-    frontend_url = get_frontend_url()
-    query = f"kind=city-report&city={quote(city)}"
-    if barrio:
-        query += f"&barrio={quote(barrio)}"
     location = f"{city} — {barrio}" if barrio else city
     title = f"Avisos activos en {location}"
+    app_url = build_download_url("city-report", city=city, barrio=barrio)
+    share_url = build_share_page_url("city-report", city=city, barrio=barrio)
+    image_url = f"{get_frontend_url()}/api/city-reports/share-image?city={quote(city)}" + (f"&barrio={quote(barrio)}" if barrio else "")
     return {
         **data,
         "title": title,
-        "app_url": f"{frontend_url}/download?{query}",
-        "image_url": f"{frontend_url}/api/city-reports/share-image?city={quote(city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
+        "app_url": app_url,
+        "share_url": share_url,
+        "image_url": image_url,
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
@@ -1982,6 +2113,83 @@ async def api_city_report_share_image(city: str, barrio: str | None = None):
 
     png = build_barrio_snapshot_png(summary)
     return Response(content=png, media_type="image/svg+xml")
+
+
+@api_router.get("/share", response_class=HTMLResponse)
+async def api_public_share_page(
+    kind: str,
+    city: str | None = None,
+    barrio: str | None = None,
+    list_type: str | None = None,
+    name: str | None = None,
+    report_id: str | None = None,
+):
+    frontend_url = get_frontend_url()
+    fallback_image = f"{frontend_url}/share-example-es.png"
+
+    if kind == "city-rankings":
+        data = await get_city_rankings(db, limit=10)
+        selected = list_type or "dirtiest"
+        title = "Las ciudades más sucias de España" if selected == "dirtiest" else "Las ciudades más limpias de España"
+        description = f"{title} según Caca Radar. Descarga la app y ayuda a mantener tu ciudad limpia."
+        image_url = f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(selected)}"
+        redirect_url = build_download_url("city-rankings", list_type=selected)
+        share_url = build_share_page_url("city-rankings", list_type=selected)
+        return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
+
+    if kind == "barrio-rankings":
+        selected_city = city or "Madrid"
+        title = f"Los barrios con más avisos en {selected_city}"
+        description = f"{title} según Caca Radar. Consulta el ranking y ayuda a mantener tu barrio limpio."
+        image_url = f"{frontend_url}/api/rankings/barrios/share-image?city={quote(selected_city)}"
+        redirect_url = build_download_url("barrio-rankings", city=selected_city)
+        share_url = build_share_page_url("barrio-rankings", city=selected_city)
+        return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
+
+    if kind == "city-report":
+        selected_city = city or "Madrid"
+        summary = await get_city_report_summary(db, selected_city, barrio=barrio)
+        location = f"{selected_city} — {barrio}" if barrio else selected_city
+        title = f"Avisos activos en {location}"
+        description = (
+            f"{location}: {summary.get('fresh_reports', 0)} frescos, "
+            f"{summary.get('older_reports', 0)} antiguos, "
+            f"{summary.get('fossil_reports', 0)} fósiles."
+        )
+        image_url = f"{frontend_url}/api/city-reports/share-image?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else "")
+        redirect_url = build_download_url("city-report", city=selected_city, barrio=barrio)
+        share_url = build_share_page_url("city-report", city=selected_city, barrio=barrio)
+        return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
+
+    if kind == "profile":
+        display_name = name or "Usuario"
+        title = f"{display_name} en Caca Radar"
+        description = f"Consulta el perfil compartido de {display_name} en Caca Radar."
+        redirect_url = build_download_url("profile", name=display_name)
+        share_url = build_share_page_url("profile", name=display_name)
+        return HTMLResponse(render_share_page(title=title, description=description, image_url=fallback_image, share_url=share_url, redirect_url=redirect_url))
+
+    if kind == "report" and report_id:
+        report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0, "municipality": 1, "photo_url": 1})
+        municipality = city or (report or {}).get("municipality") or "España"
+        title = f"Reporte de caca en {municipality} — Caca Radar"
+        description = f"Nuevo reporte en {municipality}. Ayuda a mantener las calles limpias."
+        image_url = f"{frontend_url}/api/files/{report['photo_url']}" if report and report.get("photo_url") else fallback_image
+        redirect_url = build_download_url("report", report_id=report_id, city=municipality)
+        share_url = build_share_page_url("report", report_id=report_id, city=municipality)
+        return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
+
+    redirect_url = build_download_url("city-rankings", list_type="dirtiest")
+    share_url = build_share_page_url("city-rankings", list_type="dirtiest")
+    return HTMLResponse(
+        render_share_page(
+            title="Caca Radar",
+            description="Descarga Caca Radar y ayuda a mantener las calles limpias.",
+            image_url=fallback_image,
+            share_url=share_url,
+            redirect_url=redirect_url,
+        )
+    )
 
 # ==================== NOTIFICATIONS ====================
 
@@ -2503,7 +2711,8 @@ async def get_user_share_data(user_id_param: str):
 
     display_name = u.get("username") or u.get("name", "Usuario")
     badge_count = len(u.get("badges", []))
-    frontend_url = get_frontend_url()
+    app_url = build_download_url("profile", name=display_name)
+    share_url = build_share_page_url("profile", name=display_name)
 
     return {
         "title": f"{display_name} en Caca Radar",
@@ -2513,7 +2722,8 @@ async def get_user_share_data(user_id_param: str):
         "total_score": u.get("total_score", 0),
         "report_count": u.get("report_count", 0),
         "badge_count": badge_count,
-        "url": f"{frontend_url}/download?kind=profile&name={quote(display_name)}",
+        "url": share_url,
+        "app_url": app_url,
         "app_store_url": APP_STORE_URL,
         "play_store_url": PLAY_STORE_URL,
         "download_text": f"Descarga Caca Radar:\niOS: {APP_STORE_URL}\nAndroid: {PLAY_STORE_URL}"
@@ -3033,13 +3243,14 @@ async def get_share_data(report_id: str, request: Request):
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
-    frontend_url = get_frontend_url()
     municipality = report.get("municipality", "España")
-    share_url = f"{frontend_url}/download?kind=report&report_id={quote(report_id)}&city={quote(municipality)}"
+    share_url = build_share_page_url("report", report_id=report_id, city=municipality)
+    app_url = build_download_url("report", report_id=report_id, city=municipality)
     created = report.get("created_at", "")
 
     return {
         "url": share_url,
+        "app_url": app_url,
         "title": f"Reporte de caca en {municipality} — Caca Radar",
         "text": f"Nuevo reporte en {municipality}. ¡Ayuda a mantener las calles limpias!",
         "report_id": report_id,

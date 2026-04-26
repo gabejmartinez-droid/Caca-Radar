@@ -273,7 +273,7 @@ export default function CityReportPage() {
         older: summary.older_reports,
         fossils: summary.fossil_reports,
       }),
-      url: data.app_url || `${HOSTED_WEB_URL}/download?kind=city-report&${query.toString()}`,
+      url: data.share_url || data.app_url || `${HOSTED_WEB_URL}/download?kind=city-report&${query.toString()}`,
       imageUrl: data.image_url,
     };
   };

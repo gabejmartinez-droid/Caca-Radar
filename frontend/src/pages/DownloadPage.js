@@ -76,7 +76,7 @@ export default function DownloadPage() {
   }, []);
 
   const contextTitle = useMemo(() => buildContextTitle(kind, searchParams, t), [kind, searchParams, t]);
-  const shareUrl = useMemo(() => `${HOSTED_WEB_URL}/download?${searchParams.toString()}`, [searchParams]);
+  const shareUrl = useMemo(() => `${HOSTED_WEB_URL}/api/share?${searchParams.toString()}`, [searchParams]);
   const previewImageUrl = useMemo(() => {
     if (kind === "city-rankings") {
       const listType = searchParams.get("list_type") || "dirtiest";
