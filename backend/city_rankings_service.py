@@ -1,6 +1,7 @@
 """City & Barrio Rankings Service — Population data from Wikipedia, report density calculations."""
 import logging
 import requests
+from bson.decimal128 import Decimal128
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -106,6 +107,17 @@ def get_population(city_name: str) -> int:
     return 0
 
 
+def _coerce_coordinate(value) -> Optional[float]:
+    if value is None:
+        return None
+    try:
+        if isinstance(value, Decimal128):
+            return float(value.to_decimal())
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
 async def get_city_rankings(db, limit: int = 50) -> dict:
     """Get cleanest and dirtiest cities ranked by active reports per 10,000 residents."""
     # Get active reports grouped by municipality
@@ -172,10 +184,17 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
     # Group reports into grid cells (~500m) to identify neighborhoods
     grid = defaultdict(list)
     for r in reports:
+        lat = _coerce_coordinate(r.get("latitude"))
+        lng = _coerce_coordinate(r.get("longitude"))
+        if lat is None or lng is None:
+            continue
         # Grid cell at ~500m resolution
-        lat_cell = round(r["latitude"] * 200) / 200  # ~0.005 degrees ≈ 500m
-        lng_cell = round(r["longitude"] * 200) / 200
-        grid[(lat_cell, lng_cell)].append(r)
+        lat_cell = round(lat * 200) / 200  # ~0.005 degrees ≈ 500m
+        lng_cell = round(lng * 200) / 200
+        report = dict(r)
+        report["latitude"] = lat
+        report["longitude"] = lng
+        grid[(lat_cell, lng_cell)].append(report)
 
     # Try to get barrio names via reverse geocode for each cluster center
     barrios = []
@@ -343,8 +362,8 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
         else:
             fossil_reports += 1
 
-        lat = report.get("latitude")
-        lng = report.get("longitude")
+        lat = _coerce_coordinate(report.get("latitude"))
+        lng = _coerce_coordinate(report.get("longitude"))
         if lat is None or lng is None:
             continue
 

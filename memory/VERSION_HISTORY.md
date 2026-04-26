@@ -759,3 +759,45 @@ Notes:
 - Rebuilt Android bundle
 ```
 
+### 2026-04-26 — Pending
+
+Release metadata:
+- Commit SHA: `d373fe29034346e804b8b4b7cf5875af3cd1189f-dirty`
+- Deployment status: `pending`
+- Rollback target: `3dcdbed1fbf5dbdd46ad23f0716403bd2e8f86b8`
+
+Exact versions:
+- Web: `1.1.17-web.1`
+- iOS: `1.1.13 (15)`
+- Android: `1.1.16 (18)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Rebuilt iOS bundle.
+- Rebuilt Android bundle.
+
+Internal release notes:
+- Rebuilt iOS bundle
+- Rebuilt Android bundle
+
+Store submission notes:
+```text
+- Rebuilt iOS bundle.
+- Rebuilt Android bundle.
+```
+
+Internal release notes block:
+```text
+Commit SHA: d373fe29034346e804b8b4b7cf5875af3cd1189f-dirty
+Deployment status: pending
+Rollback target: 3dcdbed1fbf5dbdd46ad23f0716403bd2e8f86b8
+Versions:
+• Web: `1.1.17-web.1`
+• iOS: `1.1.13 (15)`
+• Android: `1.1.16 (18)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Rebuilt iOS bundle
+- Rebuilt Android bundle
+```
+

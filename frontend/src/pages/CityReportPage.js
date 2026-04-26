@@ -171,10 +171,20 @@ export default function CityReportPage() {
       try {
         const query = new URLSearchParams({ city: requestedCity });
         if (requestedBarrio) query.set("barrio", requestedBarrio);
-        const endpoint = canUseSearch
-          ? `${API}/city-reports?${query.toString()}`
-          : `${API}/city-reports/share?${query.toString()}`;
-        const { data } = await axios.get(endpoint, canUseSearch ? { withCredentials: true } : undefined);
+        let data;
+        if (canUseSearch) {
+          try {
+            ({ data } = await axios.get(`${API}/city-reports?${query.toString()}`, { withCredentials: true }));
+          } catch (premiumError) {
+            const status = premiumError?.response?.status;
+            if (status !== 401 && status !== 403) {
+              throw premiumError;
+            }
+            ({ data } = await axios.get(`${API}/city-reports/share?${query.toString()}`));
+          }
+        } else {
+          ({ data } = await axios.get(`${API}/city-reports/share?${query.toString()}`));
+        }
         if (!ignore) setSummary(data);
       } catch (error) {
         if (ignore) return;
