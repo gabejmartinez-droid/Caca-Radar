@@ -983,6 +983,19 @@ async def get_subscription_status(request: Request):
 
 # ==================== REPORTS ====================
 
+PUBLIC_REGISTERED_USER_LABEL = "registered_user"
+
+
+def sanitize_public_report_identity(report: dict) -> dict:
+    sanitized = dict(report)
+    if sanitized.get("user_id"):
+        sanitized["contributor_name"] = PUBLIC_REGISTERED_USER_LABEL
+    elif not sanitized.get("contributor_name"):
+        sanitized["contributor_name"] = "Anónimo"
+        sanitized["contributor_rank"] = None
+        sanitized["contributor_rank_key"] = None
+    return sanitized
+
 @api_router.get("/reports")
 async def get_reports(
     municipality: Optional[str] = None,
@@ -1006,18 +1019,16 @@ async def get_reports(
         "status": 1, "created_at": 1, "refreshed_at": 1, "upvotes": 1, "downvotes": 1,
         "contributor_name": 1, "contributor_rank": 1, "contributor_rank_key": 1, "municipality": 1,
         "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
-        "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1,
+        "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1, "user_id": 1,
     }).to_list(2000)
 
     # Add freshness labels and confidence scores
-    for r in reports:
+    for index, report in enumerate(reports):
+        r = sanitize_public_report_identity(report)
         r["freshness"] = get_freshness_label(r.get("created_at", ""), r.get("refreshed_at"))
         r["confidence"] = calc_confidence_score(r)
         r["is_premium_report"] = r.get("contributor_rank") is not None
-        if "contributor_name" not in r:
-            r["contributor_name"] = "Anónimo"
-            r["contributor_rank"] = None
-            r["contributor_rank_key"] = None
+        reports[index] = r
 
     # Filter by freshness if requested
     if freshness:
@@ -1030,6 +1041,7 @@ async def get_report(report_id: str):
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+    report = sanitize_public_report_identity(report)
     report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)
     report["is_premium_report"] = report.get("contributor_rank") is not None
@@ -2934,15 +2946,14 @@ async def get_share_data(report_id: str, request: Request):
     municipality = report.get("municipality", "España")
     share_url = f"{frontend_url}/download?kind=report&report_id={quote(report_id)}&city={quote(municipality)}"
     created = report.get("created_at", "")
-    contributor = report.get("contributor_name", "Anónimo")
 
     return {
         "url": share_url,
         "title": f"Reporte de caca en {municipality} — Caca Radar",
-        "text": f"Nuevo reporte en {municipality} por {contributor}. ¡Ayuda a mantener las calles limpias!",
+        "text": f"Nuevo reporte en {municipality}. ¡Ayuda a mantener las calles limpias!",
         "report_id": report_id,
         "municipality": municipality,
-        "contributor": contributor,
+        "contributor": PUBLIC_REGISTERED_USER_LABEL if report.get("user_id") else "Anónimo",
         "created_at": created,
         "photo_url": f"{os.environ.get('FRONTEND_URL', '')}/api/files/{report['photo_url']}" if report.get("photo_url") else None
     }

@@ -173,6 +173,10 @@ export default function MapPage() {
   const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
   const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
+  const publicContributorLabel = (report) => {
+    if (report?.contributor_name === "registered_user") return t("mapUi.registeredUser");
+    return report?.contributor_name || t("mapUi.anonymous");
+  };
   const isHeatmapMode = mapMode === MAP_MODES.HEATMAP;
   const isNativeApp = isCapacitorNative();
   const currentPlatform = getCurrentPlatform();
@@ -1074,7 +1078,7 @@ export default function MapPage() {
 
                   <div className="flex items-center gap-2 mb-2 min-w-0">
                     <User className="w-4 h-4 text-[#8D99AE] shrink-0" />
-                    <span className="text-sm text-[#2B2D42] font-medium truncate">{selectedReport.contributor_name || t("mapUi.anonymous")}</span>
+                    <span className="text-sm text-[#2B2D42] font-medium truncate">{publicContributorLabel(selectedReport)}</span>
                   </div>
 
                   <div className="flex items-center gap-2 text-[#8D99AE] mb-2 min-w-0">
