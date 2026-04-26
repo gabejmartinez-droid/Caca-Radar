@@ -15,6 +15,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { LanguageSelector } from "../components/LanguageSelector";
+import SocialShareButtons from "../components/SocialShareButtons";
 import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { HeatmapLayer } from "../components/HeatmapLayer";
@@ -25,6 +26,7 @@ import PointsPopup from "../components/PointsPopup";
 import StreakFlame from "../components/StreakFlame";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { compressReportPhoto, REPORT_PHOTO_MAX_BYTES } from "../utils/reportPhoto";
+import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { isCapacitorNative } from "../tokenManager";
 import { getCurrentPlatform, getVersionSummary } from "../versionInfo";
 const DEFAULT_CENTER = [40.4168, -3.7038];
@@ -552,16 +554,19 @@ export default function MapPage() {
     } catch (error) { toast.error(error.response?.data?.detail || "Error"); }
   };
 
+  const getReportSharePayload = async () => {
+    if (!selectedReport) return null;
+    const { data } = await axios.get(`${API}/reports/${selectedReport.id}/share`, { withCredentials: true });
+    return { title: data.title, text: data.text, url: data.url };
+  };
+
   const handleShare = async () => {
     if (!selectedReport) return;
     try {
-      const { data } = await axios.get(`${API}/reports/${selectedReport.id}/share`, { withCredentials: true });
-      if (navigator.share) {
-        await navigator.share({ title: data.title, text: data.text, url: data.url });
-      } else {
-        await navigator.clipboard.writeText(`${data.text}\n\n${data.url}`);
-        toast.success(t("mapUi.linkCopied"));
-      }
+      await shareWithNativeOrCopy({
+        ...(await getReportSharePayload()),
+        onCopied: () => toast.success(t("mapUi.linkCopied")),
+      });
     } catch (err) {
       if (err.name !== "AbortError") toast.error(t("mapUi.shareError"));
     }
@@ -1174,6 +1179,13 @@ export default function MapPage() {
                   <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
                 </Button>
               </div>
+              <SocialShareButtons
+                className="mt-2"
+                prefix="report-share"
+                loadShareData={getReportSharePayload}
+                onCopied={() => toast.success(t("mapUi.linkCopied"))}
+                onError={() => toast.error(t("mapUi.shareError"))}
+              />
             </div>
           </div>
         </>

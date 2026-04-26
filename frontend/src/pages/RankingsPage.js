@@ -5,9 +5,11 @@ import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import SocialShareButtons from "../components/SocialShareButtons";
 import { toast } from "sonner";
 import axios from "axios";
 import { formatTranslation } from "../utils/ranks";
+import { shareWithNativeOrCopy } from "../utils/socialShare";
 
 import { API } from "../config";
 
@@ -95,19 +97,21 @@ export default function RankingsPage() {
     fetchBarrios();
   }, [tab, selectedCity, t]);
 
+  const getSharePayload = async (type) => {
+    const { data } = await axios.get(
+      type === "barrios"
+        ? `${API}/rankings/barrios/share?city=${encodeURIComponent(selectedCity)}`
+        : `${API}/rankings/cities/share?list_type=${type}`
+    );
+    return { title: data.title, text: data.share_text, url: data.app_url };
+  };
+
   const handleShare = async (type) => {
     try {
-      const { data } = await axios.get(
-        type === "barrios"
-          ? `${API}/rankings/barrios/share?city=${encodeURIComponent(selectedCity)}`
-          : `${API}/rankings/cities/share?list_type=${type}`
-      );
-      if (navigator.share) {
-        await navigator.share({ title: data.title, text: data.share_text, url: data.app_url });
-      } else {
-        await navigator.clipboard.writeText(`${data.share_text}\n\n${data.app_url}`);
-        toast.success(t("rankingUi.copied"));
-      }
+      await shareWithNativeOrCopy({
+        ...(await getSharePayload(type)),
+        onCopied: () => toast.success(t("rankingUi.copied")),
+      });
     } catch (err) {
       if (err.name !== "AbortError") toast.error(t("rankingUi.shareError"));
     }
@@ -190,6 +194,13 @@ export default function RankingsPage() {
             <Button onClick={() => handleShare(listType)} variant="outline" className="w-full border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-rankings-btn">
               <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
             </Button>
+            <SocialShareButtons
+              className="mt-3"
+              prefix="city-rankings-share"
+              loadShareData={() => getSharePayload(listType)}
+              onCopied={() => toast.success(t("rankingUi.copied"))}
+              onError={() => toast.error(t("rankingUi.shareError"))}
+            />
           </>
         ) : (
           <>
@@ -232,9 +243,18 @@ export default function RankingsPage() {
             </div>
 
             {!!barrioData?.barrios?.length && (
-              <Button onClick={() => handleShare("barrios")} variant="outline" className="w-full mt-4 border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-barrio-rankings-btn">
-                <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
-              </Button>
+              <>
+                <Button onClick={() => handleShare("barrios")} variant="outline" className="w-full mt-4 border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-barrio-rankings-btn">
+                  <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
+                </Button>
+                <SocialShareButtons
+                  className="mt-3"
+                  prefix="barrio-rankings-share"
+                  loadShareData={() => getSharePayload("barrios")}
+                  onCopied={() => toast.success(t("rankingUi.copied"))}
+                  onError={() => toast.error(t("rankingUi.shareError"))}
+                />
+              </>
             )}
           </>
         )}

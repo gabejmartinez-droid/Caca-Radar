@@ -10,9 +10,11 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
+import SocialShareButtons from "../components/SocialShareButtons";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { getBadgeName, getBadgeDescription } from "../utils/badges";
+import { shareWithNativeOrCopy } from "../utils/socialShare";
 
 import { API } from "../config";
 
@@ -107,11 +109,12 @@ export default function ProfilePage() {
     }
   };
 
-  const handleShareProfile = async () => {
-    try {
-      const { data } = await axios.get(`${API}/users/${user._id || user.id}/share`, { withCredentials: true });
-      const displayName = profile?.username || profile?.name || user?.username || user?.name || t("mapUi.userFallback");
-      const shareText = `${formatTranslation(t, "rankUi.profileShareText", {
+  const getSharePayload = async () => {
+    const { data } = await axios.get(`${API}/users/${user._id || user.id}/share`, { withCredentials: true });
+    const displayName = profile?.username || profile?.name || user?.username || user?.name || t("mapUi.userFallback");
+    return {
+      title: formatTranslation(t, "rankUi.shareTitle", { name: displayName }),
+      text: `${formatTranslation(t, "rankUi.profileShareText", {
         name: displayName,
         rank: getRankLabel(data.rank_key || data.rank || profile?.rank_key || profile?.rank, t),
         score: data.total_score ?? profile?.total_score ?? 0,
@@ -120,14 +123,17 @@ export default function ProfilePage() {
       })}\n\n${formatTranslation(t, "rankUi.downloadText", {
         ios: data.app_store_url,
         android: data.play_store_url,
-      })}`;
-      const title = formatTranslation(t, "rankUi.shareTitle", { name: displayName });
-      if (navigator.share) {
-        await navigator.share({ title, text: shareText, url: data.url });
-      } else {
-        await navigator.clipboard.writeText(`${shareText}\n\n${data.url}`);
-        toast.success(t("rankUi.profileCopied"));
-      }
+      })}`,
+      url: data.url,
+    };
+  };
+
+  const handleShareProfile = async () => {
+    try {
+      await shareWithNativeOrCopy({
+        ...(await getSharePayload()),
+        onCopied: () => toast.success(t("rankUi.profileCopied")),
+      });
     } catch (err) {
       if (err.name !== "AbortError") toast.error(t("profileUi.shareError"));
     }
@@ -213,6 +219,13 @@ export default function ProfilePage() {
           <Button size="sm" variant="ghost" onClick={handleShareProfile} className="mt-2 text-[#42A5F5]" data-testid="share-profile-btn">
             <Share2 className="w-4 h-4 mr-1" />{t("profileUi.shareProfile")}
           </Button>
+          <SocialShareButtons
+            className="mt-2"
+            prefix="profile-share"
+            loadShareData={getSharePayload}
+            onCopied={() => toast.success(t("rankUi.profileCopied"))}
+            onError={() => toast.error(t("profileUi.shareError"))}
+          />
           <Button size="sm" variant="ghost" onClick={() => navigate("/impact")} className="mt-1 text-[#66BB6A]" data-testid="view-impact-btn">
             <Heart className="w-4 h-4 mr-1" />{t("profileUi.communityImpact")}
           </Button>

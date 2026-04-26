@@ -9,7 +9,9 @@ import { Input } from "../components/ui/input";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
+import SocialShareButtons from "../components/SocialShareButtons";
 import { formatTranslation } from "../utils/ranks";
+import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { API, HOSTED_WEB_URL } from "../config";
 import "leaflet/dist/leaflet.css";
 
@@ -242,41 +244,50 @@ export default function CityReportPage() {
     selectBarrio(target);
   };
 
-  const handleShare = async () => {
-    if (!summary?.city) return;
+  const getSharePayload = async () => {
+    if (!summary?.city) return null;
     const query = new URLSearchParams({ kind: "city-report", city: summary.city });
     if (summary.barrio) query.set("barrio", summary.barrio);
-    const shareUrl = `${HOSTED_WEB_URL}/download?${query.toString()}`;
-    const shareText = formatTranslation(t, "cityReportUi.shareText", {
-      location: summary.barrio
-        ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
-        : summary.city,
-      fresh: summary.fresh_reports,
-      older: summary.older_reports,
-      fossils: summary.fossil_reports,
-    });
+    return {
+      title: formatTranslation(t, "cityReportUi.shareTitle", {
+        location: summary.barrio
+          ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
+          : summary.city,
+      }),
+      text: formatTranslation(t, "cityReportUi.shareText", {
+        location: summary.barrio
+          ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
+          : summary.city,
+        fresh: summary.fresh_reports,
+        older: summary.older_reports,
+        fossils: summary.fossil_reports,
+      }),
+      url: `${HOSTED_WEB_URL}/download?${query.toString()}`,
+    };
+  };
 
+  const handleShare = async () => {
+    if (!summary?.city) return;
     try {
-      if (navigator.share) {
-        await navigator.share({
-          title: formatTranslation(t, "cityReportUi.shareTitle", {
-            location: summary.barrio
-              ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
-              : summary.city,
-          }),
-          text: shareText,
-          url: shareUrl,
-        });
-      } else {
-        await navigator.clipboard.writeText(`${shareText} ${shareUrl}`);
-        toast.success(t("cityReportUi.copied"));
-      }
+      await shareWithNativeOrCopy({
+        ...(await getSharePayload()),
+        onCopied: () => toast.success(t("cityReportUi.copied")),
+      });
     } catch (error) {
       if (error?.name !== "AbortError") {
         toast.error(t("cityReportUi.shareError"));
       }
     }
   };
+
+  const summaryLine = summary ? formatTranslation(t, "cityReportUi.summaryLine", {
+      location: summary.barrio
+        ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
+        : summary.city,
+      fresh: summary.fresh_reports,
+      older: summary.older_reports,
+      fossils: summary.fossil_reports,
+    }) : "";
 
   if (!isPremium && !requestedCity) {
     return (
@@ -434,16 +445,16 @@ export default function CityReportPage() {
                   {t("cityReportUi.shareButton")}
                 </Button>
               </div>
+              <SocialShareButtons
+                className="mt-3"
+                prefix="city-report-share"
+                loadShareData={getSharePayload}
+                onCopied={() => toast.success(t("cityReportUi.copied"))}
+                onError={() => toast.error(t("cityReportUi.shareError"))}
+              />
 
               <p className="mt-4 text-base font-semibold text-[#2B2D42] leading-7">
-                {formatTranslation(t, "cityReportUi.summaryLine", {
-                  location: summary.barrio
-                    ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
-                    : summary.city,
-                  fresh: summary.fresh_reports,
-                  older: summary.older_reports,
-                  fossils: summary.fossil_reports,
-                })}
+                {summaryLine}
               </p>
             </div>
 

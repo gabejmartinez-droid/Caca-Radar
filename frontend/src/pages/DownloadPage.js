@@ -1,12 +1,15 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { ArrowLeft, Download, ExternalLink, Image as ImageIcon, Smartphone } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
 import LegalLinksFooter from "../components/LegalLinksFooter";
+import SocialShareButtons from "../components/SocialShareButtons";
 import { useLanguage } from "../contexts/LanguageContext";
-import { API } from "../config";
+import { API, HOSTED_WEB_URL } from "../config";
 import { formatTranslation } from "../utils/ranks";
+import { shareWithNativeOrCopy } from "../utils/socialShare";
 
 const FALLBACK_STORES = {
   app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
@@ -73,6 +76,23 @@ export default function DownloadPage() {
   }, []);
 
   const contextTitle = useMemo(() => buildContextTitle(kind, searchParams, t), [kind, searchParams, t]);
+  const shareUrl = useMemo(() => `${HOSTED_WEB_URL}/download?${searchParams.toString()}`, [searchParams]);
+  const sharePayload = useMemo(() => ({
+    title: contextTitle,
+    text: `${t("shareUi.tagline")}\n\n${contextTitle}`,
+    url: shareUrl,
+  }), [contextTitle, shareUrl, t]);
+
+  const handleShare = async () => {
+    try {
+      await shareWithNativeOrCopy({
+        ...sharePayload,
+        onCopied: () => toast.success(t("mapUi.linkCopied")),
+      });
+    } catch {
+      // noop
+    }
+  };
 
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="download-page">
@@ -112,6 +132,15 @@ export default function DownloadPage() {
                 className="block w-full h-auto"
               />
             </div>
+            <Button onClick={handleShare} variant="outline" className="w-full mt-4 rounded-xl border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10">
+              {t("mapUi.share")}
+            </Button>
+            <SocialShareButtons
+              className="mt-3"
+              prefix="download-share"
+              loadShareData={async () => sharePayload}
+              onCopied={() => toast.success(t("mapUi.linkCopied"))}
+            />
           </section>
 
           <aside className="space-y-6">
