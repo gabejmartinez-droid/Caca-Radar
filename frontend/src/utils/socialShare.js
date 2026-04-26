@@ -2,15 +2,17 @@ async function fetchShareFile(imageUrl) {
   const response = await fetch(imageUrl, { credentials: "include" });
   if (!response.ok) throw new Error("share_image_fetch_failed");
   const blob = await response.blob();
-  return new File([blob], "caca-radar-share.png", {
-    type: blob.type || "image/png",
+  const type = blob.type || "image/svg+xml";
+  const extension = type.includes("svg") ? "svg" : "png";
+  return new File([blob], `caca-radar-share.${extension}`, {
+    type,
     lastModified: Date.now(),
   });
 }
 
-export async function shareWithNativeOrCopy({ title, text, url, imageUrl, onCopied }) {
+export async function shareWithNativeOrCopy({ title, text, url, imageUrl, onCopied, allowFiles = true }) {
   if (navigator.share) {
-    if (imageUrl && navigator.canShare) {
+    if (allowFiles && imageUrl && navigator.canShare) {
       try {
         const file = await fetchShareFile(imageUrl);
         if (navigator.canShare({ files: [file] })) {
@@ -48,5 +50,5 @@ export function openWhatsAppShare(text, url) {
 }
 
 export async function shareToInstagram({ title, text, url, onCopied }) {
-  await shareWithNativeOrCopy({ title, text, url, onCopied });
+  await shareWithNativeOrCopy({ title, text, url, onCopied, allowFiles: false });
 }

@@ -19,12 +19,7 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
         type="button"
         variant="outline"
         className="rounded-xl border-[#1877F2]/25 text-[#1877F2] hover:bg-[#1877F2]/10"
-        onClick={() => runShare((shareData) => {
-          if (navigator.share) {
-            return shareWithNativeOrCopy({ ...shareData, onCopied });
-          }
-          return openFacebookShare(shareData.url);
-        })}
+        onClick={() => runShare((shareData) => openFacebookShare(shareData.url))}
         data-testid={`${prefix}-facebook`}
       >
         <Facebook className="w-4 h-4 mr-1.5" />
@@ -46,7 +41,7 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
         className="rounded-xl border-[#25D366]/25 text-[#25D366] hover:bg-[#25D366]/10"
         onClick={() => runShare((shareData) => {
           if (navigator.share) {
-            return shareWithNativeOrCopy({ ...shareData, onCopied });
+            return shareWithNativeOrCopy({ ...shareData, onCopied, allowFiles: false });
           }
           return openWhatsAppShare(shareData.text, shareData.url);
         })}

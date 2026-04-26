@@ -1866,7 +1866,7 @@ async def api_city_rankings_share_image(list_type: str = "dirtiest"):
         for index, city in enumerate(cities)
     ]
     png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type="image/svg+xml")
 
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
@@ -1909,11 +1909,11 @@ async def api_barrio_rankings_share_image(city: str = "Madrid"):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type="image/png")
+        return Response(content=png, media_type="image/svg+xml")
 
     summary = await get_city_report_summary(db, city, barrio=top_barrio.get("barrio"))
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type="image/svg+xml")
 
 
 @api_router.get("/city-reports/cities")
@@ -1978,10 +1978,10 @@ async def api_city_report_share_image(city: str, barrio: str | None = None):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type="image/png")
+        return Response(content=png, media_type="image/svg+xml")
 
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type="image/png")
+    return Response(content=png, media_type="image/svg+xml")
 
 # ==================== NOTIFICATIONS ====================
 
