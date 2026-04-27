@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import io
+import os
 from html import escape
 from typing import Iterable
 
@@ -67,12 +68,23 @@ def _svg_footer() -> str:
 def _get_font(size: int, bold: bool = False):
     if ImageFont is None:
         return None
+    env_candidates = []
+    if bold and os.environ.get("SHARE_CARD_FONT_BOLD"):
+        env_candidates.append(os.environ["SHARE_CARD_FONT_BOLD"])
+    if not bold and os.environ.get("SHARE_CARD_FONT_REGULAR"):
+        env_candidates.append(os.environ["SHARE_CARD_FONT_REGULAR"])
     candidates = [
+        "DejaVuSans-Bold.ttf" if bold else "DejaVuSans.ttf",
+        "LiberationSans-Bold.ttf" if bold else "LiberationSans-Regular.ttf",
+        "NotoSans-Bold.ttf" if bold else "NotoSans-Regular.ttf",
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/liberation2/LiberationSans-Regular.ttf",
+        "/usr/share/fonts/truetype/noto/NotoSans-Bold.ttf" if bold else "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf",
         "/System/Library/Fonts/Supplemental/Arial Bold.ttf" if bold else "/System/Library/Fonts/Supplemental/Arial.ttf",
         "/Library/Fonts/Arial Bold.ttf" if bold else "/Library/Fonts/Arial.ttf",
         "/System/Library/Fonts/SFNS.ttf",
     ]
-    for path in candidates:
+    for path in env_candidates + candidates:
         try:
             return ImageFont.truetype(path, size=size)
         except Exception:
