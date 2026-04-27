@@ -42,7 +42,7 @@ def bump_versions(surface: str) -> None:
         cmd.extend(["--bump-ios", "--notes", "Rebuilt iOS bundle"])
     if should_bump_android:
         cmd.extend(["--bump-android", "--notes", "Rebuilt Android bundle"])
-    if len(cmd) > 3:
+    if should_bump_ios or should_bump_android:
         run(cmd, ROOT)
 
 
