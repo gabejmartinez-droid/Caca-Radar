@@ -60,6 +60,7 @@ from city_rankings_service import get_city_rankings, get_barrio_rankings, get_ac
 from share_image_service import build_rankings_share_png, build_barrio_snapshot_png, get_share_image_media_type
 from location_share_service import (
     LOCATION_SHARE_COPY,
+    append_query_params,
     build_cache_headers,
     build_download_path,
     build_location_share_metadata,
@@ -267,6 +268,14 @@ def get_frontend_url() -> str:
     return os.environ.get("FRONTEND_URL", "https://cacaradar.es").rstrip("/")
 
 
+def get_share_image_version() -> str:
+    git_sha = os.environ.get("GIT_SHA", "").strip()
+    if git_sha:
+        return git_sha[:12]
+    versions = load_app_versions()
+    return str(versions.get("web") or "share-v1")
+
+
 def build_download_url(kind: str, **params) -> str:
     frontend_url = get_frontend_url()
     query_parts = [f"kind={quote(kind)}"]
@@ -296,7 +305,10 @@ def build_location_share_url(city_slug: str, barrio_slug: str | None = None) -> 
 
 
 def build_location_share_image_url(city_slug: str, barrio_slug: str | None = None) -> str:
-    return f"{get_frontend_url()}{build_share_image_path(city_slug, barrio_slug)}"
+    return append_query_params(
+        f"{get_frontend_url()}{build_share_image_path(city_slug, barrio_slug)}",
+        v=get_share_image_version(),
+    )
 
 
 def render_share_page(*, title: str, description: str, image_url: str, share_url: str, redirect_url: str) -> str:
@@ -1980,7 +1992,10 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
     title = "Las ciudades más sucias de España" if list_type == "dirtiest" else "Las ciudades más limpias de España"
     app_url = build_download_url("city-rankings", list_type=list_type)
     share_url = build_share_page_url("city-rankings", list_type=list_type)
-    image_url = f"{get_frontend_url()}/api/rankings/cities/share-image?list_type={quote(list_type)}"
+    image_url = append_query_params(
+        f"{get_frontend_url()}/api/rankings/cities/share-image?list_type={quote(list_type)}",
+        v=get_share_image_version(),
+    )
     return {
         "title": title,
         "cities": cities,
@@ -2027,7 +2042,10 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     title = f"Los barrios con más avisos en {city}"
     app_url = build_download_url("barrio-rankings", city=city)
     share_url = build_share_page_url("barrio-rankings", city=city)
-    image_url = f"{get_frontend_url()}/api/rankings/barrios/share-image?city={quote(city)}"
+    image_url = append_query_params(
+        f"{get_frontend_url()}/api/rankings/barrios/share-image?city={quote(city)}",
+        v=get_share_image_version(),
+    )
     return {
         "title": title,
         "city": city,
@@ -2099,7 +2117,7 @@ async def api_city_report_share(city: str, barrio: str | None = None):
     data = await get_location_share_summary(db, city, barrio)
     if not data.get("has_data"):
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
-    metadata = build_location_share_metadata(get_frontend_url(), data)
+    metadata = build_location_share_metadata(get_frontend_url(), data, image_version=get_share_image_version())
     return {
         "city": data["city"],
         "barrio": data["barrio"],
@@ -2176,7 +2194,7 @@ async def api_location_share_image_barrio_slug(city_slug: str, barrio_slug: str)
 async def api_location_share_page(city: str, barrio: str | None = None):
     summary = await get_location_share_summary(db, city, barrio)
     if summary.get("found"):
-        metadata = build_location_share_metadata(get_frontend_url(), summary)
+        metadata = build_location_share_metadata(get_frontend_url(), summary, image_version=get_share_image_version())
         title = metadata["title"]
         description = metadata["description"]
         image_url = metadata["image_url"]
@@ -2231,7 +2249,10 @@ async def api_public_share_page(
         selected = list_type or "dirtiest"
         title = "Las ciudades más sucias de España" if selected == "dirtiest" else "Las ciudades más limpias de España"
         description = f"{title} según Caca Radar. Descarga la app y ayuda a mantener tu ciudad limpia."
-        image_url = f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(selected)}"
+        image_url = append_query_params(
+            f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(selected)}",
+            v=get_share_image_version(),
+        )
         redirect_url = build_download_url("city-rankings", list_type=selected)
         share_url = build_share_page_url("city-rankings", list_type=selected)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
@@ -2240,7 +2261,10 @@ async def api_public_share_page(
         selected_city = city or "Madrid"
         title = f"Los barrios con más avisos en {selected_city}"
         description = f"{title} según Caca Radar. Consulta el ranking y ayuda a mantener tu barrio limpio."
-        image_url = f"{frontend_url}/api/rankings/barrios/share-image?city={quote(selected_city)}"
+        image_url = append_query_params(
+            f"{frontend_url}/api/rankings/barrios/share-image?city={quote(selected_city)}",
+            v=get_share_image_version(),
+        )
         redirect_url = build_download_url("barrio-rankings", city=selected_city)
         share_url = build_share_page_url("barrio-rankings", city=selected_city)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
@@ -2255,7 +2279,10 @@ async def api_public_share_page(
             f"{summary.get('older_reports', 0)} antiguos, "
             f"{summary.get('fossil_reports', 0)} fósiles."
         )
-        image_url = f"{frontend_url}/api/city-reports/share-image?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else "")
+        image_url = append_query_params(
+            f"{frontend_url}/api/city-reports/share-image?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
+            v=get_share_image_version(),
+        )
         redirect_url = build_download_url("city-report", city=selected_city, barrio=barrio)
         share_url = build_share_page_url("city-report", city=selected_city, barrio=barrio)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))

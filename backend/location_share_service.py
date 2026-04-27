@@ -115,6 +115,15 @@ def build_cache_headers(payload: dict, max_age: int = 900) -> dict[str, str]:
     }
 
 
+def append_query_params(url: str, **params) -> str:
+    valid_items = [(key, value) for key, value in params.items() if value not in (None, "")]
+    if not valid_items:
+        return url
+    separator = "&" if "?" in url else "?"
+    query = "&".join(f"{key}={value}" for key, value in valid_items)
+    return f"{url}{separator}{query}"
+
+
 def _fuzz_coordinate(value: float) -> float:
     return round(value, 3)
 
@@ -299,7 +308,7 @@ async def get_location_share_summary(
     }
 
 
-def build_location_share_metadata(base_url: str, summary: dict) -> dict:
+def build_location_share_metadata(base_url: str, summary: dict, image_version: str | None = None) -> dict:
     city_slug = summary.get("city_slug") or slugify_location_segment(summary.get("city", ""))
     barrio_slug = summary.get("barrio_slug") or ""
     city = summary.get("city") or "España"
@@ -328,7 +337,7 @@ def build_location_share_metadata(base_url: str, summary: dict) -> dict:
         "description": description,
         "location_label": location_label,
         "share_url": f"{base_url}{share_path}",
-        "image_url": f"{base_url}{image_path}",
+        "image_url": append_query_params(f"{base_url}{image_path}", v=image_version),
         "download_url": f"{base_url}{download_path}",
         "headline": LOCATION_SHARE_COPY["headline"],
         "time_window_label": LOCATION_SHARE_COPY["time_window"],
