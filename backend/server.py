@@ -306,9 +306,22 @@ def build_location_share_url(city_slug: str, barrio_slug: str | None = None) -> 
 
 def build_location_share_image_url(city_slug: str, barrio_slug: str | None = None) -> str:
     return append_query_params(
-        f"{get_frontend_url()}{build_share_image_path(city_slug, barrio_slug)}",
+        f"{get_frontend_url()}{build_share_image_path(city_slug, barrio_slug)}.png",
         v=get_share_image_version(),
     )
+
+
+def build_share_image_response(content: bytes, cache_payload: dict | None = None) -> Response:
+    headers = {
+        "Content-Type": "image/png",
+        "Content-Disposition": "inline; filename=share-card.png",
+        "Cache-Control": "public, max-age=900, stale-while-revalidate=3600, no-transform",
+        "X-Content-Type-Options": "nosniff",
+    }
+    if cache_payload is not None:
+        headers.update(build_cache_headers(cache_payload))
+        headers["Cache-Control"] = "public, max-age=900, stale-while-revalidate=3600, no-transform"
+    return Response(content=content, media_type="image/png", headers=headers)
 
 
 def render_share_page(*, title: str, description: str, image_url: str, share_url: str, redirect_url: str) -> str:
@@ -330,6 +343,8 @@ def render_share_page(*, title: str, description: str, image_url: str, share_url
     <meta property="og:title" content="{safe_title}" />
     <meta property="og:description" content="{safe_description}" />
     <meta property="og:image" content="{safe_image}" />
+    <meta property="og:image:secure_url" content="{safe_image}" />
+    <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
     <meta property="og:url" content="{safe_share}" />
@@ -1993,7 +2008,7 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
     app_url = build_download_url("city-rankings", list_type=list_type)
     share_url = build_share_page_url("city-rankings", list_type=list_type)
     image_url = append_query_params(
-        f"{get_frontend_url()}/api/rankings/cities/share-image?list_type={quote(list_type)}",
+        f"{get_frontend_url()}/api/rankings/cities/share-image.png?list_type={quote(list_type)}",
         v=get_share_image_version(),
     )
     return {
@@ -2013,6 +2028,7 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
 
 
 @api_router.get("/rankings/cities/share-image")
+@api_router.get("/rankings/cities/share-image.png")
 async def api_city_rankings_share_image(list_type: str = "dirtiest"):
     data = await get_city_rankings(db, limit=10)
     cities = data.get(list_type, data["dirtiest"])[:5]
@@ -2028,7 +2044,7 @@ async def api_city_rankings_share_image(list_type: str = "dirtiest"):
         for index, city in enumerate(cities)
     ]
     png = build_rankings_share_png(title, subtitle, rows, footer="Comparte y descarga Caca Radar")
-    return Response(content=png, media_type=get_share_image_media_type())
+    return build_share_image_response(png, {"kind": "city-rankings", "list_type": list_type})
 
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
@@ -2043,7 +2059,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     app_url = build_download_url("barrio-rankings", city=city)
     share_url = build_share_page_url("barrio-rankings", city=city)
     image_url = append_query_params(
-        f"{get_frontend_url()}/api/rankings/barrios/share-image?city={quote(city)}",
+        f"{get_frontend_url()}/api/rankings/barrios/share-image.png?city={quote(city)}",
         v=get_share_image_version(),
     )
     return {
@@ -2067,6 +2083,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
 
 
 @api_router.get("/rankings/barrios/share-image")
+@api_router.get("/rankings/barrios/share-image.png")
 async def api_barrio_rankings_share_image(city: str = "Madrid"):
     data = await get_barrio_rankings(db, city, limit=10)
     top_barrio = (data.get("barrios") or [None])[0]
@@ -2077,11 +2094,11 @@ async def api_barrio_rankings_share_image(city: str = "Madrid"):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type=get_share_image_media_type())
+        return build_share_image_response(png, {"kind": "barrio-rankings", "city": city, "empty": True})
 
     summary = await get_city_report_summary(db, city, barrio=top_barrio.get("barrio"))
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type=get_share_image_media_type())
+    return build_share_image_response(png, {"kind": "barrio-rankings", "city": city, "barrio": top_barrio.get("barrio")})
 
 
 @api_router.get("/city-reports/cities")
@@ -2150,6 +2167,7 @@ async def api_city_report_share(city: str, barrio: str | None = None):
 
 
 @api_router.get("/city-reports/share-image")
+@api_router.get("/city-reports/share-image.png")
 async def api_city_report_share_image(city: str, barrio: str | None = None):
     summary = await get_location_share_summary(db, city, barrio)
     if not summary.get("has_data"):
@@ -2159,13 +2177,14 @@ async def api_city_report_share_image(city: str, barrio: str | None = None):
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers({"city": city, "barrio": barrio, "empty": True}))
+        return build_share_image_response(png, {"kind": "city-report", "city": city, "barrio": barrio, "empty": True})
 
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers(summary))
+    return build_share_image_response(png, {"kind": "city-report", "city": city, "barrio": barrio, "generated_at": summary.get("generated_at")})
 
 
 @api_router.get("/share-image/location")
+@api_router.get("/share-image/location.png")
 async def api_location_share_image(city: str, barrio: str | None = None):
     summary = await get_location_share_summary(db, city, barrio)
     if not summary.get("has_data"):
@@ -2175,17 +2194,19 @@ async def api_location_share_image(city: str, barrio: str | None = None):
             [],
             footer=LOCATION_SHARE_COPY["footer"],
         )
-        return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers({"city": city, "barrio": barrio, "empty": True}))
+        return build_share_image_response(png, {"kind": "location-share", "city": city, "barrio": barrio, "empty": True})
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers(summary))
+    return build_share_image_response(png, {"kind": "location-share", "city": city, "barrio": barrio, "generated_at": summary.get("generated_at")})
 
 
 @api_router.get("/share-image/location/{city_slug}")
+@api_router.get("/share-image/location/{city_slug}.png")
 async def api_location_share_image_city_slug(city_slug: str):
     return await api_location_share_image(city_slug, None)
 
 
 @api_router.get("/share-image/location/{city_slug}/{barrio_slug}")
+@api_router.get("/share-image/location/{city_slug}/{barrio_slug}.png")
 async def api_location_share_image_barrio_slug(city_slug: str, barrio_slug: str):
     return await api_location_share_image(city_slug, barrio_slug)
 
@@ -2250,7 +2271,7 @@ async def api_public_share_page(
         title = "Las ciudades más sucias de España" if selected == "dirtiest" else "Las ciudades más limpias de España"
         description = f"{title} según Caca Radar. Descarga la app y ayuda a mantener tu ciudad limpia."
         image_url = append_query_params(
-            f"{frontend_url}/api/rankings/cities/share-image?list_type={quote(selected)}",
+            f"{frontend_url}/api/rankings/cities/share-image.png?list_type={quote(selected)}",
             v=get_share_image_version(),
         )
         redirect_url = build_download_url("city-rankings", list_type=selected)
@@ -2262,7 +2283,7 @@ async def api_public_share_page(
         title = f"Los barrios con más avisos en {selected_city}"
         description = f"{title} según Caca Radar. Consulta el ranking y ayuda a mantener tu barrio limpio."
         image_url = append_query_params(
-            f"{frontend_url}/api/rankings/barrios/share-image?city={quote(selected_city)}",
+            f"{frontend_url}/api/rankings/barrios/share-image.png?city={quote(selected_city)}",
             v=get_share_image_version(),
         )
         redirect_url = build_download_url("barrio-rankings", city=selected_city)
@@ -2280,7 +2301,7 @@ async def api_public_share_page(
             f"{summary.get('fossil_reports', 0)} fósiles."
         )
         image_url = append_query_params(
-            f"{frontend_url}/api/city-reports/share-image?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
+            f"{frontend_url}/api/city-reports/share-image.png?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
             v=get_share_image_version(),
         )
         redirect_url = build_download_url("city-report", city=selected_city, barrio=barrio)
