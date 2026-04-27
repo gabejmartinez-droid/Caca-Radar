@@ -12,7 +12,8 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import SocialShareButtons from "../components/SocialShareButtons";
 import { formatTranslation } from "../utils/ranks";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
-import { API, HOSTED_WEB_URL } from "../config";
+import { buildLocationShareUrl, buildLocationImageUrl } from "../utils/locationShare";
+import { API } from "../config";
 import "leaflet/dist/leaflet.css";
 
 const POINT_STYLES = {
@@ -273,8 +274,8 @@ export default function CityReportPage() {
         older: summary.older_reports,
         fossils: summary.fossil_reports,
       }),
-      url: data.share_url || data.app_url || `${HOSTED_WEB_URL}/download?kind=city-report&${query.toString()}`,
-      imageUrl: data.image_url,
+      url: data.share_url || buildLocationShareUrl(summary.city, summary.barrio),
+      imageUrl: data.image_url || buildLocationImageUrl(summary.city, summary.barrio),
     };
   };
 

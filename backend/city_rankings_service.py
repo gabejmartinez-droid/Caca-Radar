@@ -1,10 +1,12 @@
 """City & Barrio Rankings Service — Population data from Wikipedia, report density calculations."""
 import logging
 import requests
-from bson.decimal128 import Decimal128
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Optional
+
+from bson.decimal128 import Decimal128
+from location_share_service import get_report_age_bucket
 
 logger = logging.getLogger(__name__)
 
@@ -298,20 +300,6 @@ async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
     }
 
 
-def _city_report_bucket(created_at: str, refreshed_at: Optional[str] = None) -> str:
-    timestamp = refreshed_at or created_at
-    try:
-        dt = datetime.fromisoformat(timestamp.replace("Z", "+00:00"))
-    except Exception:
-        return "fossil"
-    hours_diff = (datetime.now(timezone.utc) - dt).total_seconds() / 3600
-    if hours_diff < 48:
-        return "fresh"
-    if hours_diff < 144:
-        return "older"
-    return "fossil"
-
-
 async def get_city_report_summary(db, city: str, barrio: str | None = None, preview_limit: int = 250) -> dict:
     """Return active report counts, freshness buckets, and preview points for a city or barrio."""
     query = {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}}
@@ -354,10 +342,10 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
     longitudes = []
 
     for report in reports:
-        bucket = _city_report_bucket(report.get("created_at", ""), report.get("refreshed_at"))
+        bucket = get_report_age_bucket(report.get("created_at", ""), report.get("refreshed_at"))
         if bucket == "fresh":
             fresh_reports += 1
-        elif bucket == "older":
+        elif bucket == "old":
             older_reports += 1
         else:
             fossil_reports += 1
@@ -375,7 +363,7 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
                 "id": report.get("id"),
                 "lat": lat,
                 "lng": lng,
-                "bucket": bucket,
+                "bucket": "older" if bucket == "old" else bucket,
             })
 
     map_bounds = None

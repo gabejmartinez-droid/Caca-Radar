@@ -1,5 +1,5 @@
 """Badges Service — Achievement system for gamification."""
-from datetime import datetime, timezone
+from location_share_service import get_report_age_bucket
 
 BADGES = {
     "first_report": {"name": "Primera Caca", "description": "Tu primer reporte", "icon": "flag", "threshold": 1, "field": "report_count"},
@@ -78,20 +78,13 @@ def calc_confidence_score(report: dict) -> float:
 
 
 def get_freshness_label(created_at: str, refreshed_at: str | None = None) -> str:
-    """Get freshness label: Fresca (<48h), En proceso (48h-144h/6d), Fósil (>6d)."""
-    try:
-        created = datetime.fromisoformat(refreshed_at or created_at)
-        if created.tzinfo is None:
-            created = created.replace(tzinfo=timezone.utc)
-        hours = (datetime.now(timezone.utc) - created).total_seconds() / 3600
-        if hours < 48:
-            return "Fresca"
-        elif hours < 144:
-            return "En proceso"
-        else:
-            return "Fósil"
-    except Exception:
-        return "Fósil"
+    """Map the shared age bucket helper to public freshness labels."""
+    bucket = get_report_age_bucket(created_at, refreshed_at)
+    if bucket == "fresh":
+        return "Fresca"
+    if bucket == "old":
+        return "En proceso"
+    return "Fósil"
 
 
 def calc_neighborhood_cleanliness(reports: list) -> float:

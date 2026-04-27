@@ -10,6 +10,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
 import { formatTranslation } from "../utils/ranks";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
+import { buildLocationImageUrl, buildLocationShareUrl } from "../utils/locationShare";
 
 const FALLBACK_STORES = {
   app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
@@ -17,8 +18,13 @@ const FALLBACK_STORES = {
 };
 
 function buildContextTitle(kind, params, t) {
-  const city = params.get("city") || "";
-  const barrio = params.get("barrio") || "";
+  const prettify = (value) => String(value || "")
+    .split("-")
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+  const city = prettify(params.get("city") || "");
+  const barrio = prettify(params.get("barrio") || "");
   const listType = params.get("list_type") || "";
   const name = params.get("name") || "";
 
@@ -76,7 +82,14 @@ export default function DownloadPage() {
   }, []);
 
   const contextTitle = useMemo(() => buildContextTitle(kind, searchParams, t), [kind, searchParams, t]);
-  const shareUrl = useMemo(() => `${HOSTED_WEB_URL}/api/share?${searchParams.toString()}`, [searchParams]);
+  const shareUrl = useMemo(() => {
+    if (kind === "city-report") {
+      const city = searchParams.get("city") || "madrid";
+      const barrio = searchParams.get("barrio") || "";
+      return buildLocationShareUrl(city, barrio);
+    }
+    return `${HOSTED_WEB_URL}/api/share?${searchParams.toString()}`;
+  }, [kind, searchParams]);
   const previewImageUrl = useMemo(() => {
     if (kind === "city-rankings") {
       const listType = searchParams.get("list_type") || "dirtiest";
@@ -89,7 +102,7 @@ export default function DownloadPage() {
     if (kind === "city-report") {
       const city = searchParams.get("city") || "Madrid";
       const barrio = searchParams.get("barrio");
-      return `${API}/city-reports/share-image?city=${encodeURIComponent(city)}${barrio ? `&barrio=${encodeURIComponent(barrio)}` : ""}`;
+      return buildLocationImageUrl(city, barrio || "");
     }
     return "/share-example-es.png";
   }, [kind, searchParams]);

@@ -10,7 +10,7 @@ async function fetchShareFile(imageUrl) {
   });
 }
 
-export async function shareWithNativeOrCopy({ title, text, url, imageUrl, onCopied, allowFiles = true }) {
+export async function shareWithNativeOrCopy({ title, text, url, imageUrl, onCopied, allowFiles = false }) {
   if (navigator.share) {
     if (allowFiles && imageUrl && navigator.canShare) {
       try {
@@ -28,6 +28,9 @@ export async function shareWithNativeOrCopy({ title, text, url, imageUrl, onCopi
     return;
   }
 
+  if (!navigator.clipboard?.writeText) {
+    throw new Error("clipboard_unavailable");
+  }
   await navigator.clipboard.writeText([text, url].filter(Boolean).join("\n\n"));
   if (onCopied) onCopied();
 }

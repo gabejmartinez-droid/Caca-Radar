@@ -58,6 +58,16 @@ from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_active_report_barrios, get_city_report_summary
 from share_image_service import build_rankings_share_png, build_barrio_snapshot_png, get_share_image_media_type
+from location_share_service import (
+    LOCATION_SHARE_COPY,
+    build_cache_headers,
+    build_download_path,
+    build_location_share_metadata,
+    build_share_image_path,
+    build_share_path,
+    get_location_share_summary,
+    slugify_location_segment,
+)
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
@@ -277,6 +287,18 @@ def build_share_page_url(kind: str, **params) -> str:
     return f"{frontend_url}/api/share?{'&'.join(query_parts)}"
 
 
+def build_location_download_url(city_slug: str, barrio_slug: str | None = None) -> str:
+    return f"{get_frontend_url()}{build_download_path(city_slug, barrio_slug)}"
+
+
+def build_location_share_url(city_slug: str, barrio_slug: str | None = None) -> str:
+    return f"{get_frontend_url()}{build_share_path(city_slug, barrio_slug)}"
+
+
+def build_location_share_image_url(city_slug: str, barrio_slug: str | None = None) -> str:
+    return f"{get_frontend_url()}{build_share_image_path(city_slug, barrio_slug)}"
+
+
 def render_share_page(*, title: str, description: str, image_url: str, share_url: str, redirect_url: str) -> str:
     safe_title = escape(title)
     safe_description = escape(description)
@@ -296,12 +318,14 @@ def render_share_page(*, title: str, description: str, image_url: str, share_url
     <meta property="og:title" content="{safe_title}" />
     <meta property="og:description" content="{safe_description}" />
     <meta property="og:image" content="{safe_image}" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
     <meta property="og:url" content="{safe_share}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{safe_title}" />
     <meta name="twitter:description" content="{safe_description}" />
     <meta name="twitter:image" content="{safe_image}" />
-    <meta http-equiv="refresh" content="1;url={safe_redirect}" />
+    <link rel="canonical" href="{safe_share}" />
     <style>
       body {{
         margin: 0;
@@ -356,11 +380,6 @@ def render_share_page(*, title: str, description: str, image_url: str, share_url
       .primary {{ background: #ff6b6b; color: white; }}
       .secondary {{ background: #f8f9fa; color: #2b2d42; }}
     </style>
-    <script>
-      window.setTimeout(function () {{
-        window.location.replace({json.dumps(redirect_url)});
-      }}, 600);
-    </script>
   </head>
   <body>
     <main>
@@ -2077,42 +2096,122 @@ async def api_city_report(request: Request, city: str, barrio: str | None = None
 @api_router.get("/city-reports/share")
 async def api_city_report_share(city: str, barrio: str | None = None):
     """Public shareable city or barrio report summary."""
-    data = await get_city_report_summary(db, city, barrio=barrio)
-    if data.get("total_active_reports", 0) == 0:
+    data = await get_location_share_summary(db, city, barrio)
+    if not data.get("has_data"):
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
-    location = f"{city} — {barrio}" if barrio else city
-    title = f"Avisos activos en {location}"
-    app_url = build_download_url("city-report", city=city, barrio=barrio)
-    share_url = build_share_page_url("city-report", city=city, barrio=barrio)
-    image_url = f"{get_frontend_url()}/api/city-reports/share-image?city={quote(city)}" + (f"&barrio={quote(barrio)}" if barrio else "")
+    metadata = build_location_share_metadata(get_frontend_url(), data)
     return {
-        **data,
-        "title": title,
-        "app_url": app_url,
-        "share_url": share_url,
-        "image_url": image_url,
+        "city": data["city"],
+        "barrio": data["barrio"],
+        "city_slug": data["city_slug"],
+        "barrio_slug": data["barrio_slug"],
+        "display_label": data["display_label"],
+        "active_report_count": data["active_report_count"],
+        "total_active_reports": data["active_report_count"],
+        "recent_report_count": data["recent_report_count"],
+        "fresh_count": data["fresh_count"],
+        "fresh_reports": data["fresh_count"],
+        "old_count": data["old_count"],
+        "older_reports": data["old_count"],
+        "fossil_count": data["fossil_count"],
+        "fossil_reports": data["fossil_count"],
+        "preview_points": data["preview_points"],
+        "map_bounds": data["map_bounds"],
+        "time_window_label": data["time_window_label"],
+        "title": metadata["title"],
+        "description": metadata["description"],
+        "app_url": metadata["download_url"],
+        "share_url": metadata["share_url"],
+        "image_url": metadata["image_url"],
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
         },
-        "share_text": f"{location}: {data['fresh_reports']} frescos, {data['older_reports']} antiguos, {data['fossil_reports']} fósiles. {APP_STORE_URL}",
+        "share_text": f"{data['display_label']}: {data['fresh_count']} frescos · {data['old_count']} antiguos · {data['fossil_count']} fósiles. {APP_STORE_URL}",
     }
 
 
 @api_router.get("/city-reports/share-image")
 async def api_city_report_share_image(city: str, barrio: str | None = None):
-    summary = await get_city_report_summary(db, city, barrio=barrio)
-    if summary.get("total_active_reports", 0) == 0:
+    summary = await get_location_share_summary(db, city, barrio)
+    if not summary.get("has_data"):
         png = build_rankings_share_png(
             f"Avisos activos en {city}",
-            "¿Cuánta caca de perro hay en nuestras aceras?",
+            LOCATION_SHARE_COPY["headline"],
             [],
             footer="Comparte y descarga Caca Radar",
         )
-        return Response(content=png, media_type=get_share_image_media_type())
+        return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers({"city": city, "barrio": barrio, "empty": True}))
 
     png = build_barrio_snapshot_png(summary)
-    return Response(content=png, media_type=get_share_image_media_type())
+    return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers(summary))
+
+
+@api_router.get("/share-image/location")
+async def api_location_share_image(city: str, barrio: str | None = None):
+    summary = await get_location_share_summary(db, city, barrio)
+    if not summary.get("has_data"):
+        png = build_rankings_share_png(
+            f"Caca Radar — {city}",
+            LOCATION_SHARE_COPY["headline"],
+            [],
+            footer=LOCATION_SHARE_COPY["footer"],
+        )
+        return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers({"city": city, "barrio": barrio, "empty": True}))
+    png = build_barrio_snapshot_png(summary)
+    return Response(content=png, media_type=get_share_image_media_type(), headers=build_cache_headers(summary))
+
+
+@api_router.get("/share-image/location/{city_slug}")
+async def api_location_share_image_city_slug(city_slug: str):
+    return await api_location_share_image(city_slug, None)
+
+
+@api_router.get("/share-image/location/{city_slug}/{barrio_slug}")
+async def api_location_share_image_barrio_slug(city_slug: str, barrio_slug: str):
+    return await api_location_share_image(city_slug, barrio_slug)
+
+
+@api_router.get("/share/location", response_class=HTMLResponse)
+async def api_location_share_page(city: str, barrio: str | None = None):
+    summary = await get_location_share_summary(db, city, barrio)
+    if summary.get("found"):
+        metadata = build_location_share_metadata(get_frontend_url(), summary)
+        title = metadata["title"]
+        description = metadata["description"]
+        image_url = metadata["image_url"]
+        share_url = metadata["share_url"]
+        redirect_url = metadata["download_url"]
+        headers = build_cache_headers(summary)
+    else:
+        city_slug = slugify_location_segment(city)
+        barrio_slug = slugify_location_segment(barrio or "") if barrio else None
+        title = f"Caca Radar — {city}"
+        description = "Descarga Caca Radar y ayuda a mejorar tu zona."
+        image_url = f"{get_frontend_url()}/share-example-es.png"
+        share_url = build_location_share_url(city_slug, barrio_slug)
+        redirect_url = build_location_download_url(city_slug, barrio_slug)
+        headers = build_cache_headers({"city": city, "barrio": barrio, "fallback": True})
+    return HTMLResponse(
+        render_share_page(
+            title=title,
+            description=description,
+            image_url=image_url,
+            share_url=share_url,
+            redirect_url=redirect_url,
+        ),
+        headers=headers,
+    )
+
+
+@api_router.get("/share/location/{city_slug}", response_class=HTMLResponse)
+async def api_location_share_page_city_slug(city_slug: str):
+    return await api_location_share_page(city_slug, None)
+
+
+@api_router.get("/share/location/{city_slug}/{barrio_slug}", response_class=HTMLResponse)
+async def api_location_share_page_barrio_slug(city_slug: str, barrio_slug: str):
+    return await api_location_share_page(city_slug, barrio_slug)
 
 
 @api_router.get("/share", response_class=HTMLResponse)
