@@ -1071,11 +1071,12 @@ export default function MapPage() {
             aria-hidden="true"
           />
           <div
-            className="fixed left-1/2 -translate-x-1/2 z-[1601] w-[min(calc(100vw-1rem),21rem)] rounded-3xl bg-white border border-black/5 shadow-2xl overflow-hidden"
+            className="fixed left-1/2 -translate-x-1/2 z-[1601] w-[min(calc(100vw-1rem),21rem)] rounded-3xl bg-white border border-black/5 shadow-2xl overflow-hidden pointer-events-auto"
             style={{
               bottom: `calc(env(safe-area-inset-bottom, 0px) + ${detailsCardBottomPx}px)`,
               maxHeight: `${detailsCardMaxHeightPx}px`,
             }}
+            onClick={(event) => event.stopPropagation()}
             data-testid="details-drawer"
           >
             <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-[#E9ECF2]" />
@@ -1151,10 +1152,26 @@ export default function MapPage() {
               </div>
 
               <div className="grid grid-cols-2 gap-2 mb-2">
-                <Button size="sm" variant="outline" onClick={() => handleReportVote("upvote")} className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" data-testid="upvote-btn">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleReportVote("upvote")}
+                  disabled={loading}
+                  className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10"
+                  data-testid="upvote-btn"
+                >
                   <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
                 </Button>
-                <Button size="sm" variant="outline" onClick={() => handleReportVote("downvote")} className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10" data-testid="downvote-btn">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleReportVote("downvote")}
+                  disabled={loading}
+                  className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10"
+                  data-testid="downvote-btn"
+                >
                   <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}
                 </Button>
               </div>
@@ -1166,16 +1183,16 @@ export default function MapPage() {
               ) : null}
 
               {!myVote ? (
-                <Button onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>
+                <Button type="button" onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>
               ) : (
                 <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
               )}
 
               <div className="grid grid-cols-2 gap-2">
-                <Button variant="ghost" onClick={handleShare} className="h-9 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
+                <Button type="button" variant="ghost" onClick={handleShare} className="h-9 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
                   <Share2 className="w-4 h-4 mr-2" />{t("mapUi.share")}
                 </Button>
-                <Button variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="h-9 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
+                <Button type="button" variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="h-9 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
                   <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
                 </Button>
               </div>
