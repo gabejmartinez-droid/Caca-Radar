@@ -14,6 +14,7 @@ except ImportError:  # pragma: no cover - production installs pillow, local fall
 
 IMAGE_WIDTH = 1200
 IMAGE_HEIGHT = 630
+LOCATION_PNG_SCALE = 2
 
 BG_TOP = "#FFF7F2"
 BG_BOTTOM = "#FFE1D6"
@@ -102,8 +103,8 @@ def _rounded(draw, box, radius, fill, outline=None, width=1):
     draw.rounded_rectangle(box, radius=radius, fill=fill, outline=outline, width=width)
 
 
-def _draw_map_png(draw, summary: dict):
-    map_x, map_y, map_w, map_h = 64, 434, 1072, 130
+def _draw_map_png(draw, summary: dict, scale: int = 1):
+    map_x, map_y, map_w, map_h = 64 * scale, 388 * scale, 1072 * scale, 162 * scale
     _rounded(draw, (map_x, map_y, map_x + map_w, map_y + map_h), 20, MAP_BG)
     draw.polygon(
         [
@@ -157,11 +158,11 @@ def _draw_map_png(draw, summary: dict):
             color = colors.get(bucket, FOSSIL)
             draw.ellipse((px - 8, py - 8, px + 8, py + 8), fill=color, outline="white", width=2)
 
-    title_font = _get_font(28, bold=True)
-    barrio_font = _get_font(18)
-    _draw_text(draw, (map_x + 18, map_y + 8), _truncate(str(summary.get("city", "")).upper(), 24), font=title_font, fill=TEXT_DARK)
+    title_font = _get_font(28 * scale, bold=True)
+    barrio_font = _get_font(20 * scale)
+    _draw_text(draw, (map_x + 18 * scale, map_y + 10 * scale), _truncate(str(summary.get("city", "")).upper(), 24), font=title_font, fill=TEXT_DARK)
     if summary.get("barrio"):
-        _draw_text(draw, (map_x + 18, map_y + 36), _truncate(summary.get("barrio", ""), 28), font=barrio_font, fill=TEXT_MUTED)
+        _draw_text(draw, (map_x + 18 * scale, map_y + 44 * scale), _truncate(summary.get("barrio", ""), 28), font=barrio_font, fill=TEXT_MUTED)
 
 
 def _image_bytes(image) -> bytes:
@@ -170,14 +171,17 @@ def _image_bytes(image) -> bytes:
     return buf.getvalue()
 
 
-def _stat_box_png(draw, x: int, label: str, value: str, note: str, color: str):
-    _rounded(draw, (x, 248, x + 266, 414), 22, CARD_BG)
-    label_font = _get_font(22)
-    value_font = _get_font(42, bold=True)
-    note_font = _get_font(18)
-    _draw_text(draw, (x + 18, 260), label, font=label_font, fill=TEXT_DARK)
-    _draw_text(draw, (x + 18, 320), value, font=value_font, fill=color)
-    _draw_text(draw, (x + 18, 372), note, font=note_font, fill=TEXT_MUTED)
+def _stat_box_png(draw, x: int, label: str, value: str, note: str, color: str, scale: int = 1):
+    top = 236 * scale
+    height = 132 * scale
+    width = 252 * scale
+    _rounded(draw, (x, top, x + width, top + height), 22 * scale, CARD_BG)
+    label_font = _get_font(24 * scale)
+    value_font = _get_font(52 * scale, bold=True)
+    note_font = _get_font(18 * scale)
+    _draw_text(draw, (x + 18 * scale, top + 18 * scale), label, font=label_font, fill=TEXT_DARK)
+    _draw_text(draw, (x + 18 * scale, top + 56 * scale), value, font=value_font, fill=color)
+    _draw_text(draw, (x + 18 * scale, top + 104 * scale), note, font=note_font, fill=TEXT_MUTED)
 
 
 def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], footer: str = "Caca Radar") -> bytes:
@@ -234,10 +238,10 @@ def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], fo
 
 def _stat_box(x: int, label: str, value: str, note: str, color: str) -> str:
     return f"""
-  <rect x="{x}" y="248" width="266" height="166" rx="22" fill="{CARD_BG}"/>
-  <text x="{x + 18}" y="282" font-size="22" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(label)}</text>
-  <text x="{x + 18}" y="352" font-size="42" font-weight="800" fill="{color}" font-family="Arial, Helvetica, sans-serif">{escape(value)}</text>
-  <text x="{x + 18}" y="388" font-size="18" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(note)}</text>
+  <rect x="{x}" y="236" width="252" height="132" rx="22" fill="{CARD_BG}"/>
+  <text x="{x + 18}" y="266" font-size="24" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(label)}</text>
+  <text x="{x + 18}" y="324" font-size="52" font-weight="800" fill="{color}" font-family="Arial, Helvetica, sans-serif">{escape(value)}</text>
+  <text x="{x + 18}" y="352" font-size="18" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(note)}</text>
 """
 
 
@@ -294,28 +298,29 @@ def _build_map_svg(summary: dict) -> str:
 
 def build_location_share_card_image(summary: dict) -> bytes:
     if Image is not None:
-        image = Image.new("RGB", (IMAGE_WIDTH, IMAGE_HEIGHT), BG_TOP)
+        scale = LOCATION_PNG_SCALE
+        image = Image.new("RGB", (IMAGE_WIDTH * scale, IMAGE_HEIGHT * scale), BG_TOP)
         _render_gradient_background(image)
         draw = ImageDraw.Draw(image)
-        _rounded(draw, (28, 24, 1172, 606), 34, "#FFFDFC", outline="#E7DED8", width=3)
+        _rounded(draw, (28 * scale, 24 * scale, 1172 * scale, 606 * scale), 34 * scale, "#FFFDFC", outline="#E7DED8", width=3 * scale)
         location = summary.get("display_label") or summary.get("city", "")
-        _draw_text(draw, (74, 42), "Caca Radar", font=_get_font(24, bold=True), fill=ACCENT)
-        _draw_text(draw, (248, 44), LOCATION_SUBTITLE, font=_get_font(16), fill=TEXT_MUTED)
-        _draw_text(draw, (82, 82), LOCATION_HEADLINE, font=_get_font(32, bold=True), fill="#A21414")
-        _draw_text(draw, (72, 110), _truncate(location, 28), font=_get_font(54, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (74 * scale, 46 * scale), "Caca Radar", font=_get_font(28 * scale, bold=True), fill=ACCENT)
+        _draw_text(draw, (278 * scale, 48 * scale), LOCATION_SUBTITLE, font=_get_font(20 * scale), fill=TEXT_MUTED)
+        _draw_text(draw, (74 * scale, 94 * scale), LOCATION_HEADLINE, font=_get_font(40 * scale, bold=True), fill="#A21414")
+        _draw_text(draw, (72 * scale, 156 * scale), _truncate(location, 24), font=_get_font(72 * scale, bold=True), fill=TEXT_DARK)
         recent = summary.get("recent_report_count", summary.get("fresh_count", summary.get("fresh_reports", 0)))
-        _draw_text(draw, (72, 170), f"{recent} reportes recientes", font=_get_font(34, bold=True), fill=ACCENT)
-        _draw_text(draw, (72, 208), summary.get("time_window_label", "últimas 24 h"), font=_get_font(20), fill=TEXT_MUTED)
-        _draw_text(draw, (72, 234), f"{summary.get('fresh_count', summary.get('fresh_reports', 0))} frescos", font=_get_font(24, bold=True), fill=FRESH)
-        _draw_text(draw, (320, 234), f"{summary.get('old_count', summary.get('older_reports', 0))} antiguos", font=_get_font(24, bold=True), fill=OLDER)
-        _draw_text(draw, (620, 234), f"{summary.get('fossil_count', summary.get('fossil_reports', 0))} fósiles", font=_get_font(24, bold=True), fill=FOSSIL)
-        _stat_box_png(draw, 64, "Reportes activos", str(summary.get("active_report_count", summary.get("total_active_reports", 0))), "", FOSSIL)
-        _stat_box_png(draw, 346, "Frescos", str(summary.get("fresh_count", summary.get("fresh_reports", 0))), "(≤ 24h)", FRESH)
-        _stat_box_png(draw, 628, "Antiguos", str(summary.get("old_count", summary.get("older_reports", 0))), "(1–7 días)", OLDER)
-        _stat_box_png(draw, 910, "Fósiles", str(summary.get("fossil_count", summary.get("fossil_reports", 0))), "(> 7 días)", FOSSIL)
-        _draw_map_png(draw, summary)
-        _draw_text(draw, (74, 566), "Caca Radar", font=_get_font(26, bold=True), fill=TEXT_DARK)
-        _draw_text(draw, (274, 570), f"{LOCATION_SUBTITLE} · {LOCATION_FOOTER}", font=_get_font(18), fill=TEXT_MUTED)
+        _draw_text(draw, (72 * scale, 222 * scale), f"{recent} reportes recientes", font=_get_font(46 * scale, bold=True), fill=ACCENT)
+        _draw_text(draw, (72 * scale, 268 * scale), summary.get("time_window_label", "últimas 24 h"), font=_get_font(24 * scale), fill=TEXT_MUTED)
+        _draw_text(draw, (72 * scale, 314 * scale), f"{summary.get('fresh_count', summary.get('fresh_reports', 0))} frescos", font=_get_font(34 * scale, bold=True), fill=FRESH)
+        _draw_text(draw, (394 * scale, 314 * scale), f"{summary.get('old_count', summary.get('older_reports', 0))} antiguos", font=_get_font(34 * scale, bold=True), fill=OLDER)
+        _draw_text(draw, (786 * scale, 314 * scale), f"{summary.get('fossil_count', summary.get('fossil_reports', 0))} fósiles", font=_get_font(34 * scale, bold=True), fill=FOSSIL)
+        _stat_box_png(draw, 64 * scale, "Activos", str(summary.get("active_report_count", summary.get("total_active_reports", 0))), "", FOSSIL, scale)
+        _stat_box_png(draw, 338 * scale, "Frescos", str(summary.get("fresh_count", summary.get("fresh_reports", 0))), "≤ 24h", FRESH, scale)
+        _stat_box_png(draw, 612 * scale, "Antiguos", str(summary.get("old_count", summary.get("older_reports", 0))), "1–7 días", OLDER, scale)
+        _stat_box_png(draw, 886 * scale, "Fósiles", str(summary.get("fossil_count", summary.get("fossil_reports", 0))), "> 7 días", FOSSIL, scale)
+        _draw_map_png(draw, summary, scale)
+        _draw_text(draw, (74 * scale, 582 * scale), "Caca Radar", font=_get_font(28 * scale, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (274 * scale, 586 * scale), f"{LOCATION_SUBTITLE} · {LOCATION_FOOTER}", font=_get_font(20 * scale), fill=TEXT_MUTED)
         return _image_bytes(image)
 
     location = summary.get("display_label") or summary.get("city", "")
@@ -327,19 +332,19 @@ def build_location_share_card_image(summary: dict) -> bytes:
   <rect x="28" y="24" width="1144" height="582" rx="34" fill="#FFFDFC" stroke="#E7DED8" stroke-width="3" filter="url(#shadow)"/>
   <text x="74" y="54" font-size="24" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">Caca Radar</text>
   <text x="248" y="56" font-size="16" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{LOCATION_SUBTITLE}</text>
-  <text x="82" y="96" font-size="32" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{LOCATION_HEADLINE}</text>
-  <text x="72" y="152" font-size="54" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(location, 28))}</text>
-  <text x="72" y="192" font-size="34" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{recent} reportes recientes</text>
-  <text x="72" y="220" font-size="20" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(summary.get("time_window_label", "últimas 24 h"))}</text>
-  <text x="72" y="246" font-size="24" font-weight="800" fill="{FRESH}" font-family="Arial, Helvetica, sans-serif">{summary.get("fresh_count", summary.get("fresh_reports", 0))} frescos</text>
-  <text x="320" y="246" font-size="24" font-weight="800" fill="{OLDER}" font-family="Arial, Helvetica, sans-serif">{summary.get("old_count", summary.get("older_reports", 0))} antiguos</text>
-  <text x="620" y="246" font-size="24" font-weight="800" fill="{FOSSIL}" font-family="Arial, Helvetica, sans-serif">{summary.get("fossil_count", summary.get("fossil_reports", 0))} fósiles</text>
+  <text x="78" y="104" font-size="40" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{LOCATION_HEADLINE}</text>
+  <text x="72" y="172" font-size="72" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(location, 24))}</text>
+  <text x="72" y="234" font-size="46" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{recent} reportes recientes</text>
+  <text x="72" y="270" font-size="24" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(summary.get("time_window_label", "últimas 24 h"))}</text>
+  <text x="72" y="316" font-size="34" font-weight="800" fill="{FRESH}" font-family="Arial, Helvetica, sans-serif">{summary.get("fresh_count", summary.get("fresh_reports", 0))} frescos</text>
+  <text x="394" y="316" font-size="34" font-weight="800" fill="{OLDER}" font-family="Arial, Helvetica, sans-serif">{summary.get("old_count", summary.get("older_reports", 0))} antiguos</text>
+  <text x="786" y="316" font-size="34" font-weight="800" fill="{FOSSIL}" font-family="Arial, Helvetica, sans-serif">{summary.get("fossil_count", summary.get("fossil_reports", 0))} fósiles</text>
 """
     )
-    parts.append(_stat_box(64, "Reportes activos", str(summary.get("active_report_count", summary.get("total_active_reports", 0))), "", FOSSIL))
-    parts.append(_stat_box(346, "Frescos", str(summary.get("fresh_count", summary.get("fresh_reports", 0))), "(≤ 24h)", FRESH))
-    parts.append(_stat_box(628, "Antiguos", str(summary.get("old_count", summary.get("older_reports", 0))), "(1–7 días)", OLDER))
-    parts.append(_stat_box(910, "Fósiles", str(summary.get("fossil_count", summary.get("fossil_reports", 0))), "(> 7 días)", FOSSIL))
+    parts.append(_stat_box(64, "Activos", str(summary.get("active_report_count", summary.get("total_active_reports", 0))), "", FOSSIL))
+    parts.append(_stat_box(346, "Frescos", str(summary.get("fresh_count", summary.get("fresh_reports", 0))), "≤ 24h", FRESH))
+    parts.append(_stat_box(628, "Antiguos", str(summary.get("old_count", summary.get("older_reports", 0))), "1–7 días", OLDER))
+    parts.append(_stat_box(910, "Fósiles", str(summary.get("fossil_count", summary.get("fossil_reports", 0))), "> 7 días", FOSSIL))
     parts.append(_build_map_svg(summary))
     parts.append(
         f"""
