@@ -193,27 +193,24 @@ def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], fo
         draw = ImageDraw.Draw(image)
         _rounded(draw, (18 * scale, 18 * scale, 1182 * scale, 612 * scale), 38 * scale, "#FFFDFC", outline="#E7DED8", width=3 * scale)
         _draw_text(draw, (46 * scale, 58 * scale), "Caca Radar", font=_get_font(28 * scale, bold=True), fill=ACCENT)
-        _draw_text(draw, (46 * scale, 116 * scale), _truncate(title, 24), font=_get_font(72 * scale, bold=True), fill=TEXT_DARK)
-        _draw_text(draw, (46 * scale, 168 * scale), _truncate(subtitle, 28), font=_get_font(30 * scale, bold=True), fill="#A21414")
+        _draw_text(draw, (46 * scale, 110 * scale), _truncate(title, 18), font=_get_font(86 * scale, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (46 * scale, 156 * scale), _truncate(subtitle, 22), font=_get_font(28 * scale, bold=True), fill="#A21414")
 
         top_row = rows[0] if rows else {"rank": 1, "label": "Sin datos", "meta": "", "value": "--"}
-        _rounded(draw, (40 * scale, 194 * scale, 1160 * scale, 388 * scale), 34 * scale, "#FFF1EB")
-        _rounded(draw, (68 * scale, 224 * scale, 180 * scale, 336 * scale), 36 * scale, ACCENT_SOFT)
-        _draw_text(draw, (124 * scale, 248 * scale), str(top_row.get("rank", 1)), font=_get_font(64 * scale, bold=True), fill=ACCENT, anchor="ma")
-        _draw_text(draw, (224 * scale, 214 * scale), _truncate(top_row.get("label", ""), 16), font=_get_font(84 * scale, bold=True), fill=TEXT_DARK)
-        _draw_text(draw, (224 * scale, 284 * scale), _truncate(top_row.get("meta", ""), 24), font=_get_font(34 * scale), fill=TEXT_MUTED)
-        _draw_text(draw, (1118 * scale, 228 * scale), str(top_row.get("value", "")), font=_get_font(70 * scale, bold=True), fill=ACCENT, anchor="ra")
+        _rounded(draw, (40 * scale, 188 * scale, 1160 * scale, 508 * scale), 38 * scale, "#FFF1EB")
+        _rounded(draw, (74 * scale, 224 * scale, 192 * scale, 342 * scale), 42 * scale, ACCENT_SOFT)
+        _draw_text(draw, (133 * scale, 258 * scale), str(top_row.get("rank", 1)), font=_get_font(72 * scale, bold=True), fill=ACCENT, anchor="ma")
+        _draw_text(draw, (242 * scale, 214 * scale), _truncate(top_row.get("label", ""), 14), font=_get_font(104 * scale, bold=True), fill=TEXT_DARK)
+        _draw_text(draw, (242 * scale, 292 * scale), _truncate(top_row.get("meta", ""), 20), font=_get_font(34 * scale), fill=TEXT_MUTED)
+        _draw_text(draw, (242 * scale, 406 * scale), str(top_row.get("value", "")), font=_get_font(118 * scale, bold=True), fill=ACCENT)
 
+        secondary = []
         for index, row in enumerate(rows[1:3], start=2):
-            y = (420 + (index - 2) * 94) * scale
-            _rounded(draw, (40 * scale, y, 1160 * scale, y + 74 * scale), 26 * scale, CARD_BG)
-            _rounded(draw, (60 * scale, y + 12 * scale, 126 * scale, y + 62 * scale), 24 * scale, ACCENT_SOFT)
-            _draw_text(draw, (93 * scale, y + 25 * scale), str(row.get("rank", index)), font=_get_font(40 * scale, bold=True), fill=ACCENT, anchor="ma")
-            _draw_text(draw, (156 * scale, y + 10 * scale), _truncate(row.get("label", ""), 20), font=_get_font(46 * scale, bold=True), fill=TEXT_DARK)
-            _draw_text(draw, (156 * scale, y + 52 * scale), _truncate(row.get("meta", ""), 26), font=_get_font(24 * scale), fill=TEXT_MUTED)
-            _draw_text(draw, (1116 * scale, y + 18 * scale), str(row.get("value", "")), font=_get_font(42 * scale, bold=True), fill=ACCENT, anchor="ra")
+            secondary.append(f"#{index} {row.get('label', '')} {row.get('value', '')}")
+        secondary_line = " · ".join(filter(None, secondary)) or "Comparte y descarga Caca Radar"
 
-        _draw_text(draw, (46 * scale, 592 * scale), _truncate(footer, 38), font=_get_font(24 * scale), fill=TEXT_MUTED)
+        _draw_text(draw, (46 * scale, 566 * scale), _truncate(secondary_line, 54), font=_get_font(30 * scale, bold=True), fill=TEXT_MUTED)
+        _draw_text(draw, (46 * scale, 602 * scale), _truncate(footer, 34), font=_get_font(22 * scale), fill=TEXT_MUTED)
         return _image_bytes(image)
 
     rows = list(rows)[:3]
@@ -223,30 +220,23 @@ def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], fo
         f"""
   <rect x="18" y="18" width="1164" height="594" rx="38" fill="#FFFDFC" stroke="#E7DED8" stroke-width="3" filter="url(#shadow)"/>
   <text x="46" y="74" font-size="28" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">Caca Radar</text>
-  <text x="46" y="134" font-size="72" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(title, 24))}</text>
-  <text x="46" y="178" font-size="30" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(subtitle, 28))}</text>
-  <rect x="40" y="194" width="1120" height="194" rx="34" fill="#FFF1EB"/>
-  <rect x="68" y="224" width="112" height="112" rx="36" fill="{ACCENT_SOFT}"/>
-  <text x="124" y="290" text-anchor="middle" font-size="64" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("rank", 1)))}</text>
-  <text x="224" y="272" font-size="84" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("label", ""), 16))}</text>
-  <text x="224" y="318" font-size="34" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("meta", ""), 24))}</text>
-  <text x="1118" y="290" text-anchor="end" font-size="70" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("value", "")))}</text>
+  <text x="46" y="134" font-size="86" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(title, 18))}</text>
+  <text x="46" y="172" font-size="28" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(subtitle, 22))}</text>
+  <rect x="40" y="188" width="1120" height="320" rx="38" fill="#FFF1EB"/>
+  <rect x="74" y="224" width="118" height="118" rx="42" fill="{ACCENT_SOFT}"/>
+  <text x="133" y="302" text-anchor="middle" font-size="72" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("rank", 1)))}</text>
+  <text x="242" y="286" font-size="104" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("label", ""), 14))}</text>
+  <text x="242" y="330" font-size="34" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("meta", ""), 20))}</text>
+  <text x="242" y="436" font-size="118" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("value", "")))}</text>
 """
     )
+    secondary = []
     for index, row in enumerate(rows[1:3], start=2):
-        y = 420 + (index - 2) * 94
-        parts.append(
-            f"""
-  <rect x="40" y="{y}" width="1120" height="74" rx="26" fill="{CARD_BG}"/>
-  <rect x="60" y="{y + 12}" width="66" height="50" rx="24" fill="{ACCENT_SOFT}"/>
-  <text x="93" y="{y + 50}" text-anchor="middle" font-size="40" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(row.get("rank", index)))}</text>
-  <text x="156" y="{y + 40}" font-size="46" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(row.get("label", ""), 20))}</text>
-  <text x="156" y="{y + 64}" font-size="24" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(row.get("meta", ""), 26))}</text>
-  <text x="1116" y="{y + 50}" text-anchor="end" font-size="42" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(row.get("value", "")))}</text>
-"""
-        )
+        secondary.append(f"#{index} {row.get('label', '')} {row.get('value', '')}")
+    secondary_line = " · ".join(filter(None, secondary)) or "Comparte y descarga Caca Radar"
     parts.append(
-        f'<text x="46" y="596" font-size="24" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(footer, 38))}</text>'
+        f'<text x="46" y="566" font-size="30" font-weight="800" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(secondary_line, 54))}</text>'
+        f'<text x="46" y="602" font-size="22" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(footer, 34))}</text>'
     )
     parts.append(_svg_footer())
     return "".join(parts).encode("utf-8")
