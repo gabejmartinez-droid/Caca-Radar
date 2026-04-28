@@ -2086,8 +2086,8 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
 @api_router.get("/rankings/barrios/share-image.png")
 async def api_barrio_rankings_share_image(city: str = "Madrid"):
     data = await get_barrio_rankings(db, city, limit=10)
-    top_barrio = (data.get("barrios") or [None])[0]
-    if not top_barrio:
+    barrios = data.get("barrios") or []
+    if not barrios:
         png = build_rankings_share_png(
             f"Barrios con más avisos en {city}",
             "¿Cuánta caca de perro hay en nuestras aceras?",
@@ -2096,9 +2096,22 @@ async def api_barrio_rankings_share_image(city: str = "Madrid"):
         )
         return build_share_image_response(png, {"kind": "barrio-rankings", "city": city, "empty": True})
 
-    summary = await get_city_report_summary(db, city, barrio=top_barrio.get("barrio"))
-    png = build_barrio_snapshot_png(summary)
-    return build_share_image_response(png, {"kind": "barrio-rankings", "city": city, "barrio": top_barrio.get("barrio")})
+    rows = [
+        {
+            "rank": barrio_data.get("rank", index + 1),
+            "label": barrio_data.get("barrio", ""),
+            "meta": city,
+            "value": f'{barrio_data.get("active_reports", 0)} avisos',
+        }
+        for index, barrio_data in enumerate(barrios[:4])
+    ]
+    png = build_rankings_share_png(
+        f"Los barrios con más avisos en {city}",
+        "¿Cuánta caca de perro hay en nuestras aceras?",
+        rows,
+        footer="Comparte y descarga Caca Radar",
+    )
+    return build_share_image_response(png, {"kind": "barrio-rankings", "city": city})
 
 
 @api_router.get("/city-reports/cities")
@@ -2125,7 +2138,18 @@ async def api_city_report(request: Request, city: str, barrio: str | None = None
     user = await get_current_user(request)
     if not user or not user.get("subscription_active"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
-    return await get_city_report_summary(db, city, barrio=barrio)
+    summary = await get_city_report_summary(db, city, barrio=barrio)
+    return {
+        **summary,
+        "display_label": f"{summary['city']} — {summary['barrio']}" if summary.get("barrio") else summary.get("city", city),
+        "active_report_count": summary.get("total_active_reports", 0),
+        "recent_report_count": summary.get("fresh_reports", 0),
+        "fresh_count": summary.get("fresh_reports", 0),
+        "old_count": summary.get("older_reports", 0),
+        "fossil_count": summary.get("fossil_reports", 0),
+        "time_window_label": "últimas 24 h",
+        "has_data": summary.get("total_active_reports", 0) > 0,
+    }
 
 
 @api_router.get("/city-reports/share")
@@ -2134,7 +2158,16 @@ async def api_city_report_share(city: str, barrio: str | None = None):
     data = await get_location_share_summary(db, city, barrio)
     if not data.get("has_data"):
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
-    metadata = build_location_share_metadata(get_frontend_url(), data, image_version=get_share_image_version())
+    frontend_url = get_frontend_url()
+    city_value = data["city"]
+    barrio_value = data["barrio"] or None
+    metadata = build_location_share_metadata(frontend_url, data, image_version=get_share_image_version())
+    image_url = append_query_params(
+        f"{frontend_url}/api/city-reports/share-image.png?city={quote(city_value)}" + (f"&barrio={quote(barrio_value)}" if barrio_value else ""),
+        v=get_share_image_version(),
+    )
+    app_url = build_download_url("city-report", city=city_value, barrio=barrio_value)
+    share_url = build_share_page_url("city-report", city=city_value, barrio=barrio_value)
     return {
         "city": data["city"],
         "barrio": data["barrio"],
@@ -2155,9 +2188,9 @@ async def api_city_report_share(city: str, barrio: str | None = None):
         "time_window_label": data["time_window_label"],
         "title": metadata["title"],
         "description": metadata["description"],
-        "app_url": metadata["download_url"],
-        "share_url": metadata["share_url"],
-        "image_url": metadata["image_url"],
+        "app_url": app_url,
+        "share_url": share_url,
+        "image_url": image_url,
         "download_links": {
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,

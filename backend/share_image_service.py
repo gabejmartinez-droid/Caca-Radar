@@ -412,19 +412,40 @@ def _build_map_svg(summary: dict) -> str:
 
 
 def build_location_share_card_image(summary: dict) -> bytes:
+    location = summary.get("display_label") or summary.get("city", "")
+    recent = summary.get("recent_report_count", summary.get("fresh_count", summary.get("fresh_reports", 0)))
     if Image is not None:
         scale = LOCATION_PNG_SCALE
+        headline_font, _, fitted_headline = _fit_text(
+            LOCATION_HEADLINE,
+            max_width=1056 * scale,
+            target_size=40 * scale,
+            min_size=28 * scale,
+            bold=True,
+        )
+        location_font, _, fitted_location = _fit_text(
+            location,
+            max_width=1056 * scale,
+            target_size=72 * scale,
+            min_size=44 * scale,
+            bold=True,
+        )
+        recent_font, _, fitted_recent = _fit_text(
+            f"{recent} reportes recientes",
+            max_width=1056 * scale,
+            target_size=46 * scale,
+            min_size=30 * scale,
+            bold=True,
+        )
         image = Image.new("RGB", (IMAGE_WIDTH * scale, IMAGE_HEIGHT * scale), BG_TOP)
         _render_gradient_background(image)
         draw = ImageDraw.Draw(image)
         _rounded(draw, (28 * scale, 24 * scale, 1172 * scale, 606 * scale), 34 * scale, "#FFFDFC", outline="#E7DED8", width=3 * scale)
-        location = summary.get("display_label") or summary.get("city", "")
         _draw_text(draw, (74 * scale, 46 * scale), "Caca Radar", font=_get_font(28 * scale, bold=True), fill=ACCENT)
         _draw_text(draw, (278 * scale, 48 * scale), LOCATION_SUBTITLE, font=_get_font(20 * scale), fill=TEXT_MUTED)
-        _draw_text(draw, (74 * scale, 94 * scale), LOCATION_HEADLINE, font=_get_font(40 * scale, bold=True), fill="#A21414")
-        _draw_text(draw, (72 * scale, 156 * scale), _truncate(location, 24), font=_get_font(72 * scale, bold=True), fill=TEXT_DARK)
-        recent = summary.get("recent_report_count", summary.get("fresh_count", summary.get("fresh_reports", 0)))
-        _draw_text(draw, (72 * scale, 222 * scale), f"{recent} reportes recientes", font=_get_font(46 * scale, bold=True), fill=ACCENT)
+        _draw_text(draw, (74 * scale, 94 * scale), fitted_headline, font=headline_font, fill="#A21414")
+        _draw_text(draw, (72 * scale, 156 * scale), fitted_location, font=location_font, fill=TEXT_DARK)
+        _draw_text(draw, (72 * scale, 222 * scale), fitted_recent, font=recent_font, fill=ACCENT)
         _draw_text(draw, (72 * scale, 268 * scale), summary.get("time_window_label", "últimas 24 h"), font=_get_font(24 * scale), fill=TEXT_MUTED)
         _draw_text(draw, (72 * scale, 314 * scale), f"{summary.get('fresh_count', summary.get('fresh_reports', 0))} frescos", font=_get_font(34 * scale, bold=True), fill=FRESH)
         _draw_text(draw, (394 * scale, 314 * scale), f"{summary.get('old_count', summary.get('older_reports', 0))} antiguos", font=_get_font(34 * scale, bold=True), fill=OLDER)
@@ -438,8 +459,27 @@ def build_location_share_card_image(summary: dict) -> bytes:
         _draw_text(draw, (274 * scale, 586 * scale), f"{LOCATION_SUBTITLE} · {LOCATION_FOOTER}", font=_get_font(20 * scale), fill=TEXT_MUTED)
         return _image_bytes(image)
 
-    location = summary.get("display_label") or summary.get("city", "")
-    recent = summary.get("recent_report_count", summary.get("fresh_count", summary.get("fresh_reports", 0)))
+    _, svg_headline_size, fitted_headline = _fit_text(
+        LOCATION_HEADLINE,
+        max_width=1056,
+        target_size=40,
+        min_size=28,
+        bold=True,
+    )
+    _, svg_location_size, fitted_location = _fit_text(
+        location,
+        max_width=1056,
+        target_size=72,
+        min_size=44,
+        bold=True,
+    )
+    _, svg_recent_size, fitted_recent = _fit_text(
+        f"{recent} reportes recientes",
+        max_width=1056,
+        target_size=46,
+        min_size=30,
+        bold=True,
+    )
 
     parts = [_svg_header()]
     parts.append(
@@ -447,9 +487,9 @@ def build_location_share_card_image(summary: dict) -> bytes:
   <rect x="28" y="24" width="1144" height="582" rx="34" fill="#FFFDFC" stroke="#E7DED8" stroke-width="3" filter="url(#shadow)"/>
   <text x="74" y="54" font-size="24" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">Caca Radar</text>
   <text x="248" y="56" font-size="16" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{LOCATION_SUBTITLE}</text>
-  <text x="78" y="104" font-size="40" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{LOCATION_HEADLINE}</text>
-  <text x="72" y="172" font-size="72" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(location, 24))}</text>
-  <text x="72" y="234" font-size="46" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{recent} reportes recientes</text>
+  <text x="78" y="104" font-size="{svg_headline_size}" font-weight="800" fill="#A21414" font-family="Arial, Helvetica, sans-serif">{escape(fitted_headline)}</text>
+  <text x="72" y="172" font-size="{svg_location_size}" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(fitted_location)}</text>
+  <text x="72" y="234" font-size="{svg_recent_size}" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(fitted_recent)}</text>
   <text x="72" y="270" font-size="24" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(summary.get("time_window_label", "últimas 24 h"))}</text>
   <text x="72" y="316" font-size="34" font-weight="800" fill="{FRESH}" font-family="Arial, Helvetica, sans-serif">{summary.get("fresh_count", summary.get("fresh_reports", 0))} frescos</text>
   <text x="394" y="316" font-size="34" font-weight="800" fill="{OLDER}" font-family="Arial, Helvetica, sans-serif">{summary.get("old_count", summary.get("older_reports", 0))} antiguos</text>

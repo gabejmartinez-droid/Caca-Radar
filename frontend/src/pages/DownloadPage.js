@@ -10,7 +10,6 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
 import { formatTranslation } from "../utils/ranks";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
-import { buildLocationImageUrl, buildLocationShareUrl } from "../utils/locationShare";
 
 const FALLBACK_STORES = {
   app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
@@ -84,9 +83,10 @@ export default function DownloadPage() {
   const contextTitle = useMemo(() => buildContextTitle(kind, searchParams, t), [kind, searchParams, t]);
   const shareUrl = useMemo(() => {
     if (kind === "city-report") {
-      const city = searchParams.get("city") || "madrid";
-      const barrio = searchParams.get("barrio") || "";
-      return buildLocationShareUrl(city, barrio);
+      const query = new URLSearchParams({ kind: "city-report", city: searchParams.get("city") || "madrid" });
+      const barrio = searchParams.get("barrio");
+      if (barrio) query.set("barrio", barrio);
+      return `${HOSTED_WEB_URL}/api/share?${query.toString()}`;
     }
     return `${HOSTED_WEB_URL}/api/share?${searchParams.toString()}`;
   }, [kind, searchParams]);
@@ -102,7 +102,7 @@ export default function DownloadPage() {
     if (kind === "city-report") {
       const city = searchParams.get("city") || "Madrid";
       const barrio = searchParams.get("barrio");
-      return buildLocationImageUrl(city, barrio || "");
+      return `${API}/city-reports/share-image.png?city=${encodeURIComponent(city)}${barrio ? `&barrio=${encodeURIComponent(barrio)}` : ""}`;
     }
     return "/share-example-es.png";
   }, [kind, searchParams]);

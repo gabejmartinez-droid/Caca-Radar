@@ -90,6 +90,28 @@ function StatCard({ label, value, color }) {
   );
 }
 
+function normalizeCityReportSummary(data) {
+  if (!data) return null;
+  return {
+    ...data,
+    city: data.city || "",
+    barrio: data.barrio || "",
+    province: data.province || "",
+    total_active_reports: data.total_active_reports ?? data.active_report_count ?? 0,
+    active_report_count: data.active_report_count ?? data.total_active_reports ?? 0,
+    fresh_reports: data.fresh_reports ?? data.fresh_count ?? 0,
+    older_reports: data.older_reports ?? data.old_count ?? 0,
+    fossil_reports: data.fossil_reports ?? data.fossil_count ?? 0,
+    fresh_count: data.fresh_count ?? data.fresh_reports ?? 0,
+    old_count: data.old_count ?? data.older_reports ?? 0,
+    fossil_count: data.fossil_count ?? data.fossil_reports ?? 0,
+    recent_report_count: data.recent_report_count ?? data.fresh_reports ?? data.fresh_count ?? 0,
+    preview_points: data.preview_points || [],
+    map_bounds: data.map_bounds || null,
+    time_window_label: data.time_window_label || "últimas 24 h",
+  };
+}
+
 export default function CityReportPage() {
   const { user } = useAuth();
   const { t } = useLanguage();
@@ -186,7 +208,7 @@ export default function CityReportPage() {
         } else {
           ({ data } = await axios.get(`${API}/city-reports/share?${query.toString()}`));
         }
-        if (!ignore) setSummary(data);
+        if (!ignore) setSummary(normalizeCityReportSummary(data));
       } catch (error) {
         if (ignore) return;
         setSummary(null);
