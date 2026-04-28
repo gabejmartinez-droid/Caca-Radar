@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from bson.decimal128 import Decimal128
-from location_share_service import get_report_age_bucket
+from location_share_service import get_report_age_bucket, select_preview_scope, slugify_location_segment
 
 logger = logging.getLogger(__name__)
 
@@ -337,9 +337,7 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
     fresh_reports = 0
     older_reports = 0
     fossil_reports = 0
-    preview_points = []
-    latitudes = []
-    longitudes = []
+    all_points = []
 
     for report in reports:
         bucket = get_report_age_bucket(report.get("created_at", ""), report.get("refreshed_at"))
@@ -355,27 +353,20 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
         if lat is None or lng is None:
             continue
 
-        latitudes.append(lat)
-        longitudes.append(lng)
+        all_points.append({
+            "id": report.get("id"),
+            "lat": lat,
+            "lng": lng,
+            "bucket": "older" if bucket == "old" else bucket,
+            "barrio": report.get("barrio", ""),
+        })
 
-        if len(preview_points) < preview_limit:
-            preview_points.append({
-                "id": report.get("id"),
-                "lat": lat,
-                "lng": lng,
-                "bucket": "older" if bucket == "old" else bucket,
-            })
-
-    map_bounds = None
-    if latitudes and longitudes:
-        map_bounds = {
-            "south": min(latitudes),
-            "west": min(longitudes),
-            "north": max(latitudes),
-            "east": max(longitudes),
-            "center_lat": sum(latitudes) / len(latitudes),
-            "center_lng": sum(longitudes) / len(longitudes),
-        }
+    preview_points, map_bounds = select_preview_scope(
+        slugify_location_segment(city),
+        barrio,
+        all_points,
+        preview_limit=preview_limit,
+    )
 
     return {
         "city": city,

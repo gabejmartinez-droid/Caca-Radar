@@ -29,6 +29,30 @@ LOCATION_SHARE_COPY = {
     "footer": "Reporta. Mejora. Respeta.",
 }
 
+GENERIC_CITY_CENTER_ALIASES = [
+    "casco-antiguo",
+    "casco-historico",
+    "centro",
+    "centro-historico",
+    "centro-historic",
+    "old-town",
+    "historic-centre",
+    "city-center",
+]
+
+CITY_CENTER_FOCUS_AREAS = {
+    "cartagena": ["casco-antiguo", "centro"],
+    "madrid": ["centro", "sol", "palacio", "cortes", "embajadores", "justicia", "universidad"],
+    "barcelona": ["ciutat-vella", "barri-gotic", "el-raval", "sant-pere-santa-caterina-i-la-ribera"],
+    "sevilla": ["casco-antiguo", "centro", "santa-cruz", "arenal", "alfalfa"],
+    "valencia": ["ciutat-vella", "el-carme", "la-seu", "el-mercat", "sant-francesc", "centro"],
+    "oviedo": ["centro", "casco-antiguo"],
+    "murcia": ["centro", "san-bartolome", "santa-eulalia", "san-juan", "san-lorenzo"],
+    "cadiz": ["casco-antiguo", "centro"],
+    "granada": ["centro", "albaicin", "realejo"],
+    "toledo": ["casco-historico", "casco-antiguo", "centro"],
+}
+
 
 @dataclass(frozen=True)
 class ResolvedLocation:
@@ -132,6 +156,62 @@ def _normalize_lookup(value: str) -> str:
     return slugify_location_segment(value)
 
 
+def _city_center_aliases(city_slug: str) -> list[str]:
+    specific = CITY_CENTER_FOCUS_AREAS.get(city_slug, [])
+    aliases = specific + GENERIC_CITY_CENTER_ALIASES
+    deduped = []
+    seen = set()
+    for alias in aliases:
+        normalized = slugify_location_segment(alias)
+        if normalized and normalized not in seen:
+            seen.add(normalized)
+            deduped.append(normalized)
+    return deduped
+
+
+def _matches_center_alias(barrio_value: str, city_slug: str) -> bool:
+    barrio_slug = slugify_location_segment(barrio_value or "")
+    if not barrio_slug:
+        return False
+    return barrio_slug in _city_center_aliases(city_slug)
+
+
+def _map_bounds_for_points(points: list[dict]) -> Optional[dict]:
+    if not points:
+        return None
+    latitudes = [point["lat"] for point in points]
+    longitudes = [point["lng"] for point in points]
+    return {
+        "south": min(latitudes),
+        "west": min(longitudes),
+        "north": max(latitudes),
+        "east": max(longitudes),
+        "center_lat": sum(latitudes) / len(latitudes),
+        "center_lng": sum(longitudes) / len(longitudes),
+    }
+
+
+def select_preview_scope(city_slug: str, barrio: str | None, points: list[dict], preview_limit: int = 40) -> tuple[list[dict], Optional[dict]]:
+    if not points:
+        return [], None
+    if barrio:
+        selected = points[:preview_limit]
+        return selected, _map_bounds_for_points(selected)
+
+    focused = [point for point in points if _matches_center_alias(point.get("barrio", ""), city_slug)]
+    if len(focused) >= min(5, len(points)):
+        selected = focused[:preview_limit]
+        return selected, _map_bounds_for_points(selected)
+
+    center_lat = sum(point["lat"] for point in points) / len(points)
+    center_lng = sum(point["lng"] for point in points) / len(points)
+    selected = sorted(
+        points,
+        key=lambda point: ((point["lat"] - center_lat) ** 2) + ((point["lng"] - center_lng) ** 2),
+    )[:preview_limit]
+    return selected, _map_bounds_for_points(selected)
+
+
 async def _resolve_city_name(db, city_value: str) -> Optional[str]:
     requested = _normalize_lookup(city_value)
     if not requested:
@@ -221,6 +301,7 @@ async def get_location_share_summary(
             "longitude": 1,
             "created_at": 1,
             "refreshed_at": 1,
+            "barrio": 1,
         },
     ).to_list(5000)
 
@@ -247,9 +328,7 @@ async def get_location_share_summary(
     fresh_count = 0
     old_count = 0
     fossil_count = 0
-    preview_points = []
-    latitudes: list[float] = []
-    longitudes: list[float] = []
+    all_points = []
 
     for report in reports:
         bucket = get_report_age_bucket(report.get("created_at", ""), report.get("refreshed_at"))
@@ -266,26 +345,20 @@ async def get_location_share_summary(
             continue
         lat = _fuzz_coordinate(lat)
         lng = _fuzz_coordinate(lng)
-        latitudes.append(lat)
-        longitudes.append(lng)
-        if len(preview_points) < preview_limit:
-            preview_points.append({
-                "id": report.get("id"),
-                "lat": lat,
-                "lng": lng,
-                "bucket": "older" if bucket == "old" else bucket,
-            })
+        all_points.append({
+            "id": report.get("id"),
+            "lat": lat,
+            "lng": lng,
+            "bucket": "older" if bucket == "old" else bucket,
+            "barrio": report.get("barrio", ""),
+        })
 
-    map_bounds = None
-    if latitudes and longitudes:
-        map_bounds = {
-            "south": min(latitudes),
-            "west": min(longitudes),
-            "north": max(latitudes),
-            "east": max(longitudes),
-            "center_lat": sum(latitudes) / len(latitudes),
-            "center_lng": sum(longitudes) / len(longitudes),
-        }
+    preview_points, map_bounds = select_preview_scope(
+        resolved.city_slug,
+        resolved.barrio or None,
+        all_points,
+        preview_limit=preview_limit,
+    )
 
     return {
         "found": True,

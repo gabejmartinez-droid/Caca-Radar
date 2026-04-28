@@ -4,6 +4,7 @@ from location_share_service import (
     build_location_share_metadata,
     build_share_path,
     get_report_age_bucket,
+    select_preview_scope,
     slugify_location_segment,
 )
 from share_image_service import build_location_share_card_image, get_share_image_media_type
@@ -69,3 +70,28 @@ def test_share_image_renderer_returns_bytes_and_supported_media_type():
     rendered = build_location_share_card_image(payload)
     assert isinstance(rendered, bytes)
     assert get_share_image_media_type() in {"image/png", "image/svg+xml"}
+
+
+def test_select_preview_scope_prefers_casco_antiguo_for_city_view():
+    points = [
+        {"id": "1", "lat": 37.600, "lng": -0.986, "bucket": "fresh", "barrio": "Casco Antiguo"},
+        {"id": "2", "lat": 37.601, "lng": -0.985, "bucket": "fresh", "barrio": "Casco Antiguo"},
+        {"id": "3", "lat": 37.602, "lng": -0.984, "bucket": "old", "barrio": "Casco Antiguo"},
+        {"id": "4", "lat": 37.603, "lng": -0.983, "bucket": "fossil", "barrio": "Casco Antiguo"},
+        {"id": "5", "lat": 37.604, "lng": -0.982, "bucket": "fossil", "barrio": "Casco Antiguo"},
+        {"id": "6", "lat": 37.670, "lng": -1.000, "bucket": "fresh", "barrio": "Periferia"},
+    ]
+    preview_points, map_bounds = select_preview_scope("cartagena", None, points, preview_limit=10)
+    assert len(preview_points) == 5
+    assert all(point["barrio"] == "Casco Antiguo" for point in preview_points)
+    assert map_bounds is not None
+
+
+def test_select_preview_scope_uses_requested_barrio_without_recentering():
+    points = [
+        {"id": "1", "lat": 37.600, "lng": -0.986, "bucket": "fresh", "barrio": "Centro"},
+        {"id": "2", "lat": 37.670, "lng": -1.000, "bucket": "old", "barrio": "Centro"},
+    ]
+    preview_points, map_bounds = select_preview_scope("cartagena", "Centro", points, preview_limit=10)
+    assert preview_points == points
+    assert map_bounds is not None
