@@ -53,6 +53,19 @@ CITY_CENTER_FOCUS_AREAS = {
     "toledo": ["casco-historico", "casco-antiguo", "centro"],
 }
 
+CITY_CENTER_PREVIEW_WINDOWS = {
+    "cartagena": {"south": 37.595, "west": -0.994, "north": 37.605, "east": -0.979},
+    "madrid": {"south": 40.412, "west": -3.715, "north": 40.424, "east": -3.696},
+    "barcelona": {"south": 41.376, "west": 2.168, "north": 41.392, "east": 2.188},
+    "sevilla": {"south": 37.382, "west": -5.999, "north": 37.394, "east": -5.983},
+    "valencia": {"south": 39.468, "west": -0.384, "north": 39.478, "east": -0.367},
+    "oviedo": {"south": 43.357, "west": -5.851, "north": 43.366, "east": -5.839},
+    "murcia": {"south": 37.981, "west": -1.135, "north": 37.990, "east": -1.121},
+    "cadiz": {"south": 36.526, "west": -6.300, "north": 36.536, "east": -6.286},
+    "granada": {"south": 37.171, "west": -3.607, "north": 37.183, "east": -3.592},
+    "toledo": {"south": 39.855, "west": -4.033, "north": 39.865, "east": -4.019},
+}
+
 
 @dataclass(frozen=True)
 class ResolvedLocation:
@@ -191,12 +204,36 @@ def _map_bounds_for_points(points: list[dict]) -> Optional[dict]:
     }
 
 
+def _window_bounds(window: dict) -> dict:
+    return {
+        "south": window["south"],
+        "west": window["west"],
+        "north": window["north"],
+        "east": window["east"],
+        "center_lat": (window["south"] + window["north"]) / 2,
+        "center_lng": (window["west"] + window["east"]) / 2,
+    }
+
+
+def _point_in_window(point: dict, window: dict) -> bool:
+    return (
+        window["south"] <= point["lat"] <= window["north"]
+        and window["west"] <= point["lng"] <= window["east"]
+    )
+
+
 def select_preview_scope(city_slug: str, barrio: str | None, points: list[dict], preview_limit: int = 40) -> tuple[list[dict], Optional[dict]]:
     if not points:
         return [], None
     if barrio:
         selected = points[:preview_limit]
         return selected, _map_bounds_for_points(selected)
+
+    window = CITY_CENTER_PREVIEW_WINDOWS.get(city_slug)
+    if window:
+        focused = [point for point in points if _point_in_window(point, window)]
+        if focused:
+            return focused[:preview_limit], _window_bounds(window)
 
     focused = [point for point in points if _matches_center_alias(point.get("barrio", ""), city_slug)]
     if len(focused) >= min(5, len(points)):

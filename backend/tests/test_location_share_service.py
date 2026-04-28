@@ -87,6 +87,20 @@ def test_select_preview_scope_prefers_casco_antiguo_for_city_view():
     assert map_bounds is not None
 
 
+def test_select_preview_scope_prefers_explicit_city_center_window():
+    points = [
+        {"id": "1", "lat": 40.418, "lng": -3.706, "bucket": "fresh", "barrio": "Centro"},
+        {"id": "2", "lat": 40.419, "lng": -3.704, "bucket": "old", "barrio": "Sol"},
+        {"id": "3", "lat": 40.450, "lng": -3.620, "bucket": "fossil", "barrio": "Lejano"},
+    ]
+    preview_points, map_bounds = select_preview_scope("madrid", None, points, preview_limit=10)
+    assert len(preview_points) == 2
+    assert {point["id"] for point in preview_points} == {"1", "2"}
+    assert map_bounds is not None
+    assert map_bounds["south"] == 40.412
+    assert map_bounds["east"] == -3.696
+
+
 def test_select_preview_scope_uses_requested_barrio_without_recentering():
     points = [
         {"id": "1", "lat": 37.600, "lng": -0.986, "bucket": "fresh", "barrio": "Centro"},
