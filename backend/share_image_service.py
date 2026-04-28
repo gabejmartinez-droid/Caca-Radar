@@ -271,9 +271,10 @@ def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], fo
             min_size=28 * scale,
             bold=True,
         )
-        _draw_text(draw, (188 * scale, 202 * scale), fitted_top_label, font=top_label_font, fill=TEXT_DARK)
-        _draw_text(draw, (1092 * scale, 202 * scale), str(top_row.get("value", "")), font=_get_font(42 * scale, bold=True), fill=ACCENT, anchor="ra")
-        _draw_text(draw, (188 * scale, 236 * scale), _truncate(top_row.get("meta", ""), 26), font=_get_font(18 * scale), fill=TEXT_MUTED)
+        hero_line_y = 224 * scale
+        _draw_text(draw, (188 * scale, hero_line_y), fitted_top_label, font=top_label_font, fill=TEXT_DARK, anchor="lm")
+        _draw_text(draw, (1092 * scale, hero_line_y), str(top_row.get("value", "")), font=_get_font(42 * scale, bold=True), fill=ACCENT, anchor="rm")
+        _draw_text(draw, (188 * scale, 256 * scale), _truncate(top_row.get("meta", ""), 26), font=_get_font(18 * scale), fill=TEXT_MUTED)
 
         secondary_rows = rows[1:4]
         list_x = 70 * scale
@@ -326,9 +327,9 @@ def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], fo
   <rect x="40" y="164" width="1120" height="156" rx="30" fill="#FFF1EB"/>
   <rect x="74" y="190" width="82" height="82" rx="28" fill="{ACCENT_SOFT}"/>
   <text x="115" y="247" text-anchor="middle" font-size="46" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("rank", 1)))}</text>
-  <text x="188" y="244" font-size="{top_label_size}" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(fitted_top_label)}</text>
-  <text x="1092" y="244" text-anchor="end" font-size="42" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("value", "")))}</text>
-  <text x="188" y="264" font-size="18" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("meta", ""), 26))}</text>
+  <text x="188" y="224" dominant-baseline="middle" font-size="{top_label_size}" font-weight="800" fill="{TEXT_DARK}" font-family="Arial, Helvetica, sans-serif">{escape(fitted_top_label)}</text>
+  <text x="1092" y="224" text-anchor="end" dominant-baseline="middle" font-size="42" font-weight="800" fill="{ACCENT}" font-family="Arial, Helvetica, sans-serif">{escape(str(top_row.get("value", "")))}</text>
+  <text x="188" y="256" font-size="18" fill="{TEXT_MUTED}" font-family="Arial, Helvetica, sans-serif">{escape(_truncate(top_row.get("meta", ""), 26))}</text>
 """
     )
     for offset, row in enumerate(rows[1:4]):
