@@ -37,7 +37,7 @@ export const API = getApiUrl();
 export const HOSTED_WEB_URL = HOSTED_BACKEND;
 export const APP_ENVIRONMENT = API.startsWith("http") ? "native-production" : "web";
 export const APP_VERSION = process.env.REACT_APP_VERSION || getCurrentAppVersion();
-export const NATIVE_PUSH_ENABLED = process.env.REACT_APP_ENABLE_NATIVE_PUSH === "true";
+export const NATIVE_PUSH_ENABLED = process.env.REACT_APP_ENABLE_NATIVE_PUSH !== "false";
 export const GOOGLE_CLIENT_ID =
   process.env.REACT_APP_GOOGLE_CLIENT_ID ||
   "685896513137-l455qbtk0bsgkuhlfiihc1bd0q5o1jia.apps.googleusercontent.com";

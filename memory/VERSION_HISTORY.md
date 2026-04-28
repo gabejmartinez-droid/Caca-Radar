@@ -923,3 +923,83 @@ Notes:
 - Prepared web build
 ```
 
+### 2026-04-28 — Pending
+
+Release metadata:
+- Commit SHA: `1ccc0d357f8e07de413223245430b38e16b56da6-dirty`
+- Deployment status: `pending`
+- Rollback target: `c326b9da565653753cea632aa438b6852ca4c5a3`
+
+Exact versions:
+- Web: `1.1.19-web.1`
+- iOS: `1.1.15 (17)`
+- Android: `1.1.18 (20)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Prepared web build.
+
+Internal release notes:
+- Prepared web build
+
+Store submission notes:
+```text
+- Prepared web build.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 1ccc0d357f8e07de413223245430b38e16b56da6-dirty
+Deployment status: pending
+Rollback target: c326b9da565653753cea632aa438b6852ca4c5a3
+Versions:
+• Web: `1.1.19-web.1`
+• iOS: `1.1.15 (17)`
+• Android: `1.1.18 (20)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Prepared web build
+```
+
+### 2026-04-28 — Pending
+
+Release metadata:
+- Commit SHA: `1ccc0d357f8e07de413223245430b38e16b56da6-dirty`
+- Deployment status: `pending`
+- Rollback target: `c326b9da565653753cea632aa438b6852ca4c5a3`
+
+Exact versions:
+- Web: `1.1.19-web.1`
+- iOS: `1.1.16 (18)`
+- Android: `1.1.19 (21)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Rebuilt iOS bundle.
+- Rebuilt Android bundle.
+
+Internal release notes:
+- Rebuilt iOS bundle
+- Rebuilt Android bundle
+
+Store submission notes:
+```text
+- Rebuilt iOS bundle.
+- Rebuilt Android bundle.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 1ccc0d357f8e07de413223245430b38e16b56da6-dirty
+Deployment status: pending
+Rollback target: c326b9da565653753cea632aa438b6852ca4c5a3
+Versions:
+• Web: `1.1.19-web.1`
+• iOS: `1.1.16 (18)`
+• Android: `1.1.19 (21)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Rebuilt iOS bundle
+- Rebuilt Android bundle
+```
+

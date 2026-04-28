@@ -3341,13 +3341,17 @@ async def subscribe_push(data: PushSubscriptionCreate, request: Request, respons
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
+    platform_header = (request.headers.get("X-Platform") or "").strip().lower()
+    subscription = dict(data.subscription or {})
+    if subscription.get("token") and platform_header in {"ios", "android"}:
+        subscription["platform"] = platform_header
 
     # Upsert subscription
     await db.push_subscriptions.update_one(
         {"user_id": user_id},
         {"$set": {
             "user_id": user_id,
-            "subscription": data.subscription,
+            "subscription": subscription,
             "latitude": data.latitude,
             "longitude": data.longitude,
             "active": True,
