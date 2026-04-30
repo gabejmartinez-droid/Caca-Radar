@@ -1,8 +1,8 @@
 from dotenv import load_dotenv
 load_dotenv()
 
-from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends
-from fastapi.responses import HTMLResponse, JSONResponse, Response
+from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends, Form
+from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 from bson import ObjectId
 import os
 import subprocess
@@ -80,6 +80,8 @@ from play_integrity_service import decode_integrity_token, play_integrity_is_con
 APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
 APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
 APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
+APPLE_WEB_CLIENT_ID = os.environ.get("APPLE_WEB_CLIENT_ID", "").strip()
+APPLE_WEB_REDIRECT_URI = os.environ.get("APPLE_WEB_REDIRECT_URI", "").strip()
 APPLE_KEY_PATH = os.environ.get("APPLE_KEY_PATH")  # Path to .p8 key file
 APPLE_ENVIRONMENT = os.environ.get("APPLE_ENVIRONMENT", "Sandbox")  # "Production" or "Sandbox"
 
@@ -604,7 +606,88 @@ def get_google_client_ids() -> list[str]:
 
 
 def get_apple_client_ids() -> list[str]:
-    return get_allowed_apple_client_ids(APPLE_BUNDLE_ID or "", os.environ.get("APPLE_ALLOWED_CLIENT_IDS", ""))
+    primary_clients = [APPLE_BUNDLE_ID or "", APPLE_WEB_CLIENT_ID]
+    allowed: list[str] = []
+    for client_id in primary_clients:
+        for normalized in get_allowed_apple_client_ids(client_id, os.environ.get("APPLE_ALLOWED_CLIENT_IDS", "")):
+            if normalized not in allowed:
+                allowed.append(normalized)
+    return allowed
+
+
+def normalize_post_auth_path(next_path: str | None, default: str = "/") -> str:
+    normalized = (next_path or "").strip()
+    if normalized.startswith("/") and not normalized.startswith("//"):
+        return normalized
+    return default
+
+
+def build_apple_web_redirect_uri(request: Request) -> str:
+    if APPLE_WEB_REDIRECT_URI:
+        return APPLE_WEB_REDIRECT_URI
+    host = (request.url.hostname or "").strip().lower()
+    if host in {"", "localhost", "127.0.0.1"}:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "apple_web_not_configured",
+                "message": "Apple web sign-in needs APPLE_WEB_REDIRECT_URI on this deployment.",
+            },
+        )
+    return str(request.base_url).rstrip("/") + "/api/auth/apple/callback"
+
+
+def create_apple_web_state(flow: str, next_path: str, link_user_id: str | None = None) -> str:
+    now = datetime.now(timezone.utc)
+    nonce = uuid.uuid4().hex
+    payload = {
+        "flow": flow,
+        "next": normalize_post_auth_path(next_path, "/profile" if flow == "link" else "/"),
+        "nonce": nonce,
+        "iat": int(now.timestamp()),
+        "exp": int((now + timedelta(minutes=10)).timestamp()),
+    }
+    if link_user_id:
+        payload["link_user_id"] = link_user_id
+    return jwt.encode(payload, get_jwt_secret(), algorithm=JWT_ALGORITHM)
+
+
+def decode_apple_web_state(state_token: str) -> dict:
+    try:
+        payload = jwt.decode(state_token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+    except Exception as exc:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "apple_state_invalid",
+                "message": "Apple sign-in session expired. Please try again.",
+            },
+        ) from exc
+    flow = payload.get("flow")
+    if flow not in {"login", "link"}:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "apple_state_invalid",
+                "message": "Apple sign-in session is invalid. Please try again.",
+            },
+        )
+    payload["next"] = normalize_post_auth_path(payload.get("next"), "/profile" if flow == "link" else "/")
+    return payload
+
+
+def build_frontend_redirect_url(path: str, error: str = "", success_query: dict | None = None) -> str:
+    base = normalize_post_auth_path(path)
+    query_parts = []
+    if error:
+        query_parts.append(f"apple_error={quote(error)}")
+    if success_query:
+        for key, value in success_query.items():
+            query_parts.append(f"{quote(str(key))}={quote(str(value))}")
+    if not query_parts:
+        return base
+    separator = "&" if "?" in base else "?"
+    return base + separator + "&".join(query_parts)
 
 
 async def verify_google_login_credential(credential: str) -> dict:
@@ -821,6 +904,21 @@ async def find_or_create_apple_user(apple_claims: dict) -> tuple[dict, bool]:
     return user_doc, True
 
 
+def parse_apple_user_payload(raw_user: str) -> tuple[str, str, str, str]:
+    if not raw_user:
+        return "", "", "", ""
+    try:
+        user_payload = json.loads(raw_user)
+    except Exception:
+        return "", "", "", ""
+    name = user_payload.get("name") or {}
+    given_name = (name.get("firstName") or "").strip()
+    family_name = (name.get("lastName") or "").strip()
+    full_name = " ".join(part for part in [given_name, family_name] if part)
+    email = (user_payload.get("email") or "").strip().lower()
+    return email, given_name, family_name, full_name
+
+
 @api_router.post("/auth/google/login")
 async def google_auth_login(data: GoogleTokenLogin, request: Request, response: Response):
     google_claims = await verify_google_login_credential(data.credential)
@@ -832,6 +930,131 @@ async def google_auth_login(data: GoogleTokenLogin, request: Request, response: 
         google_claims["sub"],
     )
     return await complete_social_login_for_user(user, request, response)
+
+
+@api_router.get("/auth/apple/start")
+async def start_apple_web_auth(request: Request, flow: str = Query("login"), next: str = Query("/")):
+    if not APPLE_WEB_CLIENT_ID:
+        raise HTTPException(
+            status_code=503,
+            detail={
+                "code": "apple_web_not_configured",
+                "message": "Apple sign-in is not configured for the web.",
+            },
+        )
+    normalized_flow = "link" if flow == "link" else "login"
+    current_user_id = None
+    if normalized_flow == "link":
+        current_user = await require_auth(request)
+        current_user_id = current_user["_id"]
+    redirect_uri = build_apple_web_redirect_uri(request)
+    state_token = create_apple_web_state(normalized_flow, next, current_user_id)
+    state_payload = decode_apple_web_state(state_token)
+    auth_url = (
+        "https://appleid.apple.com/auth/authorize"
+        f"?response_type={quote('code id_token')}"
+        "&response_mode=form_post"
+        f"&client_id={quote(APPLE_WEB_CLIENT_ID)}"
+        f"&redirect_uri={quote(redirect_uri, safe=':/')}"
+        f"&scope={quote('name email')}"
+        f"&state={quote(state_token)}"
+        f"&nonce={quote(state_payload['nonce'])}"
+    )
+    return RedirectResponse(url=auth_url, status_code=302)
+
+
+@api_router.post("/auth/apple/callback")
+async def apple_web_auth_callback(
+    request: Request,
+    state: str = Form(""),
+    id_token: str = Form(""),
+    code: str = Form(""),
+    user: str = Form(""),
+    error: str = Form(""),
+    error_description: str = Form(""),
+):
+    try:
+        state_payload = decode_apple_web_state(state)
+    except HTTPException as exc:
+        return RedirectResponse(
+            url=build_frontend_redirect_url("/login", exc.detail.get("message", "Apple sign-in failed.")),
+            status_code=303,
+        )
+
+    destination = state_payload["next"]
+    if error:
+        return RedirectResponse(
+            url=build_frontend_redirect_url(destination, error_description or error),
+            status_code=303,
+        )
+
+    email, given_name, family_name, full_name = parse_apple_user_payload(user)
+    apple_data = AppleTokenLogin(
+        identity_token=id_token,
+        authorization_code=code,
+        email=email,
+        full_name=full_name,
+        given_name=given_name,
+        family_name=family_name,
+        user="",
+    )
+
+    try:
+        apple_claims = verify_apple_identity_token(
+            apple_data.identity_token,
+            get_apple_client_ids(),
+            fallback_email=apple_data.email,
+            fallback_name=apple_data.full_name,
+            expected_nonce=state_payload["nonce"],
+        )
+        if state_payload["flow"] == "link":
+            current_user = await require_auth(request)
+            if current_user["_id"] != state_payload.get("link_user_id"):
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "apple_link_session_mismatch",
+                        "message": "Please sign in again before linking Apple.",
+                    },
+                )
+            provider_profile = build_apple_provider_profile(apple_claims)
+            existing_apple_user = await db.users.find_one({"linked_providers.apple.subject": apple_claims["sub"]})
+            if existing_apple_user and str(existing_apple_user["_id"]) != current_user["_id"]:
+                raise HTTPException(
+                    status_code=409,
+                    detail={
+                        "code": "apple_already_linked",
+                        "message": "This Apple account is already linked to another Caca Radar user.",
+                    },
+                )
+            current_user_doc = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+            updates = build_provider_link_updates(current_user_doc, "apple", provider_profile)
+            if updates:
+                await db.users.update_one({"_id": current_user_doc["_id"]}, {"$set": updates})
+            return RedirectResponse(
+                url=build_frontend_redirect_url(destination, success_query={"apple_linked": 1}),
+                status_code=303,
+            )
+
+        auth_response = Response()
+        user_doc, _created = await find_or_create_apple_user(apple_claims)
+        await complete_social_login_for_user(user_doc, request, auth_response)
+        redirect = RedirectResponse(url=destination, status_code=303)
+        for header_name, header_value in auth_response.raw_headers:
+            if header_name.lower() == b"set-cookie":
+                redirect.headers.append("set-cookie", header_value.decode("utf-8"))
+        return redirect
+    except HTTPException as exc:
+        message = exc.detail.get("message", "Apple sign-in failed.") if isinstance(exc.detail, dict) else str(exc.detail)
+        return RedirectResponse(
+            url=build_frontend_redirect_url(destination, message),
+            status_code=303,
+        )
+    except AppleIdentityError as exc:
+        return RedirectResponse(
+            url=build_frontend_redirect_url(destination, exc.message),
+            status_code=303,
+        )
 
 
 @api_router.post("/auth/apple/login")

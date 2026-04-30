@@ -1,5 +1,5 @@
-import { useCallback, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useCallback, useEffect, useState } from "react";
+import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { Mail, Lock, User, Loader2, ArrowLeft } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -10,7 +10,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { GoogleSignInButton } from "../components/GoogleSignInButton";
 import LegalLinksFooter from "../components/LegalLinksFooter";
-import { isNativeAppleSupported } from "../utils/appleNative";
+import { isAppleSignInSupported } from "../utils/appleIdentity";
 
 function formatApiErrorDetail(detail, t) {
   if (detail == null) return t("genericError");
@@ -22,16 +22,32 @@ function formatApiErrorDetail(detail, t) {
 }
 
 export default function RegisterPage() {
-  const { register, googleLogin, appleLogin } = useAuth();
+  const { user, register, googleLogin, appleLogin } = useAuth();
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
-  const showAppleSignIn = isNativeAppleSupported();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const showAppleSignIn = isAppleSignInSupported();
   
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+
+  useEffect(() => {
+    if (user) {
+      navigate("/");
+    }
+  }, [navigate, user]);
+
+  useEffect(() => {
+    const appleError = searchParams.get("apple_error");
+    if (!appleError) return;
+    setError(appleError);
+    const next = new URLSearchParams(searchParams);
+    next.delete("apple_error");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams]);
 
   const handleGoogleLogin = useCallback(async (credential) => {
     try {
@@ -54,7 +70,10 @@ export default function RegisterPage() {
     setError("");
     setLoading(true);
     try {
-      await appleLogin();
+      const result = await appleLogin(window.location.pathname);
+      if (result?.redirected) {
+        return;
+      }
       toast.success(t("loginUi.appleSuccess"));
       navigate("/");
     } catch (err) {

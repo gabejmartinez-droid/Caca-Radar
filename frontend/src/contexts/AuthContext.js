@@ -5,6 +5,7 @@ import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTok
 import { disableGoogleAutoSelect } from "../utils/googleIdentity";
 import { signOutGoogleNative } from "../utils/googleNative";
 import { signInWithAppleNative } from "../utils/appleNative";
+import { isNativeAppleSupported, startAppleWebAuth } from "../utils/appleIdentity";
 import { getCurrentPlatform } from "../versionInfo";
 
 const AuthContext = createContext(null);
@@ -138,7 +139,11 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
-  const appleLogin = useCallback(async () => {
+  const appleLogin = useCallback(async (nextPath = "/") => {
+    if (!isNativeAppleSupported()) {
+      startAppleWebAuth("login", nextPath);
+      return { redirected: true };
+    }
     const identity = await signInWithAppleNative();
     const { data } = await axios.post(
       `${API}/auth/apple/login`,
@@ -171,6 +176,10 @@ export function AuthProvider({ children }) {
   }, [checkAuth]);
 
   const linkApple = useCallback(async () => {
+    if (!isNativeAppleSupported()) {
+      startAppleWebAuth("link", "/profile");
+      return { redirected: true };
+    }
     const identity = await signInWithAppleNative();
     const { data } = await axios.post(
       `${API}/auth/apple/link`,

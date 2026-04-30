@@ -75,6 +75,7 @@ def verify_apple_identity_token(
     allowed_client_ids: Iterable[str],
     fallback_email: str = "",
     fallback_name: str = "",
+    expected_nonce: str = "",
 ) -> dict:
     allowed_client_ids = [client_id for client_id in allowed_client_ids if client_id]
     if not allowed_client_ids:
@@ -156,6 +157,15 @@ def verify_apple_identity_token(
             code="apple_email_unverified",
             message="Apple account email is not verified",
         )
+
+    if expected_nonce:
+        token_nonce = (token_data.get("nonce") or "").strip()
+        if token_nonce != expected_nonce:
+            raise AppleIdentityError(
+                code="apple_nonce_mismatch",
+                message="Apple sign-in response could not be verified",
+                log_message=f"Expected nonce {expected_nonce} but received {token_nonce}",
+            )
 
     return {
         "sub": subject,

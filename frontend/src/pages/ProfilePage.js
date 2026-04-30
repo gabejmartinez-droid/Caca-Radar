@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
 import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock, Trash2, FileText, Cookie, Flag } from "lucide-react";
@@ -15,7 +15,7 @@ import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailab
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { getBadgeName, getBadgeDescription } from "../utils/badges";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
-import { isNativeAppleSupported } from "../utils/appleNative";
+import { isAppleSignInSupported } from "../utils/appleIdentity";
 
 import { API } from "../config";
 
@@ -42,6 +42,7 @@ export default function ProfilePage() {
   const { user, checkAuth, linkGoogle, linkApple } = useAuth();
   const { t, isRtl, language } = useLanguage();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,7 @@ export default function ProfilePage() {
   const [newUsername, setNewUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(() => localStorage.getItem("caca_notifications") !== "off");
-  const showAppleLink = isNativeAppleSupported();
+  const showAppleLink = isAppleSignInSupported();
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -70,6 +71,21 @@ export default function ProfilePage() {
     if (!user) { navigate("/login"); return; }
     fetchProfile();
   }, [fetchProfile, navigate, user]);
+
+  useEffect(() => {
+    const linked = searchParams.get("apple_linked");
+    const appleError = searchParams.get("apple_error");
+    if (!linked && !appleError) return;
+    if (linked === "1") {
+      toast.success(t("profileUi.appleLinked"));
+    } else if (appleError) {
+      toast.error(appleError);
+    }
+    const next = new URLSearchParams(searchParams);
+    next.delete("apple_linked");
+    next.delete("apple_error");
+    setSearchParams(next, { replace: true });
+  }, [searchParams, setSearchParams, t]);
 
   const handleSaveUsername = async () => {
     if (!newUsername.trim() || newUsername.length < 3) { toast.error(t("profileUi.usernameTooShort")); return; }
@@ -159,6 +175,9 @@ export default function ProfilePage() {
   const handleLinkApple = async () => {
     try {
       const result = await linkApple();
+      if (result?.redirected) {
+        return;
+      }
       toast.success(result.message || t("profileUi.appleLinked"));
       await fetchProfile();
     } catch (err) {
