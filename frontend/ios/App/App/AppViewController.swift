@@ -8,5 +8,8 @@ class AppViewController: CAPBridgeViewController {
         if bridge?.plugin(withName: "GoogleAuth") == nil {
             bridge?.registerPluginInstance(GoogleAuthPlugin())
         }
+        if bridge?.plugin(withName: "AppleAuth") == nil {
+            bridge?.registerPluginInstance(AppleAuthPlugin())
+        }
     }
 }

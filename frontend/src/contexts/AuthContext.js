@@ -4,6 +4,7 @@ import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
 import { isCapacitorNative, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
 import { disableGoogleAutoSelect } from "../utils/googleIdentity";
 import { signOutGoogleNative } from "../utils/googleNative";
+import { signInWithAppleNative } from "../utils/appleNative";
 import { getCurrentPlatform } from "../versionInfo";
 
 const AuthContext = createContext(null);
@@ -41,6 +42,8 @@ axios.interceptors.response.use(
       !original.url?.includes("/auth/register") &&
       !original.url?.includes("/auth/google/login") &&
       !original.url?.includes("/auth/google/link") &&
+      !original.url?.includes("/auth/apple/login") &&
+      !original.url?.includes("/auth/apple/link") &&
       !original.url?.includes("/auth/refresh")
     ) {
       original._retry = true;
@@ -135,10 +138,51 @@ export function AuthProvider({ children }) {
     return data;
   }, []);
 
+  const appleLogin = useCallback(async () => {
+    const identity = await signInWithAppleNative();
+    const { data } = await axios.post(
+      `${API}/auth/apple/login`,
+      {
+        identity_token: identity.identityToken,
+        authorization_code: identity.authorizationCode,
+        email: identity.email,
+        full_name: identity.fullName,
+        given_name: identity.givenName,
+        family_name: identity.familyName,
+        user: identity.user,
+      },
+      { withCredentials: !isCapacitorNative() },
+    );
+    if (data.access_token) {
+      setTokens(data.access_token, data.refresh_token);
+    }
+    setUser(data);
+    return data;
+  }, []);
+
   const linkGoogle = useCallback(async (credential) => {
     const { data } = await axios.post(
       `${API}/auth/google/link`,
       { credential },
+      { withCredentials: !isCapacitorNative() },
+    );
+    await checkAuth();
+    return data;
+  }, [checkAuth]);
+
+  const linkApple = useCallback(async () => {
+    const identity = await signInWithAppleNative();
+    const { data } = await axios.post(
+      `${API}/auth/apple/link`,
+      {
+        identity_token: identity.identityToken,
+        authorization_code: identity.authorizationCode,
+        email: identity.email,
+        full_name: identity.fullName,
+        given_name: identity.givenName,
+        family_name: identity.familyName,
+        user: identity.user,
+      },
       { withCredentials: !isCapacitorNative() },
     );
     await checkAuth();
@@ -169,8 +213,8 @@ export function AuthProvider({ children }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, googleLogin, linkGoogle, logout, deleteAccount, checkAuth }),
-    [user, loading, login, register, googleLogin, linkGoogle, logout, deleteAccount, checkAuth]
+    () => ({ user, loading, login, register, googleLogin, appleLogin, linkGoogle, linkApple, logout, deleteAccount, checkAuth }),
+    [user, loading, login, register, googleLogin, appleLogin, linkGoogle, linkApple, logout, deleteAccount, checkAuth]
   );
 
   return (

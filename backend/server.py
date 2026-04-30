@@ -71,6 +71,7 @@ from location_share_service import (
 )
 from account_linking import normalize_auth_methods, build_provider_link_updates, build_password_link_updates
 from google_identity import GoogleIdentityError, get_allowed_client_ids, verify_google_credential
+from apple_identity import AppleIdentityError, get_allowed_client_ids as get_allowed_apple_client_ids, verify_apple_identity_token
 from play_integrity_service import decode_integrity_token, play_integrity_is_configured, summarize_integrity_payload
 
 # ==================== RECEIPT VERIFICATION ====================
@@ -464,12 +465,31 @@ class GoogleTokenLogin(BaseModel):
     credential: str
 
 
+class AppleTokenLogin(BaseModel):
+    identity_token: str
+    authorization_code: str = ""
+    email: str = ""
+    full_name: str = ""
+    given_name: str = ""
+    family_name: str = ""
+    user: str = ""
+
+
 def build_google_provider_profile(google_claims: dict) -> dict:
     return {
         "email": google_claims["email"],
         "name": google_claims.get("name", ""),
         "picture": google_claims.get("picture", ""),
         "subject": google_claims["sub"],
+    }
+
+
+def build_apple_provider_profile(apple_claims: dict) -> dict:
+    return {
+        "email": apple_claims.get("email", ""),
+        "name": apple_claims.get("name", ""),
+        "picture": "",
+        "subject": apple_claims["sub"],
     }
 
 
@@ -570,8 +590,21 @@ async def complete_google_login_for_user(user: dict, request: Request, response:
     return build_auth_payload(user, access_token, refresh_token)
 
 
+async def complete_social_login_for_user(user: dict, request: Request, response: Response) -> dict:
+    user = await update_login_metadata(user["_id"], request, user)
+    user_id = str(user["_id"])
+    access_token = create_access_token(user_id, user["email"], user.get("role", "user"))
+    refresh_token = create_refresh_token(user_id)
+    set_auth_cookies(response, access_token, refresh_token)
+    return build_auth_payload(user, access_token, refresh_token)
+
+
 def get_google_client_ids() -> list[str]:
     return get_allowed_client_ids(GOOGLE_WEB_CLIENT_ID, GOOGLE_ALLOWED_CLIENT_IDS)
+
+
+def get_apple_client_ids() -> list[str]:
+    return get_allowed_apple_client_ids(APPLE_BUNDLE_ID or "", os.environ.get("APPLE_ALLOWED_CLIENT_IDS", ""))
 
 
 async def verify_google_login_credential(credential: str) -> dict:
@@ -590,6 +623,31 @@ async def verify_google_login_credential(credential: str) -> dict:
         else:
             logger.warning("Google credential verification failed [%s]", exc.code)
         status_code = 503 if exc.code == "google_not_configured" else 401
+        raise HTTPException(status_code=status_code, detail={"code": exc.code, "message": exc.message}) from exc
+
+
+async def verify_apple_login_credential(data: AppleTokenLogin) -> dict:
+    fallback_name = data.full_name.strip() or " ".join(part for part in [data.given_name.strip(), data.family_name.strip()] if part)
+    try:
+        apple_claims = verify_apple_identity_token(
+            data.identity_token,
+            get_apple_client_ids(),
+            fallback_email=data.email,
+            fallback_name=fallback_name,
+        )
+        logger.info(
+            "Verified Apple ID token for sub=%s aud=%s email=%s",
+            apple_claims["sub"],
+            apple_claims["raw"].get("aud"),
+            apple_claims.get("email", ""),
+        )
+        return apple_claims
+    except AppleIdentityError as exc:
+        if exc.log_message:
+            logger.warning("Apple credential verification failed [%s]: %s", exc.code, exc.log_message)
+        else:
+            logger.warning("Apple credential verification failed [%s]", exc.code)
+        status_code = 503 if exc.code == "apple_not_configured" else 401
         raise HTTPException(status_code=status_code, detail={"code": exc.code, "message": exc.message}) from exc
 
 
@@ -673,6 +731,96 @@ async def find_or_create_google_user(google_claims: dict) -> tuple[dict, bool]:
     return user_doc, True
 
 
+async def find_or_create_apple_user(apple_claims: dict) -> tuple[dict, bool]:
+    provider_profile = build_apple_provider_profile(apple_claims)
+    email = (apple_claims.get("email") or "").strip().lower()
+    is_vip = is_vip_email(email)
+
+    user = await db.users.find_one({"linked_providers.apple.subject": apple_claims["sub"]})
+    if user:
+        updates = build_provider_link_updates(user, "apple", provider_profile)
+        if is_vip and not user.get("subscription_active"):
+            updates["subscription_active"] = True
+            updates["subscription_type"] = "lifetime"
+        if user.get("trust_score", 50) < 50 and is_vip:
+            updates["trust_score"] = 50
+        if updates:
+            await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+            user.update(updates)
+        return user, False
+
+    if email:
+        email_user = await db.users.find_one({"email": email})
+        if email_user:
+            existing_methods = normalize_auth_methods(email_user)
+            if "apple" in existing_methods:
+                updates = build_provider_link_updates(email_user, "apple", provider_profile)
+                if is_vip and not email_user.get("subscription_active"):
+                    updates["subscription_active"] = True
+                    updates["subscription_type"] = "lifetime"
+                if email_user.get("trust_score", 50) < 50 and is_vip:
+                    updates["trust_score"] = 50
+                if updates:
+                    await db.users.update_one({"_id": email_user["_id"]}, {"$set": updates})
+                    email_user.update(updates)
+                return email_user, False
+
+            logger.info("Apple login requires linking for existing non-Apple account email=%s", email)
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "code": "apple_link_required",
+                    "message": "This email already belongs to an existing account. Sign in with your current method and link Apple from settings.",
+                },
+            )
+
+    if not email:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "code": "apple_email_missing",
+                "message": "Apple sign-in did not provide an email for this new account. Sign in again and choose to share your email, or link Apple from an existing account.",
+            },
+        )
+
+    username = await generate_unique_username(email)
+    now = datetime.now(timezone.utc)
+    user_doc = {
+        "email": email,
+        "password_hash": "",
+        "name": provider_profile["name"] or username,
+        "username": username,
+        "picture": "",
+        "role": "user",
+        "auth_provider": "apple",
+        "auth_methods": ["apple"],
+        "linked_providers": {
+            "apple": {
+                "email": email,
+                "name": provider_profile["name"],
+                "picture": "",
+                "subject": provider_profile["subject"],
+                "linked_at": now.isoformat(),
+                "last_login_at": now.isoformat(),
+            }
+        },
+        "subscription_active": is_vip,
+        "subscription_type": "lifetime" if is_vip else None,
+        "total_score": 0,
+        "trust_score": 50,
+        "rank": DEFAULT_RANK_NAME,
+        "rank_key": get_rank_key(DEFAULT_RANK_NAME),
+        "level": 1,
+        "report_count": 0,
+        "vote_count": 0,
+        "streak_days": 0,
+        "created_at": now,
+    }
+    result = await db.users.insert_one(user_doc)
+    user_doc["_id"] = result.inserted_id
+    return user_doc, True
+
+
 @api_router.post("/auth/google/login")
 async def google_auth_login(data: GoogleTokenLogin, request: Request, response: Response):
     google_claims = await verify_google_login_credential(data.credential)
@@ -683,7 +831,20 @@ async def google_auth_login(data: GoogleTokenLogin, request: Request, response: 
         user.get("email"),
         google_claims["sub"],
     )
-    return await complete_google_login_for_user(user, request, response)
+    return await complete_social_login_for_user(user, request, response)
+
+
+@api_router.post("/auth/apple/login")
+async def apple_auth_login(data: AppleTokenLogin, request: Request, response: Response):
+    apple_claims = await verify_apple_login_credential(data)
+    user, created = await find_or_create_apple_user(apple_claims)
+    logger.info(
+        "Apple sign-in %s for user=%s sub=%s",
+        "created" if created else "completed",
+        user.get("email"),
+        apple_claims["sub"],
+    )
+    return await complete_social_login_for_user(user, request, response)
 
 
 @api_router.post("/auth/google/link")
@@ -707,6 +868,29 @@ async def link_google_account(data: GoogleTokenLogin, request: Request):
     await db.users.update_one({"_id": current_user_doc["_id"]}, {"$set": updates})
     logger.info("Linked Google account sub=%s to user=%s", google_claims["sub"], current_user_doc.get("email"))
     return {"message": "Google account linked", "auth_methods": normalize_auth_methods({**current_user_doc, **updates})}
+
+
+@api_router.post("/auth/apple/link")
+async def link_apple_account(data: AppleTokenLogin, request: Request):
+    current_user = await require_auth(request)
+    apple_claims = await verify_apple_login_credential(data)
+    provider_profile = build_apple_provider_profile(apple_claims)
+
+    existing_apple_user = await db.users.find_one({"linked_providers.apple.subject": apple_claims["sub"]})
+    if existing_apple_user and str(existing_apple_user["_id"]) != current_user["_id"]:
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "code": "apple_already_linked",
+                "message": "This Apple account is already linked to another Caca Radar user.",
+            },
+        )
+
+    current_user_doc = await db.users.find_one({"_id": ObjectId(current_user["_id"])})
+    updates = build_provider_link_updates(current_user_doc, "apple", provider_profile)
+    await db.users.update_one({"_id": current_user_doc["_id"]}, {"$set": updates})
+    logger.info("Linked Apple account sub=%s to user=%s", apple_claims["sub"], current_user_doc.get("email"))
+    return {"message": "Apple account linked", "auth_methods": normalize_auth_methods({**current_user_doc, **updates})}
 
 # ==================== AUTH ROUTES ====================
 
@@ -1826,6 +2010,7 @@ async def get_user_profile(request: Request):
         "linked_accounts": {
             "password": bool(user.get("password_hash")),
             "google": bool((user.get("linked_providers") or {}).get("google")),
+            "apple": bool((user.get("linked_providers") or {}).get("apple")),
         },
         "subscription_active": user.get("subscription_active", False),
         "badges": earned_badges,

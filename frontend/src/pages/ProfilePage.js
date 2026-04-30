@@ -15,6 +15,7 @@ import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailab
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { getBadgeName, getBadgeDescription } from "../utils/badges";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
+import { isNativeAppleSupported } from "../utils/appleNative";
 
 import { API } from "../config";
 
@@ -38,7 +39,7 @@ function StatCard({ icon: Icon, label, value, color }) {
 }
 
 export default function ProfilePage() {
-  const { user, checkAuth, linkGoogle } = useAuth();
+  const { user, checkAuth, linkGoogle, linkApple } = useAuth();
   const { t, isRtl, language } = useLanguage();
   const navigate = useNavigate();
 
@@ -48,6 +49,7 @@ export default function ProfilePage() {
   const [newUsername, setNewUsername] = useState("");
   const [saving, setSaving] = useState(false);
   const [notificationsOn, setNotificationsOn] = useState(() => localStorage.getItem("caca_notifications") !== "off");
+  const showAppleLink = isNativeAppleSupported();
 
   const fetchProfile = useCallback(async () => {
     setLoading(true);
@@ -152,6 +154,21 @@ export default function ProfilePage() {
   };
 
   const isGoogleLinked = Boolean(profile?.linked_accounts?.google);
+  const isAppleLinked = Boolean(profile?.linked_accounts?.apple);
+
+  const handleLinkApple = async () => {
+    try {
+      const result = await linkApple();
+      toast.success(result.message || t("profileUi.appleLinked"));
+      await fetchProfile();
+    } catch (err) {
+      if (err?.message === "Apple sign-in was cancelled") {
+        return;
+      }
+      const detail = err.response?.data?.detail?.message || err.response?.data?.detail || t("loginUi.appleError");
+      toast.error(detail);
+    }
+  };
 
   if (loading) return <div className="min-h-screen bg-[#F8F9FA] flex items-center justify-center"><Loader2 className="w-8 h-8 animate-spin text-[#FF6B6B]" /></div>;
 
@@ -325,6 +342,18 @@ export default function ProfilePage() {
                 context="use"
                 testId="google-link-btn"
               />
+            )}
+            {showAppleLink && (
+              <div className="flex items-center justify-between rounded-xl bg-[#F8F9FA] px-4 py-3">
+                <span className="text-sm font-medium text-[#2B2D42]">Apple</span>
+                {isAppleLinked ? (
+                  <Badge className="bg-[#66BB6A]">{t("profileUi.appleLinked")}</Badge>
+                ) : (
+                  <button type="button" onClick={handleLinkApple} className="rounded-lg bg-black px-3 py-2 text-xs font-medium text-white hover:bg-gray-900" data-testid="apple-link-btn">
+                    {t("profileUi.linkApple")}
+                  </button>
+                )}
+              </div>
             )}
           </div>
         </div>
