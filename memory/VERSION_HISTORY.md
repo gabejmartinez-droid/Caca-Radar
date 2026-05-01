@@ -1079,3 +1079,79 @@ Notes:
 - Incremented iOS build for Sign in with Apple rollout
 ```
 
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `b0ee962ecbcc0bd733ee1fadb01abdc791628a28-dirty`
+- Deployment status: `pending`
+- Rollback target: `a5a0747ef0ebf64c62488f805a961571f760847c`
+
+Exact versions:
+- Web: `1.1.20-web.1`
+- iOS: `1.1.18 (20)`
+- Android: `1.1.20 (22)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Notification settings fixes and saved location fallback.
+
+Internal release notes:
+- Notification settings fixes and saved location fallback
+
+Store submission notes:
+```text
+- Notification settings fixes and saved location fallback.
+```
+
+Internal release notes block:
+```text
+Commit SHA: b0ee962ecbcc0bd733ee1fadb01abdc791628a28-dirty
+Deployment status: pending
+Rollback target: a5a0747ef0ebf64c62488f805a961571f760847c
+Versions:
+• Web: `1.1.20-web.1`
+• iOS: `1.1.18 (20)`
+• Android: `1.1.20 (22)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Notification settings fixes and saved location fallback
+```
+
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `b0ee962ecbcc0bd733ee1fadb01abdc791628a28-dirty`
+- Deployment status: `pending`
+- Rollback target: `a5a0747ef0ebf64c62488f805a961571f760847c`
+
+Exact versions:
+- Web: `1.1.20-web.1`
+- iOS: `1.1.19 (21)`
+- Android: `1.1.21 (23)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Notification location fallback and settings updates.
+
+Internal release notes:
+- Notification location fallback and settings updates
+
+Store submission notes:
+```text
+- Notification location fallback and settings updates.
+```
+
+Internal release notes block:
+```text
+Commit SHA: b0ee962ecbcc0bd733ee1fadb01abdc791628a28-dirty
+Deployment status: pending
+Rollback target: a5a0747ef0ebf64c62488f805a961571f760847c
+Versions:
+• Web: `1.1.20-web.1`
+• iOS: `1.1.19 (21)`
+• Android: `1.1.21 (23)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Notification location fallback and settings updates
+```
+
