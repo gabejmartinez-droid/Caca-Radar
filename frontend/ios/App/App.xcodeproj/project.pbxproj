@@ -20,6 +20,7 @@
 		231409EC4DC770C91BF47BA6 /* AppIcon98x98@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 231409ED4DC770C91BF47BA7 /* AppIcon98x98@2x.png */; };
 		231409EE4DC770C91BF47BA8 /* AppIcon108x108@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 231409EF4DC770C91BF47BA9 /* AppIcon108x108@2x.png */; };
 		231409F04DC770C91BF47BAA /* AppIcon117x117@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 231409F14DC770C91BF47BAB /* AppIcon117x117@2x.png */; };
+		231409F24DC770C91BF47BAC /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 6BEE10022F10000100000002 /* Assets.xcassets */; };
 		2FAD9763203C412B000D30F8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* AppDelegate.swift */; };
 		2FAD976B203C412C000D30F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD976A203C412C000D30F8 /* Assets.xcassets */; };
 		2FAD976E203C412C000D30F8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD976C203C412C000D30F8 /* LaunchScreen.storyboard */; };
@@ -351,6 +352,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				231409F24DC770C91BF47BAC /* Assets.xcassets in Resources */,
 				231409DC4DC770C91BF47B96 /* AppIcon24x24@2x.png in Resources */,
 				231409DE4DC770C91BF47B98 /* AppIcon27.5x27.5@2x.png in Resources */,
 				231409E04DC770C91BF47B9A /* AppIcon29x29@2x.png in Resources */,
@@ -490,7 +492,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -498,7 +500,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -511,7 +513,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -519,7 +521,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -532,7 +534,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -540,7 +542,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -556,12 +558,13 @@
 		BCDFA856EFE2DF43A6FF1A0F /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;
@@ -579,7 +582,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -587,7 +590,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -602,12 +605,13 @@
 		FE3438D3F294C98AE8122503 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 30;
+				CURRENT_PROJECT_VERSION = 31;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.28;
+				MARKETING_VERSION = 1.1.29;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;

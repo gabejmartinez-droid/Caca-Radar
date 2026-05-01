@@ -12,6 +12,29 @@
 	<string>Caca Radar</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
+	<key>CFBundleIcons</key>
+	<dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>AppIcon24x24@2x.png</string>
+				<string>AppIcon27.5x27.5@2x.png</string>
+				<string>AppIcon29x29@2x.png</string>
+				<string>AppIcon29x29@3x.png</string>
+				<string>AppIcon40x40@2x.png</string>
+				<string>AppIcon44x44@2x.png</string>
+				<string>AppIcon50x50@2x.png</string>
+				<string>AppIcon54x54@2x.png</string>
+				<string>AppIcon86x86@2x.png</string>
+				<string>AppIcon98x98@2x.png</string>
+				<string>AppIcon108x108@2x.png</string>
+				<string>AppIcon117x117@2x.png</string>
+			</array>
+			<key>CFBundleIconName</key>
+			<string>WatchAppIcon</string>
+		</dict>
+	</dict>
 	<key>CFBundleIconFiles</key>
 	<array>
 		<string>AppIcon24x24@2x.png</string>

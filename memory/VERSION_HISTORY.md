@@ -44,8 +44,8 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.28 (30)`
-- Android `1.1.30 (32)`
+- iOS `1.1.29 (31)`
+- Android `1.1.31 (33)`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
@@ -62,6 +62,7 @@ Changes:
   - added the missing Series 4 long-look watch icons
 - Added an explicit bundled `AppIcon50x50@2x.png` watch resource and plist reference so the 44mm long-look icon is present in the final watch app bundle that App Store Connect validates.
 - Replaced the watch app's asset-catalog-driven icon setup with an explicit set of bundled raw `AppIcon*.png` files and a full `CFBundleIconFiles` list so the 44mm long-look `50x50@2x` icon is shipped in the simplest form Apple expects.
+- Restored the watch app's `WatchAppIcon` asset-catalog identity alongside the explicit raw icon files so App Store Connect sees both `CFBundleIconName` and the concrete bundled icon files in the final watch bundle.
 
 ### 2026-04-20 — Pending deploy after local validation
 
