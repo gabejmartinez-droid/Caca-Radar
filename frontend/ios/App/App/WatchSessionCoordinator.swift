@@ -1,6 +1,11 @@
 import Foundation
 import WatchConnectivity
 
+private enum WatchCompanionStorage {
+    static let accessTokenKey = "companion.accessToken"
+    static let apiBaseUrlKey = "companion.apiBaseUrl"
+}
+
 final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     static let shared = WatchSessionCoordinator()
 
@@ -48,11 +53,11 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
         let defaults = UserDefaults.standard
-        guard let token = defaults.string(forKey: CompanionBridgeStorage.accessTokenKey), !token.isEmpty else {
+        guard let token = defaults.string(forKey: WatchCompanionStorage.accessTokenKey), !token.isEmpty else {
             throw NSError(domain: "WatchSessionCoordinator", code: 401, userInfo: [NSLocalizedDescriptionKey: "missing_access_token"])
         }
 
-        let configuredBase = defaults.string(forKey: CompanionBridgeStorage.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let configuredBase = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let apiBase = (configuredBase?.isEmpty == false ? configuredBase! : "https://cacaradar.es/api").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(apiBase)/reports/quick") else {
             throw NSError(domain: "WatchSessionCoordinator", code: 400, userInfo: [NSLocalizedDescriptionKey: "invalid_api_url"])

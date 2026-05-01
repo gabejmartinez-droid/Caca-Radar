@@ -1,5 +1,7 @@
 include ':app'
+include ':wear'
 include ':capacitor-android'
+project(':wear').projectDir = new File('./wear')
 project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
 include ':capacitor-cordova-android-plugins'
 project(':capacitor-cordova-android-plugins').projectDir = new File('./capacitor-cordova-android-plugins')

@@ -1231,3 +1231,41 @@ Notes:
 - Scaffold watch companion quick report flow
 ```
 
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `5f3e6b1106317da00a5caf281dcdc7dd584a5d60-dirty`
+- Deployment status: `pending`
+- Rollback target: `dd776de4253916895149f0787e64f57617d4549b`
+
+Exact versions:
+- Web: `1.1.21-web.1`
+- iOS: `1.1.22 (24)`
+- Android: `1.1.24 (26)`
+- Backend: `1.1.1-api.1`
+
+User-facing release notes:
+- Integrate watch companion targets.
+
+Internal release notes:
+- Integrate watch companion targets
+
+Store submission notes:
+```text
+- Integrate watch companion targets.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 5f3e6b1106317da00a5caf281dcdc7dd584a5d60-dirty
+Deployment status: pending
+Rollback target: dd776de4253916895149f0787e64f57617d4549b
+Versions:
+• Web: `1.1.21-web.1`
+• iOS: `1.1.22 (24)`
+• Android: `1.1.24 (26)`
+• Backend: `1.1.1-api.1`
+Notes:
+- Integrate watch companion targets
+```
+

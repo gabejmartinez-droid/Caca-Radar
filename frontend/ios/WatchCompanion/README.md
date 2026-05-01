@@ -1,6 +1,6 @@
 # Caca Radar Apple Watch Companion
 
-This folder contains a watchOS companion-app scaffold for one-tap quick reports.
+This folder contains the Apple Watch companion app for one-tap quick reports.
 
 What it assumes:
 - the user is already logged into the iPhone app
@@ -8,10 +8,10 @@ What it assumes:
 - the watch talks to the phone with `WatchConnectivity`
 - the phone files the actual backend request through `/api/reports/quick`
 
-Recommended integration path:
-1. Add a new watchOS App target in Xcode.
-2. Drop these files into the watch target.
-3. Keep the iPhone app target using `WatchSessionCoordinator.swift`.
+Current wiring:
+1. The iPhone app target already includes `WatchSessionCoordinator.swift`.
+2. A standalone watchOS Xcode project now lives at `WatchCompanion/WatchCompanion.xcodeproj`.
+3. The watch app uses these SwiftUI files directly from this folder.
 4. Test on a paired iPhone + Apple Watch with the main app logged in.
 
 This first pass intentionally keeps the UI simple:

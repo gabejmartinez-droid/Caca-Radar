@@ -1,0 +1,342 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 46;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		5DCDF21C727558F8F1C3CD27 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9384C9FD34FC6CEC457C7D06 /* Foundation.framework */; };
+		6CE0DA853739304C33F117BE /* CacaRadarWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6040ED5560946FC79148BF8 /* CacaRadarWatchApp.swift */; };
+		B76317AAA5F767FCDA2821AB /* PhoneSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B22F9F8C67B0955CD64EB9F9 /* PhoneSessionBridge.swift */; };
+		BC8FADFD6D2441AE1AD0A5FE /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C89FD1A440F2787F1294EBF /* ContentView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0C89FD1A440F2787F1294EBF /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		4E1AD47D3C94A0C76EF6FA11 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		9384C9FD34FC6CEC457C7D06 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/WatchOS.platform/Developer/SDKs/WatchOS11.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
+		B22F9F8C67B0955CD64EB9F9 /* PhoneSessionBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoneSessionBridge.swift; sourceTree = "<group>"; };
+		BAA3D9172F0CFD75E50C0C3A /* CacaRadarWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CacaRadarWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		D6040ED5560946FC79148BF8 /* CacaRadarWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CacaRadarWatchApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		4CDDFA539E811DBD0CF9EDFF /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DCDF21C727558F8F1C3CD27 /* Foundation.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		326913DE2AE92FD1967749A6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				B571DB522093EE2C0F7FE622 /* watchOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		3839504330ACEACBD44A217D /* Support */ = {
+			isa = PBXGroup;
+			children = (
+				4E1AD47D3C94A0C76EF6FA11 /* Info.plist */,
+			);
+			name = Support;
+			path = ../WatchCompanionApp;
+			sourceTree = "<group>";
+		};
+		5E0D3D253C57A30A00619E61 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				BAA3D9172F0CFD75E50C0C3A /* CacaRadarWatch.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		695BFCD3224D9A13A8247118 = {
+			isa = PBXGroup;
+			children = (
+				5E0D3D253C57A30A00619E61 /* Products */,
+				326913DE2AE92FD1967749A6 /* Frameworks */,
+				3839504330ACEACBD44A217D /* Support */,
+				D6040ED5560946FC79148BF8 /* CacaRadarWatchApp.swift */,
+				0C89FD1A440F2787F1294EBF /* ContentView.swift */,
+				B22F9F8C67B0955CD64EB9F9 /* PhoneSessionBridge.swift */,
+			);
+			sourceTree = "<group>";
+		};
+		B571DB522093EE2C0F7FE622 /* watchOS */ = {
+			isa = PBXGroup;
+			children = (
+				9384C9FD34FC6CEC457C7D06 /* Foundation.framework */,
+			);
+			name = watchOS;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		309AABF80815DDC58880AB94 /* CacaRadarWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 9029CF700E681946490F4E3F /* Build configuration list for PBXNativeTarget "CacaRadarWatch" */;
+			buildPhases = (
+				B030ADAF7D081CF3100085C3 /* Sources */,
+				4CDDFA539E811DBD0CF9EDFF /* Frameworks */,
+				B75FB8F244DB2684412DD300 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CacaRadarWatch;
+			productName = CacaRadarWatch;
+			productReference = BAA3D9172F0CFD75E50C0C3A /* CacaRadarWatch.app */;
+			productType = "com.apple.product-type.application.watchapp2";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		775D26F466352DA910BBB58D /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
+				TargetAttributes = {
+					309AABF80815DDC58880AB94 = {
+						CreatedOnToolsVersion = 16.0;
+						DevelopmentTeam = Z3SH6Z4GL6;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = FB0AE734BBDFD61D4C4C50A6 /* Build configuration list for PBXProject "WatchCompanion" */;
+			compatibilityVersion = "Xcode 3.2";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 695BFCD3224D9A13A8247118;
+			minimizedProjectReferenceProxies = 0;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 5E0D3D253C57A30A00619E61 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				309AABF80815DDC58880AB94 /* CacaRadarWatch */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		B75FB8F244DB2684412DD300 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		B030ADAF7D081CF3100085C3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6CE0DA853739304C33F117BE /* CacaRadarWatchApp.swift in Sources */,
+				BC8FADFD6D2441AE1AD0A5FE /* ContentView.swift in Sources */,
+				B76317AAA5F767FCDA2821AB /* PhoneSessionBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0D97B1053F3A53B3B9706A83 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 24;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
+				MARKETING_VERSION = 1.1.22;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
+				PRODUCT_NAME = CacaRadarWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		6584B1D05845FEE860D08B57 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		73714FC10E38538B762CC94F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		7EB9F082D7C80D14E74BCC4A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 24;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
+				MARKETING_VERSION = 1.1.22;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
+				PRODUCT_NAME = CacaRadarWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = NO;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		9029CF700E681946490F4E3F /* Build configuration list for PBXNativeTarget "CacaRadarWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7EB9F082D7C80D14E74BCC4A /* Release */,
+				0D97B1053F3A53B3B9706A83 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		FB0AE734BBDFD61D4C4C50A6 /* Build configuration list for PBXProject "WatchCompanion" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				6584B1D05845FEE860D08B57 /* Debug */,
+				73714FC10E38538B762CC94F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 775D26F466352DA910BBB58D /* Project object */;
+}
