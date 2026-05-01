@@ -1,9 +1,12 @@
+import asyncio
 from datetime import datetime, timedelta, timezone
 
+from city_rankings_service import get_active_report_cities, get_city_report_summary
 from location_share_service import (
     build_location_share_metadata,
     build_share_path,
     get_report_age_bucket,
+    get_location_share_summary,
     select_preview_scope,
     slugify_location_segment,
 )
@@ -109,3 +112,105 @@ def test_select_preview_scope_uses_requested_barrio_without_recentering():
     preview_points, map_bounds = select_preview_scope("cartagena", "Centro", points, preview_limit=10)
     assert preview_points == points
     assert map_bounds is not None
+
+
+class _FakeCursor:
+    def __init__(self, rows):
+        self._rows = rows
+
+    async def to_list(self, _limit):
+        return list(self._rows)
+
+
+class _FakeReports:
+    def __init__(self, docs):
+        self._docs = docs
+
+    async def distinct(self, field, query):
+        docs = _filter_docs(self._docs, query)
+        values = []
+        for doc in docs:
+            value = doc.get(field)
+            if value not in values:
+                values.append(value)
+        return values
+
+    def find(self, query, _projection):
+        return _FakeCursor(_filter_docs(self._docs, query))
+
+    def aggregate(self, pipeline):
+        docs = list(self._docs)
+        for stage in pipeline:
+            if "$match" in stage:
+                docs = _filter_docs(docs, stage["$match"])
+            elif "$group" in stage:
+                grouped = {}
+                for doc in docs:
+                    key_field = stage["$group"]["_id"][1:]
+                    key = doc.get(key_field)
+                    entry = grouped.setdefault(key, {"_id": key})
+                    for name, spec in stage["$group"].items():
+                        if name == "_id":
+                            continue
+                        if "$sum" in spec:
+                            entry[name] = entry.get(name, 0) + 1
+                        elif "$first" in spec and name not in entry:
+                            entry[name] = doc.get(spec["$first"][1:])
+                docs = list(grouped.values())
+            elif "$sort" in stage:
+                sort_keys = list(stage["$sort"].items())
+                docs.sort(key=lambda row: tuple((-row[k] if direction < 0 and isinstance(row[k], (int, float)) else row[k]) for k, direction in sort_keys))
+        return _FakeCursor(docs)
+
+
+class _FakeDB:
+    def __init__(self, docs):
+        self.reports = _FakeReports(docs)
+
+
+def _matches(doc, field, expected):
+    value = doc.get(field)
+    if isinstance(expected, dict):
+        if "$ne" in expected:
+            return value != expected["$ne"]
+        if "$nin" in expected:
+            return value not in expected["$nin"]
+        if "$in" in expected:
+            return value in expected["$in"]
+    return value == expected
+
+
+def _filter_docs(docs, query):
+    return [doc for doc in docs if all(_matches(doc, field, expected) for field, expected in query.items())]
+
+
+def test_location_share_summary_resolves_accent_variants_together():
+    now = datetime.now(timezone.utc).isoformat()
+    docs = [
+        {"id": "1", "municipality": "La Unión", "province": "Murcia", "barrio": "Centro", "latitude": 37.62, "longitude": -0.88, "created_at": now, "archived": False, "flagged": False},
+        {"id": "2", "municipality": "La Union", "province": "Murcia", "barrio": "Casco Antiguo", "latitude": 37.621, "longitude": -0.881, "created_at": now, "archived": False, "flagged": False},
+    ]
+    summary = asyncio.run(get_location_share_summary(_FakeDB(docs), "La Union"))
+    assert summary["has_data"] is True
+    assert summary["city"] == "La Unión"
+    assert summary["active_report_count"] == 2
+
+
+def test_city_report_summary_resolves_accent_variants_together():
+    now = datetime.now(timezone.utc).isoformat()
+    docs = [
+        {"id": "1", "municipality": "La Unión", "province": "Murcia", "barrio": "Centro", "latitude": 37.62, "longitude": -0.88, "created_at": now, "archived": False, "flagged": False},
+        {"id": "2", "municipality": "La Union", "province": "Murcia", "barrio": "Casco Antiguo", "latitude": 37.621, "longitude": -0.881, "created_at": now, "archived": False, "flagged": False},
+    ]
+    summary = asyncio.run(get_city_report_summary(_FakeDB(docs), "La Union"))
+    assert summary["city"] == "La Unión"
+    assert summary["total_active_reports"] == 2
+
+
+def test_active_report_cities_merge_accent_variants():
+    docs = [
+        {"id": "1", "municipality": "La Unión", "province": "Murcia", "archived": False, "flagged": False},
+        {"id": "2", "municipality": "La Union", "province": "Murcia", "archived": False, "flagged": False},
+    ]
+    payload = asyncio.run(get_active_report_cities(_FakeDB(docs)))
+    assert payload["cities"] == [{"city": "La Unión", "province": "Murcia", "active_reports": 2}]

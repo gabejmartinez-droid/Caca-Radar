@@ -71,8 +71,10 @@ CITY_CENTER_PREVIEW_WINDOWS = {
 class ResolvedLocation:
     city: str
     city_slug: str
+    city_variants: tuple[str, ...] = ()
     barrio: str = ""
     barrio_slug: str = ""
+    barrio_variants: tuple[str, ...] = ()
 
     @property
     def display_label(self) -> str:
@@ -84,6 +86,22 @@ def slugify_location_segment(value: str) -> str:
     ascii_only = "".join(ch for ch in normalized if not unicodedata.combining(ch))
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_only).strip("-").lower()
     return slug or "espana"
+
+
+def choose_preferred_location_label(candidates: list[str]) -> str:
+    if not candidates:
+        return ""
+    unique = [candidate for candidate in dict.fromkeys(candidates) if candidate]
+    if not unique:
+        return ""
+    return max(
+        unique,
+        key=lambda candidate: (
+            sum(1 for ch in candidate if ord(ch) > 127),
+            sum(1 for ch in candidate if ch.isupper()),
+            len(candidate),
+        ),
+    )
 
 
 def _coerce_coordinate(value) -> Optional[float]:
@@ -250,52 +268,65 @@ def select_preview_scope(city_slug: str, barrio: str | None, points: list[dict],
 
 
 async def _resolve_city_name(db, city_value: str) -> Optional[str]:
+    candidates = await _resolve_city_names(db, city_value)
+    return choose_preferred_location_label(candidates) or None
+
+
+async def _resolve_city_names(db, city_value: str) -> list[str]:
     requested = _normalize_lookup(city_value)
     if not requested:
-        return None
+        return []
     cities = await db.reports.distinct(
         "municipality",
         {**ACTIVE_REPORT_FILTER, "municipality": {"$nin": [None, "", "Desconocido"]}},
     )
-    for candidate in cities:
-        if _normalize_lookup(candidate) == requested:
-            return candidate
-    return None
+    return [candidate for candidate in cities if _normalize_lookup(candidate) == requested]
 
 
 async def _resolve_barrio_name(db, city_name: str, barrio_value: str) -> Optional[str]:
+    candidates = await _resolve_barrio_names(db, [city_name], barrio_value)
+    return choose_preferred_location_label(candidates) or None
+
+
+async def _resolve_barrio_names(db, city_names: list[str], barrio_value: str) -> list[str]:
     requested = _normalize_lookup(barrio_value)
     if not requested:
-        return None
+        return []
+    city_filter = city_names[0] if len(city_names) == 1 else {"$in": city_names}
     barrios = await db.reports.distinct(
         "barrio",
         {
             **ACTIVE_REPORT_FILTER,
-            "municipality": city_name,
+            "municipality": city_filter,
             "barrio": {"$nin": [None, ""]},
         },
     )
-    for candidate in barrios:
-        if _normalize_lookup(candidate) == requested:
-            return candidate
-    return None
+    return [candidate for candidate in barrios if _normalize_lookup(candidate) == requested]
 
 
 async def resolve_location(db, city_value: str, barrio_value: str | None = None) -> Optional[ResolvedLocation]:
-    city_name = await _resolve_city_name(db, city_value)
+    city_names = await _resolve_city_names(db, city_value)
+    city_name = choose_preferred_location_label(city_names)
     if not city_name:
         return None
     if barrio_value:
-        barrio_name = await _resolve_barrio_name(db, city_name, barrio_value)
+        barrio_names = await _resolve_barrio_names(db, city_names, barrio_value)
+        barrio_name = choose_preferred_location_label(barrio_names)
         if not barrio_name:
             return None
         return ResolvedLocation(
             city=city_name,
             city_slug=slugify_location_segment(city_name),
+            city_variants=tuple(city_names or [city_name]),
             barrio=barrio_name,
             barrio_slug=slugify_location_segment(barrio_name),
+            barrio_variants=tuple(barrio_names or [barrio_name]),
         )
-    return ResolvedLocation(city=city_name, city_slug=slugify_location_segment(city_name))
+    return ResolvedLocation(
+        city=city_name,
+        city_slug=slugify_location_segment(city_name),
+        city_variants=tuple(city_names or [city_name]),
+    )
 
 
 async def get_location_share_summary(
@@ -325,9 +356,11 @@ async def get_location_share_summary(
             "boundary_polygon": None,
         }
 
-    query = {**ACTIVE_REPORT_FILTER, "municipality": resolved.city}
+    city_filter = resolved.city if len(resolved.city_variants) <= 1 else {"$in": list(resolved.city_variants)}
+    query = {**ACTIVE_REPORT_FILTER, "municipality": city_filter}
     if resolved.barrio:
-        query["barrio"] = resolved.barrio
+        barrio_filter = resolved.barrio if len(resolved.barrio_variants) <= 1 else {"$in": list(resolved.barrio_variants)}
+        query["barrio"] = barrio_filter
 
     reports = await db.reports.find(
         query,

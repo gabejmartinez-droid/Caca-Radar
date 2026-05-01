@@ -6,7 +6,13 @@ from datetime import datetime, timezone
 from typing import Optional
 
 from bson.decimal128 import Decimal128
-from location_share_service import get_report_age_bucket, select_preview_scope, slugify_location_segment
+from location_share_service import (
+    choose_preferred_location_label,
+    get_report_age_bucket,
+    resolve_location,
+    select_preview_scope,
+    slugify_location_segment,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -258,24 +264,46 @@ async def get_active_report_cities(db, limit: int = 500) -> dict:
         {"$sort": {"active_reports": -1, "_id": 1}},
     ]
     results = await db.reports.aggregate(pipeline).to_list(limit)
+    merged: dict[str, dict] = {}
+    for row in results:
+        city_name = row.get("_id")
+        if not city_name:
+            continue
+        city_slug = slugify_location_segment(city_name)
+        entry = merged.setdefault(city_slug, {"names": [], "province": row.get("province", ""), "active_reports": 0})
+        entry["names"].append(city_name)
+        entry["active_reports"] += row.get("active_reports", 0)
+        if not entry.get("province") and row.get("province"):
+            entry["province"] = row.get("province", "")
+
+    cities = [
+        {
+            "city": choose_preferred_location_label(entry["names"]),
+            "province": entry.get("province", ""),
+            "active_reports": entry.get("active_reports", 0),
+        }
+        for entry in merged.values()
+    ]
+    cities.sort(key=lambda item: (-item["active_reports"], item["city"]))
     return {
-        "cities": [
-            {
-                "city": r["_id"],
-                "province": r.get("province", ""),
-                "active_reports": r.get("active_reports", 0),
-            }
-            for r in results
-        ],
+        "cities": cities[:limit],
         "generated_at": datetime.now(timezone.utc).isoformat(),
     }
 
 
 async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
     """Return barrios within a city that currently have active reports."""
+    resolved = await resolve_location(db, city)
+    if not resolved:
+        return {
+            "city": city,
+            "barrios": [],
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+    city_filter = resolved.city if len(resolved.city_variants) <= 1 else {"$in": list(resolved.city_variants)}
     pipeline = [
         {"$match": {
-            "municipality": city,
+            "municipality": city_filter,
             "archived": {"$ne": True},
             "flagged": {"$ne": True},
             "barrio": {"$nin": [None, ""]},
@@ -288,7 +316,7 @@ async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
     ]
     results = await db.reports.aggregate(pipeline).to_list(limit)
     return {
-        "city": city,
+        "city": resolved.city,
         "barrios": [
             {
                 "barrio": r["_id"],
@@ -302,9 +330,26 @@ async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
 
 async def get_city_report_summary(db, city: str, barrio: str | None = None, preview_limit: int = 250) -> dict:
     """Return active report counts, freshness buckets, and preview points for a city or barrio."""
-    query = {"municipality": city, "archived": {"$ne": True}, "flagged": {"$ne": True}}
-    if barrio:
-        query["barrio"] = barrio
+    resolved = await resolve_location(db, city, barrio)
+    if not resolved:
+        return {
+            "city": city,
+            "barrio": barrio or "",
+            "province": "",
+            "total_active_reports": 0,
+            "fresh_reports": 0,
+            "older_reports": 0,
+            "fossil_reports": 0,
+            "preview_points": [],
+            "map_bounds": None,
+            "generated_at": datetime.now(timezone.utc).isoformat(),
+        }
+
+    city_filter = resolved.city if len(resolved.city_variants) <= 1 else {"$in": list(resolved.city_variants)}
+    query = {"municipality": city_filter, "archived": {"$ne": True}, "flagged": {"$ne": True}}
+    if resolved.barrio:
+        barrio_filter = resolved.barrio if len(resolved.barrio_variants) <= 1 else {"$in": list(resolved.barrio_variants)}
+        query["barrio"] = barrio_filter
 
     reports = await db.reports.find(
         query,
@@ -322,8 +367,8 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
 
     if not reports:
         return {
-            "city": city,
-            "barrio": barrio or "",
+            "city": resolved.city,
+            "barrio": resolved.barrio,
             "province": "",
             "total_active_reports": 0,
             "fresh_reports": 0,
@@ -362,15 +407,15 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
         })
 
     preview_points, map_bounds = select_preview_scope(
-        slugify_location_segment(city),
-        barrio,
+        resolved.city_slug,
+        resolved.barrio or None,
         all_points,
         preview_limit=preview_limit,
     )
 
     return {
-        "city": city,
-        "barrio": barrio or "",
+        "city": resolved.city,
+        "barrio": resolved.barrio,
         "province": reports[0].get("province", ""),
         "total_active_reports": len(reports),
         "fresh_reports": fresh_reports,
