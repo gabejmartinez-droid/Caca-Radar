@@ -39,6 +39,8 @@
 	<string>Necesitamos tu ubicación para mostrar reportes cercanos y permitirte crear nuevos reportes.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Necesitamos acceso a tus fotos para adjuntar imágenes a tus reportes.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
