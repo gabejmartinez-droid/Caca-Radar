@@ -4,6 +4,7 @@ import WatchConnectivity
 private enum WatchCompanionStorage {
     static let accessTokenKey = "companion.accessToken"
     static let apiBaseUrlKey = "companion.apiBaseUrl"
+    static let preferredLanguageKey = "companion.preferredLanguage"
 }
 
 final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
@@ -20,10 +21,24 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         session.activate()
     }
 
-    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {}
+    func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
+        pushCompanionContext()
+    }
     func sessionDidBecomeInactive(_ session: WCSession) {}
     func sessionDidDeactivate(_ session: WCSession) {
         session.activate()
+    }
+
+    func pushCompanionContext() {
+        guard WCSession.isSupported() else { return }
+        let defaults = UserDefaults.standard
+        let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
+        let hasAccessToken = !(defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? "").isEmpty
+
+        try? WCSession.default.updateApplicationContext([
+            "preferredLanguage": preferredLanguage,
+            "authenticated": hasAccessToken,
+        ])
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String : Any], replyHandler: @escaping ([String : Any]) -> Void) {
@@ -43,9 +58,12 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
                 let result = try await sendQuickReport(latitude: latitude, longitude: longitude)
                 replyHandler(result)
             } catch {
+                let nsError = error as NSError
                 replyHandler([
                     "ok": false,
-                    "error": error.localizedDescription,
+                    "error": nsError.userInfo["appErrorCode"] as? String ?? nsError.localizedDescription,
+                    "errorCode": nsError.userInfo["appErrorCode"] as? String ?? "quick_report_failed",
+                    "errorDetail": nsError.localizedDescription,
                 ])
             }
         }
@@ -54,13 +72,27 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
         let defaults = UserDefaults.standard
         guard let token = defaults.string(forKey: WatchCompanionStorage.accessTokenKey), !token.isEmpty else {
-            throw NSError(domain: "WatchSessionCoordinator", code: 401, userInfo: [NSLocalizedDescriptionKey: "missing_access_token"])
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 401,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "missing_access_token",
+                    "appErrorCode": "missing_access_token",
+                ]
+            )
         }
 
         let configuredBase = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let apiBase = (configuredBase?.isEmpty == false ? configuredBase! : "https://cacaradar.es/api").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(apiBase)/reports/quick") else {
-            throw NSError(domain: "WatchSessionCoordinator", code: 400, userInfo: [NSLocalizedDescriptionKey: "invalid_api_url"])
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 400,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "invalid_api_url",
+                    "appErrorCode": "invalid_api_url",
+                ]
+            )
         }
 
         var request = URLRequest(url: url)
@@ -75,12 +107,37 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
         let (data, response) = try await URLSession.shared.data(for: request)
         guard let http = response as? HTTPURLResponse else {
-            throw NSError(domain: "WatchSessionCoordinator", code: 500, userInfo: [NSLocalizedDescriptionKey: "invalid_response"])
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 500,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "invalid_response",
+                    "appErrorCode": "invalid_response",
+                ]
+            )
         }
 
         guard (200...299).contains(http.statusCode) else {
             let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
-            throw NSError(domain: "WatchSessionCoordinator", code: http.statusCode, userInfo: [NSLocalizedDescriptionKey: detail ?? "quick_report_failed"])
+            let appErrorCode: String
+            switch http.statusCode {
+            case 401:
+                appErrorCode = "missing_access_token"
+            case 403:
+                appErrorCode = "restricted_account"
+            case 429:
+                appErrorCode = "report_cooldown"
+            default:
+                appErrorCode = "quick_report_failed"
+            }
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: http.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: detail ?? appErrorCode,
+                    "appErrorCode": appErrorCode,
+                ]
+            )
         }
 
         let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]

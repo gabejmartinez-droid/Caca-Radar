@@ -15,6 +15,7 @@ public class CompanionBridgePlugin extends Plugin {
     public static final String ACCESS_TOKEN_KEY = "access_token";
     public static final String REFRESH_TOKEN_KEY = "refresh_token";
     public static final String API_BASE_URL_KEY = "api_base_url";
+    public static final String PREFERRED_LANGUAGE_KEY = "preferred_language";
 
     private SharedPreferences prefs() {
         Context context = getContext();
@@ -32,6 +33,18 @@ public class CompanionBridgePlugin extends Plugin {
             .putString(ACCESS_TOKEN_KEY, accessToken)
             .putString(REFRESH_TOKEN_KEY, refreshToken)
             .putString(API_BASE_URL_KEY, apiBaseUrl)
+            .apply();
+
+        call.resolve(new JSObject());
+    }
+
+    @PluginMethod
+    public void syncPreferences(PluginCall call) {
+        String preferredLanguage = call.getString("preferredLanguage", "");
+
+        prefs()
+            .edit()
+            .putString(PREFERRED_LANGUAGE_KEY, preferredLanguage)
             .apply();
 
         call.resolve(new JSObject());

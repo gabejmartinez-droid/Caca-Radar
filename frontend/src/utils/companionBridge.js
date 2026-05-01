@@ -25,6 +25,18 @@ export async function syncCompanionAuthState({ accessToken, refreshToken, apiBas
   }
 }
 
+export async function syncCompanionPreferences({ preferredLanguage }) {
+  const plugin = getCompanionPlugin();
+  if (!plugin?.syncPreferences) return;
+  try {
+    await plugin.syncPreferences({
+      preferredLanguage: preferredLanguage || "",
+    });
+  } catch {
+    // Companion sync should never break preference changes.
+  }
+}
+
 export async function clearCompanionAuthState() {
   const plugin = getCompanionPlugin();
   if (!plugin?.clearAuthState) return;

@@ -5,6 +5,8 @@ enum CompanionBridgeStorage {
     static let accessTokenKey = "companion.accessToken"
     static let refreshTokenKey = "companion.refreshToken"
     static let apiBaseUrlKey = "companion.apiBaseUrl"
+    static let preferredLanguageKey = "companion.preferredLanguage"
+    static let didUpdateNotification = Notification.Name("CompanionBridgeDidUpdate")
 }
 
 @objc(CompanionBridgePlugin)
@@ -13,6 +15,7 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let jsName = "CompanionBridge"
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "syncAuthState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "syncPreferences", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clearAuthState", returnType: CAPPluginReturnPromise),
     ]
 
@@ -26,6 +29,18 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         defaults.set(refreshToken, forKey: CompanionBridgeStorage.refreshTokenKey)
         defaults.set(apiBaseUrl, forKey: CompanionBridgeStorage.apiBaseUrlKey)
         defaults.synchronize()
+        NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
+
+        call.resolve()
+    }
+
+    @objc func syncPreferences(_ call: CAPPluginCall) {
+        let preferredLanguage = call.getString("preferredLanguage") ?? ""
+
+        let defaults = UserDefaults.standard
+        defaults.set(preferredLanguage, forKey: CompanionBridgeStorage.preferredLanguageKey)
+        defaults.synchronize()
+        NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
 
         call.resolve()
     }
@@ -36,6 +51,7 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         defaults.removeObject(forKey: CompanionBridgeStorage.refreshTokenKey)
         defaults.removeObject(forKey: CompanionBridgeStorage.apiBaseUrlKey)
         defaults.synchronize()
+        NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
 
         call.resolve()
     }

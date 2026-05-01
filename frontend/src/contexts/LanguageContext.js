@@ -1,28 +1,52 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
+import axios from "axios";
 import { translations, isRtl } from "../i18n/translations";
+import { API } from "../config";
+import { isCapacitorNative } from "../tokenManager";
+import {
+  applyLanguagePreference,
+  getInitialLanguage,
+  normalizeLanguage,
+  subscribeToLanguagePreference,
+} from "../utils/languagePreference";
+import { syncCompanionPreferences } from "../utils/companionBridge";
 
 const LanguageContext = createContext(null);
 
-const STORAGE_KEY = "caca-radar-lang";
-
 export function LanguageProvider({ children }) {
-  const [language, setLanguageState] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved && translations[saved]) return saved;
-    const browserLang = navigator.language?.split("-")[0];
-    if (browserLang && translations[browserLang]) return browserLang;
-    return "es";
-  });
+  const [language, setLanguageState] = useState(() => getInitialLanguage());
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, language);
     document.documentElement.dir = isRtl(language) ? "rtl" : "ltr";
     document.documentElement.lang = language;
+    syncCompanionPreferences({ preferredLanguage: language });
   }, [language]);
 
-  const setLanguage = useCallback((lang) => {
-    if (translations[lang]) setLanguageState(lang);
+  useEffect(() => subscribeToLanguagePreference((nextLanguage) => {
+    setLanguageState((currentLanguage) => (currentLanguage === nextLanguage ? currentLanguage : nextLanguage));
+  }), []);
+
+  const persistLanguagePreference = useCallback(async (nextLanguage) => {
+    try {
+      await axios.put(
+        `${API}/users/preferences`,
+        { preferred_language: nextLanguage },
+        { withCredentials: !isCapacitorNative() },
+      );
+    } catch (error) {
+      if (error?.response?.status !== 401) {
+        // Keep the UI responsive even if sync is temporarily unavailable.
+      }
+    }
   }, []);
+
+  const setLanguage = useCallback((lang) => {
+    const normalized = normalizeLanguage(lang);
+    if (!normalized || !translations[normalized]) return;
+    applyLanguagePreference(normalized);
+    setLanguageState(normalized);
+    void persistLanguagePreference(normalized);
+  }, [persistLanguagePreference]);
 
   const t = useCallback((key) => {
     const keys = key.split(".");

@@ -1,9 +1,15 @@
 import CoreLocation
 import SwiftUI
 
+enum WatchLocationError: LocalizedError {
+    case permissionDenied
+    case locationUnavailable
+}
+
 final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
+    private var waitingForAuthorization = false
 
     override init() {
         super.init()
@@ -12,17 +18,45 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
     }
 
     func requestCurrentLocation() async throws -> CLLocationCoordinate2D {
-        if manager.authorizationStatus == .notDetermined {
-            manager.requestWhenInUseAuthorization()
+        let status = manager.authorizationStatus
+        if status == .denied || status == .restricted {
+            throw WatchLocationError.permissionDenied
         }
+
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
+
+            if status == .notDetermined {
+                waitingForAuthorization = true
+                manager.requestWhenInUseAuthorization()
+            } else {
+                manager.requestLocation()
+            }
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard waitingForAuthorization else { return }
+
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            waitingForAuthorization = false
             manager.requestLocation()
+        case .denied, .restricted:
+            waitingForAuthorization = false
+            continuation?.resume(throwing: WatchLocationError.permissionDenied)
+            continuation = nil
+        default:
+            break
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.first else { return }
+        guard let location = locations.first else {
+            continuation?.resume(throwing: WatchLocationError.locationUnavailable)
+            continuation = nil
+            return
+        }
         continuation?.resume(returning: location.coordinate)
         continuation = nil
     }
@@ -36,12 +70,16 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
 struct ContentView: View {
     @StateObject private var bridge = PhoneSessionBridge()
     @StateObject private var locationManager = WatchLocationManager()
-    @State private var statusText = "Pulsa para reportar caca aquí"
+    @State private var statusText = PhoneSessionBridge.defaultLanguage() == "en"
+        ? "Tap to report poop here."
+        : "Pulsa para reportar caca aquí."
     @State private var isSubmitting = false
 
     var body: some View {
+        let copy = bridge.copy
+
         VStack(spacing: 12) {
-            Text("Caca Radar")
+            Text(copy.text(.appTitle))
                 .font(.headline)
                 .foregroundStyle(.white)
 
@@ -55,7 +93,7 @@ struct ContentView: View {
             } label: {
                 HStack {
                     Image(systemName: "location.fill")
-                    Text(isSubmitting ? "Enviando..." : "Reportar ahora")
+                    Text(isSubmitting ? copy.text(.sending) : copy.text(.reportNow))
                 }
                 .frame(maxWidth: .infinity)
             }
@@ -64,7 +102,7 @@ struct ContentView: View {
             .disabled(isSubmitting || !bridge.reachable)
 
             if !bridge.reachable {
-                Text("Abre la app en el iPhone o acércalo al reloj.")
+                Text(copy.text(.phoneUnavailable))
                     .font(.caption2)
                     .multilineTextAlignment(.center)
                     .foregroundStyle(.yellow)
@@ -72,6 +110,11 @@ struct ContentView: View {
         }
         .padding()
         .background(Color.black)
+        .onChange(of: bridge.preferredLanguage) {
+            if !isSubmitting {
+                statusText = bridge.copy.text(.tapToReport)
+            }
+        }
     }
 
     @MainActor
@@ -79,16 +122,23 @@ struct ContentView: View {
         isSubmitting = true
         defer { isSubmitting = false }
 
+        let copy = bridge.copy
+        statusText = copy.text(.waitingForLocation)
+
         do {
             let coordinate = try await locationManager.requestCurrentLocation()
             let result = try await bridge.sendQuickReport(latitude: coordinate.latitude, longitude: coordinate.longitude)
             if result.convertedToConfirmation {
-                statusText = "Se confirmó un aviso existente en \(result.municipality)."
+                statusText = String(format: copy.text(.reportConfirmed), result.municipality)
             } else {
-                statusText = "Aviso enviado en \(result.municipality)."
+                statusText = String(format: copy.text(.reportSent), result.municipality)
             }
+        } catch WatchLocationError.permissionDenied {
+            statusText = copy.text(.locationDenied)
+        } catch WatchLocationError.locationUnavailable {
+            statusText = copy.text(.locationUnavailable)
         } catch {
-            statusText = error.localizedDescription
+            statusText = bridge.localizedMessage(for: error)
         }
     }
 }

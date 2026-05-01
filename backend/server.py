@@ -264,6 +264,9 @@ class QuickReportCreate(BaseModel):
     description: Optional[str] = None
     source: Optional[str] = "watch_companion"
 
+class UserPreferencesUpdate(BaseModel):
+    preferred_language: Optional[str] = None
+
 class PlayIntegrityVerifyRequest(BaseModel):
     integrity_token: str
     request_hash: str | None = None
@@ -278,6 +281,7 @@ api_router = APIRouter(prefix="/api")
 ACTION_PROXIMITY_METERS = 5
 REPORT_CLEARED_VOTES_NEEDED = 2
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
+SUPPORTED_LANGUAGE_CODES = {"es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"}
 
 
 def get_frontend_url() -> str:
@@ -545,6 +549,7 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str) -> dic
         "rank_key": user.get("rank_key", get_rank_key(user.get("rank", DEFAULT_RANK_NAME))),
         "level": user.get("level", 1),
         "streak_days": user.get("streak_days", 0),
+        "preferred_language": user.get("preferred_language"),
         "needs_username": not bool(user.get("username")),
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -1181,19 +1186,8 @@ async def register(data: UserRegister, request: Request, response: Response):
     access_token = create_access_token(user_id, email)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
-    
-    return {
-        "id": user_id, "email": email, "name": user_doc["name"],
-        "username": user_doc["username"], "role": "user",
-        "subscription_active": is_vip, "report_count": 0, "vote_count": 0,
-        "total_score": 0, "trust_score": 50,
-        "rank": DEFAULT_RANK_NAME, "rank_key": get_rank_key(DEFAULT_RANK_NAME), "level": 1,
-        "streak_days": 0, "needs_username": False,
-        "access_token": access_token, "refresh_token": refresh_token,
-        "auth_methods": user_doc["auth_methods"],
-    }
+    set_auth_cookies(response, access_token, refresh_token)
+    return build_auth_payload(user_doc, access_token, refresh_token)
 
 @api_router.post("/auth/login")
 async def login(data: UserLogin, request: Request, response: Response):
@@ -1238,27 +1232,8 @@ async def login(data: UserLogin, request: Request, response: Response):
     access_token = create_access_token(user_id, email, role)
     refresh_token = create_refresh_token(user_id)
     
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
-    
-    return {
-        "id": user_id, "email": email, "name": user.get("name", ""),
-        "username": user.get("username"), "role": role,
-        "subscription_active": user.get("subscription_active", False),
-        "subscription_type": user.get("subscription_type"),
-        "report_count": user.get("report_count", 0),
-        "vote_count": user.get("vote_count", 0),
-        "municipality_name": user.get("municipality_name"),
-        "total_score": user.get("total_score", 0),
-        "trust_score": user.get("trust_score", 50),
-        "rank": user.get("rank", DEFAULT_RANK_NAME),
-        "rank_key": user.get("rank_key", get_rank_key(user.get("rank", DEFAULT_RANK_NAME))),
-        "level": user.get("level", 1),
-        "streak_days": user.get("streak_days", 0),
-        "needs_username": not bool(user.get("username")),
-        "access_token": access_token, "refresh_token": refresh_token,
-        "auth_methods": normalize_auth_methods(user),
-    }
+    set_auth_cookies(response, access_token, refresh_token)
+    return build_auth_payload(user, access_token, refresh_token)
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: Request):
@@ -1406,6 +1381,27 @@ async def update_username(data: UsernameUpdate, request: Request):
     
     await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": {"username": username}})
     return {"username": username}
+
+@api_router.put("/users/preferences")
+async def update_user_preferences(data: UserPreferencesUpdate, request: Request):
+    user = await require_auth(request)
+    updates = {}
+
+    if data.preferred_language is not None:
+        preferred_language = (data.preferred_language or "").strip().lower()
+        if preferred_language and preferred_language not in SUPPORTED_LANGUAGE_CODES:
+            raise HTTPException(status_code=400, detail="Idioma no soportado")
+        updates["preferred_language"] = preferred_language or None
+
+    if not updates:
+        return {
+            "preferred_language": user.get("preferred_language"),
+        }
+
+    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": updates})
+    return {
+        "preferred_language": updates.get("preferred_language"),
+    }
 
 @api_router.delete("/users/me")
 async def delete_current_user_account(request: Request, response: Response):
@@ -2279,6 +2275,7 @@ async def get_user_profile(request: Request):
             "google": bool((user.get("linked_providers") or {}).get("google")),
             "apple": bool((user.get("linked_providers") or {}).get("apple")),
         },
+        "preferred_language": user.get("preferred_language"),
         "subscription_active": user.get("subscription_active", False),
         "badges": earned_badges,
         "badges_count": len(earned_badges),

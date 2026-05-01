@@ -9,6 +9,13 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
         WatchSessionCoordinator.shared.activate()
+        NotificationCenter.default.addObserver(
+            forName: Notification.Name("CompanionBridgeDidUpdate"),
+            object: nil,
+            queue: .main
+        ) { _ in
+            WatchSessionCoordinator.shared.pushCompanionContext()
+        }
         return true
     }
 

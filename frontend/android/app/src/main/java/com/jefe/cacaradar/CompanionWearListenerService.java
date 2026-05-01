@@ -28,9 +28,20 @@ public class CompanionWearListenerService extends WearableListenerService {
     private static final String TAG = "CompanionWear";
     private static final String QUICK_REPORT_PATH = "/quick-report";
     private static final String QUICK_REPORT_RESULT_PATH = "/quick-report/result";
+    private static final String SETTINGS_REQUEST_PATH = "/companion-settings/request";
+    private static final String SETTINGS_RESULT_PATH = "/companion-settings/result";
 
     @Override
     public void onMessageReceived(MessageEvent messageEvent) {
+        if (SETTINGS_REQUEST_PATH.equals(messageEvent.getPath())) {
+            try {
+                sendSettings(messageEvent.getSourceNodeId());
+            } catch (Exception exception) {
+                Log.e(TAG, "Failed to sync watch settings", exception);
+            }
+            return;
+        }
+
         if (!QUICK_REPORT_PATH.equals(messageEvent.getPath())) {
             super.onMessageReceived(messageEvent);
             return;
@@ -47,7 +58,8 @@ public class CompanionWearListenerService extends WearableListenerService {
             try {
                 JSONObject result = new JSONObject();
                 result.put("ok", false);
-                result.put("error", exception.getMessage() != null ? exception.getMessage() : "quick_report_failed");
+                result.put("error", classifyErrorCode(exception));
+                result.put("errorDetail", exception.getMessage() != null ? exception.getMessage() : "quick_report_failed");
                 sendResult(messageEvent.getSourceNodeId(), result);
             } catch (Exception ignored) {
             }
@@ -102,6 +114,14 @@ public class CompanionWearListenerService extends WearableListenerService {
         return result;
     }
 
+    private void sendSettings(String nodeId) throws Exception {
+        SharedPreferences prefs = getSharedPreferences(CompanionBridgePlugin.PREFS_NAME, Context.MODE_PRIVATE);
+        JSONObject result = new JSONObject();
+        result.put("preferredLanguage", prefs.getString(CompanionBridgePlugin.PREFERRED_LANGUAGE_KEY, "es"));
+        MessageClient client = Wearable.getMessageClient(this);
+        Tasks.await(client.sendMessage(nodeId, SETTINGS_RESULT_PATH, result.toString().getBytes(StandardCharsets.UTF_8)), 15, TimeUnit.SECONDS);
+    }
+
     private void sendResult(String nodeId, JSONObject result) throws Exception {
         MessageClient client = Wearable.getMessageClient(this);
         Tasks.await(client.sendMessage(nodeId, QUICK_REPORT_RESULT_PATH, result.toString().getBytes(StandardCharsets.UTF_8)), 15, TimeUnit.SECONDS);
@@ -117,5 +137,14 @@ public class CompanionWearListenerService extends WearableListenerService {
             }
             return builder.toString();
         }
+    }
+
+    private String classifyErrorCode(Exception exception) {
+        String message = exception.getMessage() != null ? exception.getMessage() : "";
+        if ("missing_access_token".equals(message)) return "missing_access_token";
+        if ("invalid_api_url".equals(message)) return "invalid_api_url";
+        if (message.contains("30 segundos")) return "report_cooldown";
+        if (message.contains("restringida")) return "restricted_account";
+        return "quick_report_failed";
     }
 }

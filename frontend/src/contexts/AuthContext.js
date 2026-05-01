@@ -7,6 +7,7 @@ import { signOutGoogleNative } from "../utils/googleNative";
 import { signInWithAppleNative } from "../utils/appleNative";
 import { isNativeAppleSupported, startAppleWebAuth } from "../utils/appleIdentity";
 import { getCurrentPlatform } from "../versionInfo";
+import { applyLanguagePreference } from "../utils/languagePreference";
 
 const AuthContext = createContext(null);
 
@@ -86,11 +87,18 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const syncUserLanguage = useCallback((data) => {
+    if (data?.preferred_language) {
+      applyLanguagePreference(data.preferred_language);
+    }
+  }, []);
+
   const checkAuth = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/auth/me`, {
         withCredentials: !isCapacitorNative(),
       });
+      syncUserLanguage(data);
       setUser(data);
       return data;
     } catch {
@@ -99,7 +107,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [syncUserLanguage]);
 
   useEffect(() => { checkAuth(); }, [checkAuth]);
 
@@ -111,9 +119,10 @@ export function AuthProvider({ children }) {
     if (data.access_token) {
       setTokens(data.access_token, data.refresh_token);
     }
+    syncUserLanguage(data);
     setUser(data);
     return data;
-  }, []);
+  }, [syncUserLanguage]);
 
   const register = useCallback(async (email, password, username) => {
     const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, {
@@ -122,9 +131,10 @@ export function AuthProvider({ children }) {
     if (data.access_token) {
       setTokens(data.access_token, data.refresh_token);
     }
+    syncUserLanguage(data);
     setUser(data);
     return data;
-  }, []);
+  }, [syncUserLanguage]);
 
   const googleLogin = useCallback(async (credential) => {
     const { data } = await axios.post(
@@ -135,9 +145,10 @@ export function AuthProvider({ children }) {
     if (data.access_token) {
       setTokens(data.access_token, data.refresh_token);
     }
+    syncUserLanguage(data);
     setUser(data);
     return data;
-  }, []);
+  }, [syncUserLanguage]);
 
   const appleLogin = useCallback(async (nextPath = "/") => {
     if (!isNativeAppleSupported()) {
@@ -161,9 +172,10 @@ export function AuthProvider({ children }) {
     if (data.access_token) {
       setTokens(data.access_token, data.refresh_token);
     }
+    syncUserLanguage(data);
     setUser(data);
     return data;
-  }, []);
+  }, [syncUserLanguage]);
 
   const linkGoogle = useCallback(async (credential) => {
     const { data } = await axios.post(

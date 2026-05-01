@@ -44,8 +44,10 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.31 (33)`
-- Android `1.1.33 (35)`
+- Web `1.1.23-web.1`
+- iOS `1.1.32 (34)`
+- Android `1.1.34 (36)`
+- Backend `1.1.2-api.1`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
@@ -65,6 +67,9 @@ Changes:
 - Restored the watch app's `WatchAppIcon` asset-catalog identity alongside the explicit raw icon files so App Store Connect sees both `CFBundleIconName` and the concrete bundled icon files in the final watch bundle.
 - Added an explicit root-level `long-look-44mm@2x.png` resource to the watch app bundle and referenced it in the plist so the exact Series 4 long-look filename Apple names in `ITMS-90741` is present after archiving.
 - Recreated the watch icon asset catalog through Xcode so the watch target now uses Xcode-generated universal watchOS icon slots instead of the earlier hand-authored role/subtype layout.
+- Fixed the Apple Watch quick-report flow so location permission is handled asynchronously instead of failing with the generic “operation couldn’t be completed” error when the watch asks for GPS access.
+- Added a saved `preferred_language` user preference that now travels through auth/profile responses, persists to the backend, and restores automatically when the same user signs in on another device.
+- Synced the saved language into both companion bridges so the Apple Watch and Wear OS quick-report UIs can mirror the phone app language instead of falling back to device defaults.
 
 ### 2026-04-20 — Pending deploy after local validation
 
@@ -1293,3 +1298,4 @@ Versions:
 Notes:
 - Integrate watch companion targets
 ```
+
