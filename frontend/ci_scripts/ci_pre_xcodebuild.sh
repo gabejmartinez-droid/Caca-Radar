@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+export PATH="/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
+
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 FRONTEND_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 IOS_APP_DIR="$FRONTEND_DIR/ios/App/App"
@@ -17,7 +19,12 @@ run_yarn() {
     return
   fi
 
-  echo "Xcode Cloud pre-xcodebuild failed: neither yarn nor corepack is available" >&2
+  if command -v npx >/dev/null 2>&1; then
+    npx --yes yarn@1.22.22 "$@"
+    return
+  fi
+
+  echo "Xcode Cloud pre-xcodebuild failed: no usable yarn runner found (yarn/corepack/npx unavailable)" >&2
   exit 127
 }
 
