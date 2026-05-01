@@ -245,11 +245,18 @@ class PushSubscriptionCreate(BaseModel):
     subscription: dict
     latitude: Optional[float] = None
     longitude: Optional[float] = None
+    radius_meters: Optional[int] = None
 
 class SavedLocationCreate(BaseModel):
     name: str
+    label: Optional[str] = None
     latitude: float
     longitude: float
+
+class PushPreferencesUpdate(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    radius_meters: Optional[int] = None
 
 class PlayIntegrityVerifyRequest(BaseModel):
     integrity_token: str
@@ -3875,6 +3882,9 @@ async def subscribe_push(data: PushSubscriptionCreate, request: Request, respons
     if subscription.get("token") and platform_header in {"ios", "android"}:
         subscription["platform"] = platform_header
 
+    existing = await db.push_subscriptions.find_one({"user_id": user_id}, {"radius_meters": 1})
+    radius_meters = data.radius_meters or (existing or {}).get("radius_meters") or 500
+
     # Upsert subscription
     await db.push_subscriptions.update_one(
         {"user_id": user_id},
@@ -3883,6 +3893,7 @@ async def subscribe_push(data: PushSubscriptionCreate, request: Request, respons
             "subscription": subscription,
             "latitude": data.latitude,
             "longitude": data.longitude,
+            "radius_meters": radius_meters,
             "active": True,
             "updated_at": datetime.now(timezone.utc).isoformat()
         }},
@@ -3912,7 +3923,43 @@ async def get_push_status(request: Request):
     sub = await db.push_subscriptions.find_one(
         {"user_id": user["_id"], "active": True}, {"_id": 0}
     )
-    return {"subscribed": bool(sub)}
+    if not sub:
+        return {"subscribed": False}
+    return {
+        "subscribed": True,
+        "latitude": sub.get("latitude"),
+        "longitude": sub.get("longitude"),
+        "radius_meters": sub.get("radius_meters", 500),
+        "updated_at": sub.get("updated_at"),
+        "platform": (sub.get("subscription") or {}).get("platform"),
+    }
+
+@api_router.put("/push/preferences")
+async def update_push_preferences(data: PushPreferencesUpdate, request: Request):
+    """Update radius and target location for an existing push subscription."""
+    user = await require_auth(request)
+    existing = await db.push_subscriptions.find_one({"user_id": user["_id"], "active": True}, {"_id": 1})
+    if not existing:
+        raise HTTPException(status_code=404, detail="No active push subscription")
+
+    updates = {"updated_at": datetime.now(timezone.utc).isoformat()}
+    if data.latitude is not None:
+        updates["latitude"] = data.latitude
+    if data.longitude is not None:
+        updates["longitude"] = data.longitude
+    if data.radius_meters is not None:
+        updates["radius_meters"] = max(100, min(int(data.radius_meters), 5000))
+
+    await db.push_subscriptions.update_one({"_id": existing["_id"]}, {"$set": updates})
+    sub = await db.push_subscriptions.find_one({"_id": existing["_id"]}, {"_id": 0})
+    return {
+        "subscribed": True,
+        "latitude": sub.get("latitude"),
+        "longitude": sub.get("longitude"),
+        "radius_meters": sub.get("radius_meters", 500),
+        "updated_at": sub.get("updated_at"),
+        "platform": (sub.get("subscription") or {}).get("platform"),
+    }
 
 # ==================== SOCIAL SHARING ====================
 

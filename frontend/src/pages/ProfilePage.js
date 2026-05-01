@@ -384,13 +384,24 @@ export default function ProfilePage() {
               <Bell className="w-5 h-5 text-[#42A5F5]" />
               <span className="font-bold text-[#2B2D42]">{t("profileUi.notifications")}</span>
             </div>
-            <button
-              onClick={handleToggleNotifications}
-              className={`relative w-12 h-6 rounded-full transition-colors ${notificationsOn ? "bg-[#66BB6A]" : "bg-[#8D99AE]/30"}`}
-              data-testid="notification-toggle"
-            >
-              <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notificationsOn ? "translate-x-6" : "translate-x-0.5"}`} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleToggleNotifications}
+                className={`relative w-12 h-6 rounded-full transition-colors ${notificationsOn ? "bg-[#66BB6A]" : "bg-[#8D99AE]/30"}`}
+                data-testid="notification-toggle"
+              >
+                <div className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${notificationsOn ? "translate-x-6" : "translate-x-0.5"}`} />
+              </button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="rounded-xl border-[#42A5F5] text-[#42A5F5]"
+                onClick={() => navigate("/settings/notifications")}
+                data-testid="notification-settings-link"
+              >
+                {language === "en" ? "Manage" : "Gestionar"}
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-[#8D99AE] mt-2">{t("profileUi.notificationsDesc")}</p>
         </div>

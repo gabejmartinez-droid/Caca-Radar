@@ -31,6 +31,7 @@ import CommunityGuidelinesPage from "./pages/CommunityGuidelinesPage";
 import StatusPage from "./pages/StatusPage";
 import DownloadPage from "./pages/DownloadPage";
 import SharePreviewPage from "./pages/SharePreviewPage";
+import NotificationSettingsPage from "./pages/NotificationSettingsPage";
 import SpainLocationGate from "./components/SpainLocationGate";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
@@ -141,6 +142,7 @@ function App() {
               <Route path="/city-report" element={<SpainLocationGate><CityReportPage /></SpainLocationGate>} />
               <Route path="/subscribe" element={<SpainLocationGate><SubscriptionPage /></SpainLocationGate>} />
               <Route path="/profile" element={<SpainLocationGate><ProfilePage /></SpainLocationGate>} />
+              <Route path="/settings/notifications" element={<SpainLocationGate><NotificationSettingsPage /></SpainLocationGate>} />
               <Route path="/dashboard/login" element={<DashboardLogin />} />
               <Route path="/dashboard/register" element={<MunicipalityRegister />} />
               <Route path="/dashboard" element={<Dashboard />} />

@@ -197,7 +197,9 @@ async def notify_nearby_users(db, report_lat: float, report_lon: float, report_i
         sub_lon = sub.get("longitude", 0)
         dist = haversine_meters(report_lat, report_lon, sub_lat, sub_lon)
 
-        if dist <= NEARBY_RADIUS_METERS:
+        radius_meters = max(100, min(int(sub.get("radius_meters") or NEARBY_RADIUS_METERS), 5000))
+
+        if dist <= radius_meters:
             dist_text = f"{int(dist)}m" if dist < 1000 else f"{dist/1000:.1f}km"
             success = await send_push(
                 subscription_info=sub.get("subscription"),
