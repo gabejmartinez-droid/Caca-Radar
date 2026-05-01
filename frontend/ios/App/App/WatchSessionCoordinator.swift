@@ -33,11 +33,15 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         guard WCSession.isSupported() else { return }
         let defaults = UserDefaults.standard
         let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
-        let hasAccessToken = !(defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? "").isEmpty
+        let accessToken = defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? ""
+        let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
+        let hasAccessToken = !accessToken.isEmpty
 
         try? WCSession.default.updateApplicationContext([
             "preferredLanguage": preferredLanguage,
             "authenticated": hasAccessToken,
+            "accessToken": accessToken,
+            "apiBaseUrl": apiBaseUrl,
         ])
     }
 

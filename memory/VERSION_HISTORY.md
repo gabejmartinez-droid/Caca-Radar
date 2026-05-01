@@ -45,8 +45,8 @@ Production notes:
 
 Impacted environments:
 - Web `1.1.23-web.1`
-- iOS `1.1.33 (35)`
-- Android `1.1.35 (37)`
+- iOS `1.1.34 (36)`
+- Android `1.1.36 (38)`
 - Backend `1.1.2-api.1`
 
 Changes:
@@ -69,6 +69,7 @@ Changes:
 - Recreated the watch icon asset catalog through Xcode so the watch target now uses Xcode-generated universal watchOS icon slots instead of the earlier hand-authored role/subtype layout.
 - Fixed the Apple Watch quick-report flow so location permission is handled asynchronously instead of failing with the generic “operation couldn’t be completed” error when the watch asks for GPS access.
 - Made the Apple Watch location lookup more resilient by accepting a fresh cached fix, starting live updates, and timing out cleanly instead of hanging forever on “Buscando tu ubicación”.
+- Let the Apple Watch send quick reports using its synced auth/server context even when the paired iPhone app is not actively reachable, so the report button no longer flips back to disabled just because the phone fell to the background.
 - Added a saved `preferred_language` user preference that now travels through auth/profile responses, persists to the backend, and restores automatically when the same user signs in on another device.
 - Synced the saved language into both companion bridges so the Apple Watch and Wear OS quick-report UIs can mirror the phone app language instead of falling back to device defaults.
 

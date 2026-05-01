@@ -152,9 +152,9 @@ struct ContentView: View {
             }
             .buttonStyle(.borderedProminent)
             .tint(.red)
-            .disabled(isSubmitting || !bridge.reachable)
+            .disabled(isSubmitting || !bridge.canSubmitReport)
 
-            if !bridge.reachable {
+            if !bridge.canSubmitReport {
                 Text(copy.text(.phoneUnavailable))
                     .font(.caption2)
                     .multilineTextAlignment(.center)
