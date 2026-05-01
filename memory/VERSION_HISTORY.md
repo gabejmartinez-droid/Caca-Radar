@@ -1041,3 +1041,41 @@ Notes:
 - Prepared web build
 ```
 
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `951a3d2a5cf66c38c9e1da3c213d33d553b63f35-dirty`
+- Deployment status: `pending`
+- Rollback target: `e4943c5d20c5bcc658a18907795d1928b40c038c`
+
+Exact versions:
+- Web: `1.1.20-web.1`
+- iOS: `1.1.17 (19)`
+- Android: `1.1.19 (21)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Incremented iOS build for Sign in with Apple rollout.
+
+Internal release notes:
+- Incremented iOS build for Sign in with Apple rollout
+
+Store submission notes:
+```text
+- Incremented iOS build for Sign in with Apple rollout.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 951a3d2a5cf66c38c9e1da3c213d33d553b63f35-dirty
+Deployment status: pending
+Rollback target: e4943c5d20c5bcc658a18907795d1928b40c038c
+Versions:
+• Web: `1.1.20-web.1`
+• iOS: `1.1.17 (19)`
+• Android: `1.1.19 (21)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Incremented iOS build for Sign in with Apple rollout
+```
+

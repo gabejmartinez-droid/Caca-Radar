@@ -189,8 +189,10 @@ VIP_EMAILS = {
     "m_beauchamp@me.com",
     "martinez.maria.maggie@gmail.com",
     "olesiamartinez@gmail.com",
+    "paul@simpsonmail.us",
     "paulshareshisfreedom@gmail.com",
     "pedroege@gmail.com",
+    "pem_es@yahoo.es",
     "tgrazini@gmail.com",
 }
 
