@@ -1,3 +1,5 @@
+import { API } from "./config";
+
 /**
  * Token Manager for Capacitor native apps.
  * 
@@ -42,6 +44,22 @@ const REFRESH_KEY = "caca_refresh_token";
 let accessToken = isNative ? localStorage.getItem(TOKEN_KEY) : null;
 let refreshToken = isNative ? localStorage.getItem(REFRESH_KEY) : null;
 
+function syncCompanionBridge() {
+  if (!isNative) return;
+  import("./utils/companionBridge")
+    .then(({ syncCompanionAuthState, clearCompanionAuthState }) => {
+      if (accessToken) {
+        return syncCompanionAuthState({
+          accessToken,
+          refreshToken,
+          apiBaseUrl: API,
+        });
+      }
+      return clearCompanionAuthState();
+    })
+    .catch(() => {});
+}
+
 export function isCapacitorNative() {
   return isNative;
 }
@@ -55,6 +73,7 @@ export function setTokens(access, refresh) {
     if (refresh) localStorage.setItem(REFRESH_KEY, refresh);
     else localStorage.removeItem(REFRESH_KEY);
   }
+  syncCompanionBridge();
 }
 
 export function getAccessToken() {
@@ -72,4 +91,9 @@ export function clearTokens() {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(REFRESH_KEY);
   }
+  syncCompanionBridge();
+}
+
+if (isNative && accessToken) {
+  setTimeout(syncCompanionBridge, 0);
 }

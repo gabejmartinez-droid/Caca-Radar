@@ -258,6 +258,12 @@ class PushPreferencesUpdate(BaseModel):
     longitude: Optional[float] = None
     radius_meters: Optional[int] = None
 
+class QuickReportCreate(BaseModel):
+    latitude: float
+    longitude: float
+    description: Optional[str] = None
+    source: Optional[str] = "watch_companion"
+
 class PlayIntegrityVerifyRequest(BaseModel):
     integrity_token: str
     request_hash: str | None = None
@@ -1669,11 +1675,14 @@ async def get_report(report_id: str):
     report["is_premium_report"] = report.get("contributor_rank") is not None
     return report
 
-@api_router.post("/reports")
-async def create_report(request: Request, data: ReportCreate, response: Response):
-    user = await require_registered(request)
-    user_id = user["_id"]
-
+async def _create_report_impl(
+    request: Request,
+    user: dict,
+    user_id: str,
+    data: ReportCreate,
+    *,
+    source: str = "mobile_app",
+):
     await validate_report_input(db, data, user, user_id)
 
     nearby_report = await check_proximity_duplicate(db, data.latitude, data.longitude)
@@ -1717,7 +1726,7 @@ async def create_report(request: Request, data: ReportCreate, response: Response
                 longitude=data.longitude,
                 municipality=confirmed.get("municipality"),
                 province=confirmed.get("province"),
-                metadata={"points_earned": 5},
+                metadata={"points_earned": 5, "source": source},
             )
             return confirmed
         # Fallback — shouldn't happen but create normally if report vanished
@@ -1726,6 +1735,7 @@ async def create_report(request: Request, data: ReportCreate, response: Response
     report_id = str(uuid.uuid4())
 
     report_doc = build_report_doc(report_id, data, user_id, user, geo, False)
+    report_doc["submission_source"] = source
     await db.reports.insert_one(report_doc)
 
     await audit_report_event(
@@ -1737,7 +1747,7 @@ async def create_report(request: Request, data: ReportCreate, response: Response
         longitude=data.longitude,
         municipality=geo.get("municipality"),
         province=geo.get("province"),
-        metadata={"category": report_doc.get("category")},
+        metadata={"category": report_doc.get("category"), "source": source},
     )
 
     points_result = await process_report_scoring(db, user, user_id, data, False)
@@ -1749,6 +1759,30 @@ async def create_report(request: Request, data: ReportCreate, response: Response
 
     asyncio.create_task(notify_nearby_users(db, data.latitude, data.longitude, report_id, geo["municipality"]))
     return report_doc
+
+@api_router.post("/reports")
+async def create_report(request: Request, data: ReportCreate, response: Response):
+    user = await require_registered(request)
+    user_id = user["_id"]
+    return await _create_report_impl(request, user, user_id, data, source="mobile_app")
+
+@api_router.post("/reports/quick")
+async def create_quick_report(request: Request, data: QuickReportCreate):
+    user = await require_registered(request)
+    user_id = user["_id"]
+    report_data = ReportCreate(
+        latitude=data.latitude,
+        longitude=data.longitude,
+        description=data.description,
+        category="dog_feces",
+    )
+    return await _create_report_impl(
+        request,
+        user,
+        user_id,
+        report_data,
+        source=(data.source or "watch_companion"),
+    )
 
 # ==================== REPORT HELPERS ====================
 

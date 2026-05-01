@@ -1,0 +1,37 @@
+apply plugin: 'com.android.application'
+apply plugin: 'org.jetbrains.kotlin.android'
+
+android {
+    namespace "com.jefe.cacaradar.wear"
+    compileSdkVersion rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        applicationId "com.jefe.cacaradar.wear"
+        minSdkVersion 30
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "0.1.0"
+    }
+
+    buildFeatures {
+        compose true
+    }
+
+    composeOptions {
+        kotlinCompilerExtensionVersion '1.5.15'
+    }
+
+    kotlinOptions {
+        jvmTarget = '17'
+    }
+}
+
+dependencies {
+    implementation 'androidx.core:core-ktx:1.16.0'
+    implementation 'androidx.activity:activity-compose:1.10.1'
+    implementation 'androidx.lifecycle:lifecycle-runtime-ktx:2.8.7'
+    implementation 'androidx.wear.compose:compose-material:1.4.1'
+    implementation 'androidx.wear.compose:compose-foundation:1.4.1'
+    implementation 'com.google.android.gms:play-services-wearable:19.0.0'
+    implementation 'com.google.android.gms:play-services-location:21.3.0'
+}

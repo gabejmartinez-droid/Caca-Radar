@@ -1193,3 +1193,41 @@ Notes:
 - Make social share buttons auto-fit under zoom
 ```
 
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `dd776de4253916895149f0787e64f57617d4549b-dirty`
+- Deployment status: `pending`
+- Rollback target: `eab1e9fc35c2794321c1eb41184cbe5709d048e4`
+
+Exact versions:
+- Web: `1.1.21-web.1`
+- iOS: `1.1.21 (23)`
+- Android: `1.1.23 (25)`
+- Backend: `1.1.1-api.1`
+
+User-facing release notes:
+- Scaffold watch companion quick report flow.
+
+Internal release notes:
+- Scaffold watch companion quick report flow
+
+Store submission notes:
+```text
+- Scaffold watch companion quick report flow.
+```
+
+Internal release notes block:
+```text
+Commit SHA: dd776de4253916895149f0787e64f57617d4549b-dirty
+Deployment status: pending
+Rollback target: eab1e9fc35c2794321c1eb41184cbe5709d048e4
+Versions:
+• Web: `1.1.21-web.1`
+• iOS: `1.1.21 (23)`
+• Android: `1.1.23 (25)`
+• Backend: `1.1.1-api.1`
+Notes:
+- Scaffold watch companion quick report flow
+```
+
