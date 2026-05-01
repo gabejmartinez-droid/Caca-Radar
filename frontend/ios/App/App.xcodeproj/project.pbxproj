@@ -48,8 +48,8 @@
 		4C1E885DAE9ED367C116ED9C /* Embed Watch Content */ = {
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
-			dstPath = "";
-			dstSubfolderSpec = 16;
+			dstPath = Watch;
+			dstSubfolderSpec = 1;
 			files = (
 				231409D94DC770C91BF47B93 /* CacaRadarWatch.app in Embed Watch Content */,
 			);

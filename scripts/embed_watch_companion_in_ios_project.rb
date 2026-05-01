@@ -123,6 +123,7 @@ watch_embed_phase =
   watch_target.copy_files_build_phases.find { |phase| phase.name == 'Embed App Extensions' } ||
   watch_target.new_copy_files_build_phase('Embed App Extensions')
 watch_embed_phase.dst_subfolder_spec = '13'
+watch_embed_phase.dst_path = ''
 watch_embed_phase.run_only_for_deployment_postprocessing = '0'
 unless watch_embed_phase.files_references.any? { |file_ref| file_ref.uuid == watch_extension_target.product_reference.uuid }
   watch_embed_phase.add_file_reference(watch_extension_target.product_reference, true)
@@ -135,7 +136,8 @@ end
 embed_phase =
   app_target.copy_files_build_phases.find { |phase| phase.name == 'Embed Watch Content' } ||
   app_target.new_copy_files_build_phase('Embed Watch Content')
-embed_phase.dst_subfolder_spec = '16'
+embed_phase.dst_subfolder_spec = '1'
+embed_phase.dst_path = 'Watch'
 embed_phase.run_only_for_deployment_postprocessing = '0'
 
 unless embed_phase.files_references.any? { |file_ref| file_ref.uuid == watch_target.product_reference.uuid }
