@@ -2156,6 +2156,9 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
 
+    if report.get("user_id") == user_id:
+        raise HTTPException(status_code=400, detail="No puedes votar tu propio reporte")
+
     # Check existing vote
     existing = await db.report_votes.find_one({"report_id": report_id, "user_id": user_id})
     if existing:
@@ -2173,15 +2176,16 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
         update_doc["$set"] = {"refreshed_at": datetime.now(timezone.utc).isoformat(), "status": "verified"}
     await db.reports.update_one({"id": report_id}, update_doc)
 
-    # Award/deduct points to reporter
+    # Award points to the reporter when the report receives an upvote.
     reporter_id = report.get("user_id", "")
     points = calc_vote_points(vote_type)
+    updated_report = await db.reports.find_one({"id": report_id})
     try:
         reporter = await db.users.find_one({"_id": ObjectId(reporter_id)})
         if reporter:
-            await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": points}})
+            if points:
+                await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": points}})
             # Trust score adjustments for heavy voting
-            updated_report = await db.reports.find_one({"id": report_id})
             if updated_report:
                 net = (updated_report.get("upvotes", 0) - updated_report.get("downvotes", 0))
                 if net <= -5:
@@ -2191,7 +2195,6 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     except Exception:
         pass
 
-    updated_report = await db.reports.find_one({"id": report_id})
     cleared = False
     if vote_type == "downvote" and updated_report and updated_report.get("cleaned_count", 0) >= REPORT_CLEARED_VOTES_NEEDED:
         await db.reports.update_one({"id": report_id}, {"$set": {"archived": True, "status": "archived"}})

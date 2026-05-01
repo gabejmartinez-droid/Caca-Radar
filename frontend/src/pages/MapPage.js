@@ -533,17 +533,13 @@ export default function MapPage() {
   const handleReportVote = async (voteType) => {
     if (!selectedReport) return;
     try {
-      if (voteType === "downvote") {
-        const gonePrompt = language === "es" ? "¿Ya no está esta caca?" : "Is this mess already gone?";
-        const shouldMarkGone = window.confirm(t("mapUi.downvoteGoneQuestion") === "mapUi.downvoteGoneQuestion" ? gonePrompt : t("mapUi.downvoteGoneQuestion"));
-        if (shouldMarkGone) {
-          await handleVote("cleaned");
-          return;
-        }
-      }
       const endpoint = voteType === "upvote" ? "upvote" : "downvote";
-      await axios.post(`${API}/reports/${selectedReport.id}/${endpoint}`, {}, { withCredentials: true });
-      toast.success(voteType === "upvote" ? t("mapUi.voteSuccess.upvote") : t("mapUi.voteSuccess.downvote"));
+      const voteResponse = await axios.post(`${API}/reports/${selectedReport.id}/${endpoint}`, {}, { withCredentials: true });
+      if (voteType === "downvote" && voteResponse.data?.cleared) {
+        toast.success(t("mapUi.voteSuccess.noLongerHere"));
+      } else {
+        toast.success(voteType === "upvote" ? t("mapUi.voteSuccess.upvote") : t("mapUi.voteSuccess.downvote"));
+      }
       const [detailRes, valRes] = await Promise.all([
         axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true }),
         axios.get(`${API}/reports/${selectedReport.id}/my-validation`, { withCredentials: true }),

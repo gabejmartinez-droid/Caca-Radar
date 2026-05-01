@@ -66,7 +66,7 @@ def calc_validation_points(is_correct: bool, validator_index: int, is_subscriber
 
 
 def calc_vote_points(vote_type: str) -> int:
-    return UPVOTE_POINTS if vote_type == "upvote" else DOWNVOTE_POINTS
+    return UPVOTE_POINTS if vote_type == "upvote" else 0
 
 
 def calc_streak_bonus(streak_days: int) -> int:
