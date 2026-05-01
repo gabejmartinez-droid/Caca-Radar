@@ -44,8 +44,8 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.24 (26)`
-- Android `1.1.26 (28)`
+- iOS `1.1.25 (27)`
+- Android `1.1.27 (29)`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
@@ -54,8 +54,12 @@ Changes:
 - Watch app metadata was corrected so App Store Connect can recognize it as a valid watch app bundle:
   - proper `WKWatchKitApp` key
   - required display names
-  - extension principal class
   - watch icon asset catalog
+- Follow-up App Store Connect fixes adjusted the watch bundle metadata to match Apple's expected schema:
+  - removed invalid top-level `CFBundleIconName` from the watch app plist
+  - moved the watch location usage string to the watch extension plist
+  - replaced the invalid extension principal-class key with `WKExtensionDelegateClassName`
+  - added the missing Series 4 long-look watch icons
 
 ### 2026-04-20 — Pending deploy after local validation
 
