@@ -7,10 +7,14 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		231409D94DC770C91BF47B93 /* CacaRadarWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 88BDAFD8BA5D620DC4BF2992 /* CacaRadarWatch.app */; };
 		2FAD9763203C412B000D30F8 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAD9762203C412B000D30F8 /* AppDelegate.swift */; };
 		2FAD976B203C412C000D30F8 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD976A203C412C000D30F8 /* Assets.xcassets */; };
 		2FAD976E203C412C000D30F8 /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 2FAD976C203C412C000D30F8 /* LaunchScreen.storyboard */; };
 		2FAE0001203C412B000D30F8 /* AppViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2FAE0000203C412B000D30F8 /* AppViewController.swift */; };
+		311E6C059E59C76468481D94 /* CacaRadarWatchExtension.appex in Embed App Extensions */ = {isa = PBXBuildFile; fileRef = 8B288E948236DBD4B248629D /* CacaRadarWatchExtension.appex */; };
+		61CF6CDA44C28DA3C7D83B66 /* PhoneSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 332843E21AA6BEAFEE513A3F /* PhoneSessionBridge.swift */; };
+		9319DEE89A4B12A4241B8D8E /* CacaRadarWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4092472EC576CA907A0C9D1 /* CacaRadarWatchApp.swift */; };
 		A084ECDB28D212A400BDFBA6 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A084ECDA28D212A400BDFBA6 /* Main.storyboard */; };
 		B7C100012E00000100000001 /* WatchSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7C100002E00000100000001 /* WatchSessionCoordinator.swift */; };
 		CC0001012BBBBBBB00000001 /* CapApp-SPM in Frameworks */ = {isa = PBXBuildFile; productRef = CC0001002BBBBBBB00000001 /* CapApp-SPM */; };
@@ -20,7 +24,50 @@
 		CC0001142AAAAAAA00000004 /* public in Resources */ = {isa = PBXBuildFile; fileRef = CC0001132AAAAAAA00000003 /* public */; };
 		CC0001162AAAAAAA00000006 /* capacitor.config.json in Resources */ = {isa = PBXBuildFile; fileRef = CC0001152AAAAAAA00000005 /* capacitor.config.json */; };
 		CC0001182AAAAAAA00000008 /* config.xml in Resources */ = {isa = PBXBuildFile; fileRef = CC0001172AAAAAAA00000007 /* config.xml */; };
+		D467FC64D67A59DF22B8F3E7 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE7BD33839B596B8B49AA335 /* ContentView.swift */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		56B71492B0A8F2FC01153713 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2FAD9757203C412B000D30F8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F74C7CAB89B47668E6F96E7C;
+			remoteInfo = CacaRadarWatch;
+		};
+		AA6174DAA8D6138E2EBA735D /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 2FAD9757203C412B000D30F8 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA11AA155788C6E18A49E791;
+			remoteInfo = CacaRadarWatchExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		4C1E885DAE9ED367C116ED9C /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 16;
+			files = (
+				231409D94DC770C91BF47B93 /* CacaRadarWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A5E5EA40FA67EA75D14D275A /* Embed App Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				311E6C059E59C76468481D94 /* CacaRadarWatchExtension.appex in Embed App Extensions */,
+			);
+			name = "Embed App Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		2FAD975F203C412B000D30F8 /* App.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = App.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -30,12 +77,19 @@
 		2FAD976F203C412C000D30F8 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		2FAD9776203C412C000D30F8 /* App.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = App.entitlements; sourceTree = "<group>"; };
 		2FAE0000203C412B000D30F8 /* AppViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppViewController.swift; sourceTree = "<group>"; };
+		332843E21AA6BEAFEE513A3F /* PhoneSessionBridge.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PhoneSessionBridge.swift; sourceTree = "<group>"; };
+		88BDAFD8BA5D620DC4BF2992 /* CacaRadarWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CacaRadarWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8B288E948236DBD4B248629D /* CacaRadarWatchExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CacaRadarWatchExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		8F90FF9D66A4560B8A51955A /* Extension-Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = "Extension-Info.plist"; sourceTree = "<group>"; };
 		A084ECDA28D212A400BDFBA6 /* Main.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Main.storyboard; path = Base.lproj/Main.storyboard; sourceTree = "<group>"; };
+		AE7BD33839B596B8B49AA335 /* ContentView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		B7C100002E00000100000001 /* WatchSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionCoordinator.swift; sourceTree = "<group>"; };
 		CC0001102AAAAAAA00000001 /* SceneDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SceneDelegate.swift; sourceTree = "<group>"; };
 		CC0001132AAAAAAA00000003 /* public */ = {isa = PBXFileReference; lastKnownFileType = folder; path = public; sourceTree = "<group>"; };
 		CC0001152AAAAAAA00000005 /* capacitor.config.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = capacitor.config.json; sourceTree = "<group>"; };
 		CC0001172AAAAAAA00000007 /* config.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = config.xml; sourceTree = "<group>"; };
+		D4092472EC576CA907A0C9D1 /* CacaRadarWatchApp.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = CacaRadarWatchApp.swift; sourceTree = "<group>"; };
+		E432D8DE5ED77622C9879075 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,6 +103,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		80B60C66E59E954A5F57D5A2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		B36E96D8E4AD36F8E574477F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -57,6 +125,8 @@
 			children = (
 				2FAD9761203C412B000D30F8 /* App */,
 				2FAD9760203C412B000D30F8 /* Products */,
+				F665A523355C06227679692E /* WatchCompanion */,
+				8FF754614BF1FAAB08DE29B1 /* WatchCompanionApp */,
 			);
 			sourceTree = "<group>";
 		};
@@ -64,6 +134,8 @@
 			isa = PBXGroup;
 			children = (
 				2FAD975F203C412B000D30F8 /* App.app */,
+				88BDAFD8BA5D620DC4BF2992 /* CacaRadarWatch.app */,
+				8B288E948236DBD4B248629D /* CacaRadarWatchExtension.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -87,6 +159,27 @@
 			path = App;
 			sourceTree = "<group>";
 		};
+		8FF754614BF1FAAB08DE29B1 /* WatchCompanionApp */ = {
+			isa = PBXGroup;
+			children = (
+				E432D8DE5ED77622C9879075 /* Info.plist */,
+				8F90FF9D66A4560B8A51955A /* Extension-Info.plist */,
+			);
+			name = WatchCompanionApp;
+			path = ../WatchCompanionApp;
+			sourceTree = "<group>";
+		};
+		F665A523355C06227679692E /* WatchCompanion */ = {
+			isa = PBXGroup;
+			children = (
+				D4092472EC576CA907A0C9D1 /* CacaRadarWatchApp.swift */,
+				AE7BD33839B596B8B49AA335 /* ContentView.swift */,
+				332843E21AA6BEAFEE513A3F /* PhoneSessionBridge.swift */,
+			);
+			name = WatchCompanion;
+			path = ../WatchCompanion;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -97,10 +190,12 @@
 				2FAD975B203C412B000D30F8 /* Sources */,
 				2FAD975C203C412B000D30F8 /* Frameworks */,
 				2FAD975D203C412B000D30F8 /* Resources */,
+				4C1E885DAE9ED367C116ED9C /* Embed Watch Content */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				34C623EE55C3D5D7FBE187E4 /* PBXTargetDependency */,
 			);
 			name = App;
 			packageProductDependencies = (
@@ -112,6 +207,42 @@
 			productReference = 2FAD975F203C412B000D30F8 /* App.app */;
 			productType = "com.apple.product-type.application";
 		};
+		AA11AA155788C6E18A49E791 /* CacaRadarWatchExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 827025BD4967572047E5194F /* Build configuration list for PBXNativeTarget "CacaRadarWatchExtension" */;
+			buildPhases = (
+				862B7F05F76A60E28349CF3B /* Sources */,
+				80B60C66E59E954A5F57D5A2 /* Frameworks */,
+				EFC3484B53B45949DB03D5D0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = CacaRadarWatchExtension;
+			productName = CacaRadarWatchExtension;
+			productReference = 8B288E948236DBD4B248629D /* CacaRadarWatchExtension.appex */;
+			productType = "com.apple.product-type.watchkit2-extension";
+		};
+		F74C7CAB89B47668E6F96E7C /* CacaRadarWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 974D294FF05F4C6A52E4EDE5 /* Build configuration list for PBXNativeTarget "CacaRadarWatch" */;
+			buildPhases = (
+				A8A84DBD2DB581AB37A75F05 /* Sources */,
+				B36E96D8E4AD36F8E574477F /* Frameworks */,
+				AD4F500B47B77880B5176A2A /* Resources */,
+				A5E5EA40FA67EA75D14D275A /* Embed App Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				7408925F8B6E7A6D2BD56955 /* PBXTargetDependency */,
+			);
+			name = CacaRadarWatch;
+			productName = CacaRadarWatch;
+			productReference = 88BDAFD8BA5D620DC4BF2992 /* CacaRadarWatch.app */;
+			productType = "com.apple.product-type.application.watchapp2";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -119,11 +250,21 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
-				LastSwiftUpdateCheck = 1340;
-				LastUpgradeCheck = 1340;
+				LastSwiftUpdateCheck = 1600;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					2FAD975E203C412B000D30F8 = {
 						CreatedOnToolsVersion = 13.4;
+					};
+					AA11AA155788C6E18A49E791 = {
+						CreatedOnToolsVersion = 16.0;
+						DevelopmentTeam = Z3SH6Z4GL6;
+						ProvisioningStyle = Automatic;
+					};
+					F74C7CAB89B47668E6F96E7C = {
+						CreatedOnToolsVersion = 16.0;
+						DevelopmentTeam = Z3SH6Z4GL6;
+						ProvisioningStyle = Automatic;
 					};
 				};
 			};
@@ -145,6 +286,8 @@
 			projectRoot = "";
 			targets = (
 				2FAD975E203C412B000D30F8 /* App */,
+				F74C7CAB89B47668E6F96E7C /* CacaRadarWatch */,
+				AA11AA155788C6E18A49E791 /* CacaRadarWatchExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -163,6 +306,20 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AD4F500B47B77880B5176A2A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		EFC3484B53B45949DB03D5D0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -177,7 +334,39 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		862B7F05F76A60E28349CF3B /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				9319DEE89A4B12A4241B8D8E /* CacaRadarWatchApp.swift in Sources */,
+				D467FC64D67A59DF22B8F3E7 /* ContentView.swift in Sources */,
+				61CF6CDA44C28DA3C7D83B66 /* PhoneSessionBridge.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A8A84DBD2DB581AB37A75F05 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		34C623EE55C3D5D7FBE187E4 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = CacaRadarWatch;
+			target = F74C7CAB89B47668E6F96E7C /* CacaRadarWatch */;
+			targetProxy = 56B71492B0A8F2FC01153713 /* PBXContainerItemProxy */;
+		};
+		7408925F8B6E7A6D2BD56955 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = CacaRadarWatchExtension;
+			target = AA11AA155788C6E18A49E791 /* CacaRadarWatchExtension */;
+			targetProxy = AA6174DAA8D6138E2EBA735D /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		2FAD9771203C412C000D30F8 /* Debug */ = {
@@ -247,7 +436,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -255,7 +444,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.22;
+				MARKETING_VERSION = 1.1.23;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -268,7 +457,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -276,13 +465,105 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.22;
+				MARKETING_VERSION = 1.1.23;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
+		};
+		94C25E1700357AA305D8DBF1 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
+				PRODUCT_NAME = CacaRadarWatchExtension;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		BCDFA856EFE2DF43A6FF1A0F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
+				MARKETING_VERSION = 1.1.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
+				PRODUCT_NAME = CacaRadarWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				VALIDATE_PRODUCT = YES;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Release;
+		};
+		CC72492B8410B9E2DAEDF619 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.1.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
+				PRODUCT_NAME = CacaRadarWatchExtension;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
+		};
+		FE3438D3F294C98AE8122503 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 25;
+				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
+				MARKETING_VERSION = 1.1.23;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
+				PRODUCT_NAME = CacaRadarWatch;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "watchos watchsimulator";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = 4;
+				WATCHOS_DEPLOYMENT_TARGET = 10.0;
+			};
+			name = Debug;
 		};
 /* End XCBuildConfiguration section */
 
@@ -301,6 +582,24 @@
 			buildConfigurations = (
 				2FAD9774203C412C000D30F8 /* Debug */,
 				2FAD9775203C412C000D30F8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		827025BD4967572047E5194F /* Build configuration list for PBXNativeTarget "CacaRadarWatchExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				94C25E1700357AA305D8DBF1 /* Release */,
+				CC72492B8410B9E2DAEDF619 /* Debug */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		974D294FF05F4C6A52E4EDE5 /* Build configuration list for PBXNativeTarget "CacaRadarWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BCDFA856EFE2DF43A6FF1A0F /* Release */,
+				FE3438D3F294C98AE8122503 /* Debug */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

@@ -163,11 +163,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.22;
+				MARKETING_VERSION = 1.1.23;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;
@@ -298,11 +298,11 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 24;
+				CURRENT_PROJECT_VERSION = 25;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.22;
+				MARKETING_VERSION = 1.1.23;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;

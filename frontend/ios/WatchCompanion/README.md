@@ -10,9 +10,10 @@ What it assumes:
 
 Current wiring:
 1. The iPhone app target already includes `WatchSessionCoordinator.swift`.
-2. A standalone watchOS Xcode project now lives at `WatchCompanion/WatchCompanion.xcodeproj`.
-3. The watch app uses these SwiftUI files directly from this folder.
-4. Test on a paired iPhone + Apple Watch with the main app logged in.
+2. The main iPhone Xcode project now embeds the watch companion and its watch extension for App Store / TestFlight archives.
+3. A standalone watchOS Xcode project still lives at `WatchCompanion/WatchCompanion.xcodeproj` as a local scaffold/reference.
+4. The watch app uses these SwiftUI files directly from this folder.
+5. Test on a paired iPhone + Apple Watch with the main app logged in.
 
 This first pass intentionally keeps the UI simple:
 - one primary button
