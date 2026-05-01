@@ -3506,6 +3506,7 @@ async def admin_dashboard(request: Request):
     now = datetime.now(timezone.utc)
     seven_days = (now - timedelta(days=7)).isoformat()
     thirty_days = (now - timedelta(days=30)).isoformat()
+    fresh_cutoff = (now - timedelta(hours=24)).isoformat()
 
     total_users = await db.users.count_documents({"role": "user"})
     premium_users = await db.users.count_documents({"role": "user", "subscription_active": True})
@@ -3516,6 +3517,9 @@ async def admin_dashboard(request: Request):
     reports_7d = await db.reports.count_documents({"created_at": {"$gte": seven_days}})
     reports_30d = await db.reports.count_documents({"created_at": {"$gte": thirty_days}})
     flagged_reports = await db.reports.count_documents({"flagged": True})
+    fresh_reports = await db.reports.count_documents({"created_at": {"$gte": fresh_cutoff}})
+    old_reports = await db.reports.count_documents({"created_at": {"$gte": seven_days, "$lt": fresh_cutoff}})
+    fossil_reports = await db.reports.count_documents({"created_at": {"$lt": seven_days}})
     new_users_7d = await db.users.count_documents({"role": "user", "created_at": {"$gte": seven_days}})
     new_users_30d = await db.users.count_documents({"role": "user", "created_at": {"$gte": thirty_days}})
 
@@ -3546,9 +3550,90 @@ async def admin_dashboard(request: Request):
             "flagged": flagged_reports,
             "last_7d": reports_7d,
             "last_30d": reports_30d,
+            "fresh": fresh_reports,
+            "old": old_reports,
+            "fossil": fossil_reports,
         },
         "generated_at": now.isoformat(),
     }
+
+
+@api_router.get("/admin/recent-reports")
+async def admin_recent_reports(request: Request, skip: int = 0, limit: int = 100):
+    """Recent reports with reporter identity for admin review."""
+    await _require_admin(request)
+    safe_limit = max(1, min(limit, 100))
+    safe_skip = max(0, skip)
+
+    reports = await db.reports.find(
+        {},
+        {
+            "_id": 0,
+            "id": 1,
+            "user_id": 1,
+            "contributor_name": 1,
+            "contributor_rank": 1,
+            "contributor_rank_key": 1,
+            "municipality": 1,
+            "province": 1,
+            "barrio": 1,
+            "category": 1,
+            "description": 1,
+            "created_at": 1,
+            "archived": 1,
+            "flagged": 1,
+            "photo_url": 1,
+            "latitude": 1,
+            "longitude": 1,
+        },
+    ).sort("created_at", -1).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
+
+    user_ids = []
+    for report in reports:
+        user_id = report.get("user_id")
+        if user_id and ObjectId.is_valid(str(user_id)):
+            normalized = str(user_id)
+            if normalized not in user_ids:
+                user_ids.append(normalized)
+
+    reporter_map = {}
+    if user_ids:
+        users = await db.users.find(
+            {"_id": {"$in": [ObjectId(uid) for uid in user_ids]}},
+            {"email": 1, "username": 1, "name": 1, "role": 1},
+        ).to_list(len(user_ids))
+        reporter_map = {
+            str(user["_id"]): {
+                "email": user.get("email", ""),
+                "username": user.get("username", ""),
+                "name": user.get("name", ""),
+                "role": user.get("role", "user"),
+            }
+            for user in users
+        }
+
+    serialized = []
+    for report in reports:
+        reporter = reporter_map.get(str(report.get("user_id")), {})
+        display_name = (
+            reporter.get("username")
+            or reporter.get("name")
+            or report.get("contributor_name")
+            or "Anónimo"
+        )
+        serialized.append({
+            **report,
+            "reporter": {
+                "display_name": display_name,
+                "email": reporter.get("email", ""),
+                "username": reporter.get("username", ""),
+                "name": reporter.get("name", ""),
+                "role": reporter.get("role", "user"),
+            },
+        })
+
+    total = await db.reports.count_documents({})
+    return {"reports": serialized, "total": total, "skip": safe_skip, "limit": safe_limit}
 
 @api_router.get("/admin/users")
 async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: str = ""):

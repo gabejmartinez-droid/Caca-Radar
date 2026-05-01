@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Globe, Smartphone, MonitorSmartphone } from "lucide-react";
+import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Globe, Smartphone, MonitorSmartphone, Clock3, Skull } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
@@ -64,6 +64,9 @@ export default function AdminDashboardPage() {
   const [userSearch, setUserSearch] = useState("");
   const [violations, setViolations] = useState([]);
   const [violationTotal, setViolationTotal] = useState(0);
+  const [recentReports, setRecentReports] = useState([]);
+  const [reportTotal, setReportTotal] = useState(0);
+  const [reportPage, setReportPage] = useState(0);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
@@ -97,6 +100,16 @@ export default function AdminDashboardPage() {
     } catch { toast.error("Error cargando violaciones"); }
   }, []);
 
+  const fetchRecentReports = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/recent-reports?skip=${reportPage * 100}&limit=100`, { withCredentials: true });
+      setRecentReports(data.reports);
+      setReportTotal(data.total);
+    } catch {
+      toast.error("Error cargando reportes recientes");
+    }
+  }, [reportPage]);
+
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
@@ -104,7 +117,8 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (tab === "users") fetchUsers();
     if (tab === "violations") fetchViolations();
-  }, [fetchUsers, fetchViolations, tab]);
+    if (tab === "reports") fetchRecentReports();
+  }, [fetchUsers, fetchViolations, fetchRecentReports, tab]);
 
   const handleModerate = async (reportId, action) => {
     try {
@@ -147,6 +161,7 @@ export default function AdminDashboardPage() {
       <div className="flex border-b border-[#8D99AE]/10 bg-white">
         {[
           { id: "overview", label: "Resumen", icon: TrendingUp },
+          { id: "reports", label: "Reportes", icon: FileText },
           { id: "users", label: "Usuarios", icon: Users },
           { id: "violations", label: "Violaciones", icon: AlertTriangle },
         ].map(({ id, label, icon: Icon }) => (
@@ -186,11 +201,73 @@ export default function AdminDashboardPage() {
 
             {/* Report Stats */}
             <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Reportes</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-2 gap-3 mb-3">
               <StatCard icon={FileText} label="Total" value={d.reports.total} />
               <StatCard icon={Eye} label="Activos" value={d.reports.active} color="#66BB6A" />
               <StatCard icon={AlertTriangle} label="Marcados" value={d.reports.flagged} color="#FF5252" />
               <StatCard icon={FileText} label="Últimos 7d" value={d.reports.last_7d} sub={`${d.reports.last_30d} en 30d`} color="#FFA726" />
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <StatCard icon={TrendingUp} label="Frescos" value={d.reports.fresh} sub="≤ 24h" color="#66BB6A" />
+              <StatCard icon={Clock3} label="Antiguos" value={d.reports.old} sub="1–7 días" color="#FFA726" />
+              <StatCard icon={Skull} label="Fósiles" value={d.reports.fossil} sub="> 7 días" color="#FF5252" />
+            </div>
+          </>
+        )}
+
+        {tab === "reports" && (
+          <>
+            <p className="text-xs text-[#8D99AE] mb-3">{reportTotal} reportes totales · 100 por página</p>
+            <div className="space-y-3">
+              {recentReports.map((report, i) => (
+                <div key={report.id || i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`recent-report-${i}`}>
+                  <div className="flex items-start justify-between gap-3 mb-2">
+                    <div className="min-w-0">
+                      <p className="font-bold text-[#2B2D42] truncate">{report.reporter?.display_name || report.contributor_name || "Anónimo"}</p>
+                      <p className="text-[11px] text-[#8D99AE] truncate">{report.reporter?.email || "Sin email"}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-[11px] font-bold text-[#2B2D42]">{formatDateTime(report.created_at)}</p>
+                      <p className="text-[10px] text-[#8D99AE]">{report.id?.slice(0, 8)}...</p>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#42A5F5]/10 text-[#42A5F5]">
+                      {report.reporter?.role || "user"}
+                    </span>
+                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#8D99AE]/10 text-[#8D99AE]">
+                      {report.municipality || "Sin municipio"}{report.barrio ? ` · ${report.barrio}` : ""}
+                    </span>
+                    {report.flagged && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-600">Marcado</span>
+                    )}
+                    {report.archived && (
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">Archivado</span>
+                    )}
+                  </div>
+                  <p className="text-xs text-[#2B2D42] mb-1">
+                    <span className="font-bold">Rango:</span> {report.contributor_rank || "Sin rango"}
+                  </p>
+                  <p className="text-xs text-[#2B2D42] mb-1">
+                    <span className="font-bold">Coords:</span> {typeof report.latitude === "number" ? report.latitude.toFixed(5) : "?"}, {typeof report.longitude === "number" ? report.longitude.toFixed(5) : "?"}
+                  </p>
+                  {report.description ? (
+                    <p className="text-xs text-[#8D99AE] line-clamp-3">{report.description}</p>
+                  ) : (
+                    <p className="text-xs text-[#8D99AE] italic">Sin descripción</p>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="flex justify-between items-center mt-4">
+              <Button size="sm" variant="outline" disabled={reportPage === 0} onClick={() => setReportPage(p => p - 1)} data-testid="reports-prev">
+                <ChevronLeft className="w-4 h-4" />
+              </Button>
+              <span className="text-xs text-[#8D99AE]">Pág {reportPage + 1} de {Math.max(1, Math.ceil(reportTotal / 100))}</span>
+              <Button size="sm" variant="outline" disabled={(reportPage + 1) * 100 >= reportTotal} onClick={() => setReportPage(p => p + 1)} data-testid="reports-next">
+                <ChevronRight className="w-4 h-4" />
+              </Button>
             </div>
           </>
         )}
