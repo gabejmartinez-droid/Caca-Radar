@@ -44,8 +44,8 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.25 (27)`
-- Android `1.1.27 (29)`
+- iOS `1.1.26 (28)`
+- Android `1.1.28 (30)`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
@@ -60,6 +60,7 @@ Changes:
   - moved the watch location usage string to the watch extension plist
   - replaced the invalid extension principal-class key with `WKExtensionDelegateClassName`
   - added the missing Series 4 long-look watch icons
+- Added an explicit bundled `AppIcon50x50@2x.png` watch resource and plist reference so the 44mm long-look icon is present in the final watch app bundle that App Store Connect validates.
 
 ### 2026-04-20 — Pending deploy after local validation
 
