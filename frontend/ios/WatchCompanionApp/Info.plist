@@ -8,6 +8,10 @@
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleDisplayName</key>
+	<string>Caca Radar</string>
+	<key>CFBundleIconName</key>
+	<string>WatchAppIcon</string>
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
@@ -20,7 +24,7 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>NSLocationWhenInUseUsageDescription</key>
 	<string>Caca Radar usa tu ubicacion actual para enviar un aviso rapido desde el reloj.</string>
-	<key>WKApplication</key>
+	<key>WKWatchKitApp</key>
 	<true/>
 	<key>WKCompanionAppBundleIdentifier</key>
 	<string>com.jefe.cacaradar</string>

@@ -44,13 +44,18 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.23 (25)`
-- Android `1.1.25 (27)`
+- iOS `1.1.24 (26)`
+- Android `1.1.26 (28)`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
 - Local iOS archive validation succeeded with the watch companion bundled.
 - Android version was bumped and the phone bundle was refreshed to keep mobile release tracking aligned.
+- Watch app metadata was corrected so App Store Connect can recognize it as a valid watch app bundle:
+  - proper `WKWatchKitApp` key
+  - required display names
+  - extension principal class
+  - watch icon asset catalog
 
 ### 2026-04-20 — Pending deploy after local validation
 
