@@ -1,0 +1,24 @@
+{
+	"appId": "com.jefe.cacaradar",
+	"appName": "Caca Radar",
+	"webDir": "build",
+	"bundledWebRuntime": false,
+	"server": {
+		"allowNavigation": [
+			"cacaradar.es",
+			"caca-radar.emergent.host",
+			"*.emergent.host"
+		]
+	},
+	"plugins": {
+		"CapacitorHttp": {
+			"enabled": true
+		},
+		"CapacitorCookies": {
+			"enabled": true
+		}
+	},
+	"packageClassList": [
+		"PushNotificationsPlugin"
+	]
+}
