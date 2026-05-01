@@ -87,10 +87,13 @@ async function subscribeWebPush(userLocation) {
     throw new Error("no_vapid_key");
   }
 
-  const subscription = await reg.pushManager.subscribe({
-    userVisibleOnly: true,
-    applicationServerKey: vapidData.vapid_public_key,
-  });
+  let subscription = await reg.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await reg.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: vapidData.vapid_public_key,
+    });
+  }
 
   await axios.post(
     `${API}/push/subscribe`,
@@ -98,6 +101,7 @@ async function subscribeWebPush(userLocation) {
       subscription: subscription.toJSON(),
       latitude: userLocation?.lat || null,
       longitude: userLocation?.lng || null,
+      radius_meters: userLocation?.radiusMeters || null,
     },
     { withCredentials: true }
   );
@@ -147,6 +151,7 @@ async function subscribeNativePush(userLocation) {
                 subscription: { token: token.value, platform: "native" },
                 latitude: userLocation?.lat || null,
                 longitude: userLocation?.lng || null,
+                radius_meters: userLocation?.radiusMeters || null,
               },
               { withCredentials: true }
             );

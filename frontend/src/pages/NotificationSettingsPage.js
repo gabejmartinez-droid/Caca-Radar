@@ -127,6 +127,30 @@ export default function NotificationSettingsPage() {
     throw lastError || new Error("saved_locations_unavailable");
   }, []);
 
+  const syncPushPreferences = useCallback(async ({ latitude, longitude, radius }) => {
+    try {
+      return await axios.put(
+        `${API}/push/preferences`,
+        {
+          latitude,
+          longitude,
+          radius_meters: radius,
+        },
+        { withCredentials: true }
+      );
+    } catch (err) {
+      if (err?.response?.status !== 404) {
+        throw err;
+      }
+
+      return subscribeToPush({
+        lat: latitude ?? alertLocation?.lat ?? null,
+        lng: longitude ?? alertLocation?.lng ?? null,
+        radiusMeters: radius ?? Number(radiusMeters || 500),
+      });
+    }
+  }, [alertLocation?.lat, alertLocation?.lng, radiusMeters]);
+
   const refreshState = useCallback(async () => {
     if (!user) {
       navigate("/login");
@@ -212,10 +236,11 @@ export default function NotificationSettingsPage() {
     if (!notificationsOn) return;
     setBusyAction("radius");
     try {
-      await axios.put(`${API}/push/preferences`, { radius_meters: Number(nextRadius) }, { withCredentials: true });
+      await syncPushPreferences({ radius: Number(nextRadius) });
       toast.success(copy.statusOn);
+      await refreshState();
     } catch (err) {
-      toast.error(err.response?.data?.detail || "Error");
+      toast.error(err.response?.data?.detail || t("mapUi.pushError"));
       await refreshState();
     } finally {
       setBusyAction("");
@@ -227,9 +252,9 @@ export default function NotificationSettingsPage() {
     try {
       const loc = await getFreshLocation();
       if (notificationsOn) {
-        await axios.put(`${API}/push/preferences`, { latitude: loc.lat, longitude: loc.lng }, { withCredentials: true });
+        await syncPushPreferences({ latitude: loc.lat, longitude: loc.lng });
       } else {
-        await subscribeToPush(loc);
+        await subscribeToPush({ ...loc, radiusMeters: Number(radiusMeters || 500) });
         setNotificationsOn(true);
       }
       setAlertLocation(loc);
@@ -239,7 +264,7 @@ export default function NotificationSettingsPage() {
       if (err.message === "permission_denied") {
         toast.error(t("profileUi.browserPermissionDenied"));
       } else {
-        toast.error(err.response?.data?.detail || err.message || "Error");
+        toast.error(err.response?.data?.detail || t("mapUi.pushError"));
       }
     } finally {
       setBusyAction("");
@@ -278,13 +303,9 @@ export default function NotificationSettingsPage() {
     setBusyAction(`apply-${loc.id || loc.name}`);
     try {
       if (notificationsOn) {
-        await axios.put(
-          `${API}/push/preferences`,
-          { latitude: loc.latitude, longitude: loc.longitude },
-          { withCredentials: true }
-        );
+        await syncPushPreferences({ latitude: loc.latitude, longitude: loc.longitude });
       } else {
-        await subscribeToPush({ lat: loc.latitude, lng: loc.longitude });
+        await subscribeToPush({ lat: loc.latitude, lng: loc.longitude, radiusMeters: Number(radiusMeters || 500) });
         setNotificationsOn(true);
       }
       toast.success(copy.currentLocation);
