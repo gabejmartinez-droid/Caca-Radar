@@ -14,31 +14,35 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
   };
 
   return (
-    <div className={`grid grid-cols-3 gap-2 ${className}`}>
+    <div className={`grid gap-2 [grid-template-columns:repeat(auto-fit,minmax(140px,1fr))] ${className}`}>
       <Button
         type="button"
         variant="outline"
-        className="rounded-xl border-[#1877F2]/25 text-[#1877F2] hover:bg-[#1877F2]/10"
+        className="min-w-0 h-auto rounded-xl border-[#1877F2]/25 px-3 py-3 text-sm font-semibold leading-tight text-[#1877F2] hover:bg-[#1877F2]/10 whitespace-normal"
         onClick={() => runShare((shareData) => openFacebookShare(shareData.url))}
         data-testid={`${prefix}-facebook`}
       >
-        <Facebook className="w-4 h-4 mr-1.5" />
-        Facebook
+        <span className="flex min-w-0 items-center justify-center gap-2 text-center">
+          <Facebook className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 break-words">Facebook</span>
+        </span>
       </Button>
       <Button
         type="button"
         variant="outline"
-        className="rounded-xl border-[#E4405F]/25 text-[#E4405F] hover:bg-[#E4405F]/10"
+        className="min-w-0 h-auto rounded-xl border-[#E4405F]/25 px-3 py-3 text-sm font-semibold leading-tight text-[#E4405F] hover:bg-[#E4405F]/10 whitespace-normal"
         onClick={() => runShare((shareData) => shareToInstagram({ ...shareData, onCopied }))}
         data-testid={`${prefix}-instagram`}
       >
-        <Instagram className="w-4 h-4 mr-1.5" />
-        Instagram
+        <span className="flex min-w-0 items-center justify-center gap-2 text-center">
+          <Instagram className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 break-words">Instagram</span>
+        </span>
       </Button>
       <Button
         type="button"
         variant="outline"
-        className="rounded-xl border-[#25D366]/25 text-[#25D366] hover:bg-[#25D366]/10"
+        className="min-w-0 h-auto rounded-xl border-[#25D366]/25 px-3 py-3 text-sm font-semibold leading-tight text-[#25D366] hover:bg-[#25D366]/10 whitespace-normal"
         onClick={() => runShare((shareData) => {
           if (navigator.share) {
             return shareWithNativeOrCopy({ ...shareData, onCopied, allowFiles: false });
@@ -47,8 +51,10 @@ function SocialShareButtons({ loadShareData, onError, onCopied, className = "", 
         })}
         data-testid={`${prefix}-whatsapp`}
       >
-        <MessageCircle className="w-4 h-4 mr-1.5" />
-        WhatsApp
+        <span className="flex min-w-0 items-center justify-center gap-2 text-center">
+          <MessageCircle className="h-4 w-4 shrink-0" />
+          <span className="min-w-0 break-words">WhatsApp</span>
+        </span>
       </Button>
     </div>
   );

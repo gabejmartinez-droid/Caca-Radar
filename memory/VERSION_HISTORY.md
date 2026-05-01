@@ -1155,3 +1155,41 @@ Notes:
 - Notification location fallback and settings updates
 ```
 
+### 2026-05-01 — Pending
+
+Release metadata:
+- Commit SHA: `eab1e9fc35c2794321c1eb41184cbe5709d048e4-dirty`
+- Deployment status: `pending`
+- Rollback target: `e7d1a098a5e14523c3b478e88cc395be70f27b0a`
+
+Exact versions:
+- Web: `1.1.20-web.1`
+- iOS: `1.1.20 (22)`
+- Android: `1.1.22 (24)`
+- Backend: `1.1.0-api.1`
+
+User-facing release notes:
+- Make social share buttons auto-fit under zoom.
+
+Internal release notes:
+- Make social share buttons auto-fit under zoom
+
+Store submission notes:
+```text
+- Make social share buttons auto-fit under zoom.
+```
+
+Internal release notes block:
+```text
+Commit SHA: eab1e9fc35c2794321c1eb41184cbe5709d048e4-dirty
+Deployment status: pending
+Rollback target: e7d1a098a5e14523c3b478e88cc395be70f27b0a
+Versions:
+• Web: `1.1.20-web.1`
+• iOS: `1.1.20 (22)`
+• Android: `1.1.22 (24)`
+• Backend: `1.1.0-api.1`
+Notes:
+- Make social share buttons auto-fit under zoom
+```
+
