@@ -3383,8 +3383,7 @@ async def get_weekly_leaderboard(request: Request):
 
 # ==================== SAVED LOCATIONS ====================
 
-@api_router.post("/users/saved-locations")
-async def save_location(data: SavedLocationCreate, request: Request):
+async def _save_location_impl(data: SavedLocationCreate, request: Request):
     user = await require_subscriber(request)
     loc = {
         "id": str(uuid.uuid4()),
@@ -3402,17 +3401,30 @@ async def save_location(data: SavedLocationCreate, request: Request):
     )
     return loc
 
-@api_router.get("/users/saved-locations")
-async def get_saved_locations(request: Request):
+@api_router.post("/users/saved-locations")
+@api_router.post("/push/saved-locations")
+async def save_location(data: SavedLocationCreate, request: Request):
+    return await _save_location_impl(data, request)
+
+async def _get_saved_locations_impl(request: Request):
     user = await require_subscriber(request)
     locs = await db.saved_locations.find({"user_id": user["_id"]}, {"_id": 0}).to_list(10)
     return locs
 
-@api_router.delete("/users/saved-locations/{name}")
-async def delete_saved_location(name: str, request: Request):
+@api_router.get("/users/saved-locations")
+@api_router.get("/push/saved-locations")
+async def get_saved_locations(request: Request):
+    return await _get_saved_locations_impl(request)
+
+async def _delete_saved_location_impl(name: str, request: Request):
     user = await require_subscriber(request)
     await db.saved_locations.delete_one({"user_id": user["_id"], "name": name})
     return {"message": "Ubicación eliminada"}
+
+@api_router.delete("/users/saved-locations/{name}")
+@api_router.delete("/push/saved-locations/{name}")
+async def delete_saved_location(name: str, request: Request):
+    return await _delete_saved_location_impl(name, request)
 
 # ==================== NEIGHBORHOOD CLEANLINESS ====================
 

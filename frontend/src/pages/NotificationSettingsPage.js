@@ -22,6 +22,8 @@ const RADIUS_OPTIONS = [
   { value: "2000", labelEs: "2 km", labelEn: "2 km" },
 ];
 
+const SAVED_LOCATION_BASES = ["/users/saved-locations", "/push/saved-locations"];
+
 export default function NotificationSettingsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -102,6 +104,29 @@ export default function NotificationSettingsPage() {
     });
   }, []);
 
+  const requestSavedLocations = useCallback(async (method, pathSuffix = "", payload = null) => {
+    let lastError = null;
+    for (const base of SAVED_LOCATION_BASES) {
+      try {
+        const config = {
+          method,
+          url: `${API}${base}${pathSuffix}`,
+          withCredentials: true,
+        };
+        if (payload != null) {
+          config.data = payload;
+        }
+        return await axios(config);
+      } catch (err) {
+        lastError = err;
+        if (err?.response?.status !== 404) {
+          throw err;
+        }
+      }
+    }
+    throw lastError || new Error("saved_locations_unavailable");
+  }, []);
+
   const refreshState = useCallback(async () => {
     if (!user) {
       navigate("/login");
@@ -125,7 +150,7 @@ export default function NotificationSettingsPage() {
       setPermissionState(permission);
 
       if (user.subscription_active) {
-        const { data } = await axios.get(`${API}/users/saved-locations`, { withCredentials: true });
+        const { data } = await requestSavedLocations("get");
         setSavedLocations(Array.isArray(data) ? data : []);
       } else {
         setSavedLocations([]);
@@ -139,7 +164,7 @@ export default function NotificationSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [navigate, user]);
+  }, [navigate, requestSavedLocations, user]);
 
   useEffect(() => {
     refreshState();
@@ -232,17 +257,13 @@ export default function NotificationSettingsPage() {
     }
     setBusyAction("save-location");
     try {
-      const loc = await getFreshLocation();
-      await axios.post(
-        `${API}/users/saved-locations`,
-        {
-          name: locationLabel.trim(),
-          label: locationLabel.trim(),
-          latitude: loc.lat,
-          longitude: loc.lng,
-        },
-        { withCredentials: true }
-      );
+      const loc = alertLocation || await getFreshLocation();
+      await requestSavedLocations("post", "", {
+        name: locationLabel.trim(),
+        label: locationLabel.trim(),
+        latitude: loc.lat,
+        longitude: loc.lng,
+      });
       setLocationLabel("");
       toast.success(copy.saveCurrent);
       await refreshState();
@@ -278,7 +299,7 @@ export default function NotificationSettingsPage() {
   const handleDeleteSavedLocation = async (loc) => {
     setBusyAction(`delete-${loc.id || loc.name}`);
     try {
-      await axios.delete(`${API}/users/saved-locations/${encodeURIComponent(loc.name)}`, { withCredentials: true });
+      await requestSavedLocations("delete", `/${encodeURIComponent(loc.name)}`);
       toast.success(copy.deleteLocation);
       await refreshState();
     } catch (err) {
@@ -392,7 +413,7 @@ export default function NotificationSettingsPage() {
         <div className="bg-white rounded-2xl shadow-sm p-6">
           <div className="flex items-center justify-between gap-3 mb-3">
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-start gap-2">
                 <Star className="w-5 h-5 text-[#FFA726]" />
                 <h2 className="font-bold text-[#2B2D42]">{copy.manageSaved}</h2>
               </div>
@@ -407,15 +428,22 @@ export default function NotificationSettingsPage() {
 
           {user.subscription_active ? (
             <>
-              <div className="flex gap-2 mb-4">
+              <div className="grid gap-3 mb-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">
+                <div className="min-w-0">
+                  <label className="block text-sm font-medium text-[#2B2D42] mb-2">
+                    {copy.savePlaceholder}
+                  </label>
                 <Input
                   value={locationLabel}
                   onChange={(e) => setLocationLabel(e.target.value)}
                   placeholder={copy.savePlaceholder}
-                  className="bg-[#F8F9FA] border-0 rounded-xl"
+                  className="bg-[#F8F9FA] border-0 rounded-xl h-12 text-base px-4"
+                  maxLength={40}
                 />
+                </div>
                 <Button onClick={handleSaveCurrentLocation} disabled={busyAction === "save-location"} className="rounded-xl bg-[#42A5F5] hover:bg-[#3793dc]">
-                  {busyAction === "save-location" ? <Loader2 className="w-4 h-4 animate-spin" /> : copy.saveCurrent}
+                  {busyAction === "save-location" ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  <span className="whitespace-normal text-center leading-tight">{copy.saveCurrent}</span>
                 </Button>
               </div>
 
