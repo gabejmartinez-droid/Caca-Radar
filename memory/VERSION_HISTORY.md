@@ -44,8 +44,8 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- iOS `1.1.26 (28)`
-- Android `1.1.28 (30)`
+- iOS `1.1.27 (29)`
+- Android `1.1.29 (31)`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
