@@ -18,6 +18,7 @@
 		<dict>
 			<key>CFBundleIconFiles</key>
 			<array>
+				<string>long-look-44mm@2x.png</string>
 				<string>AppIcon24x24@2x.png</string>
 				<string>AppIcon27.5x27.5@2x.png</string>
 				<string>AppIcon29x29@2x.png</string>
@@ -37,6 +38,7 @@
 	</dict>
 	<key>CFBundleIconFiles</key>
 	<array>
+		<string>long-look-44mm@2x.png</string>
 		<string>AppIcon24x24@2x.png</string>
 		<string>AppIcon27.5x27.5@2x.png</string>
 		<string>AppIcon29x29@2x.png</string>
