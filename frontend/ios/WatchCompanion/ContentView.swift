@@ -4,12 +4,16 @@ import SwiftUI
 enum WatchLocationError: LocalizedError {
     case permissionDenied
     case locationUnavailable
+    case timeout
 }
 
 final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
     private var waitingForAuthorization = false
+    private var timeoutTask: Task<Void, Never>?
+    private let staleLocationThreshold: TimeInterval = 90
+    private let requestTimeout: TimeInterval = 12
 
     override init() {
         super.init()
@@ -22,15 +26,65 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
         if status == .denied || status == .restricted {
             throw WatchLocationError.permissionDenied
         }
+        if !CLLocationManager.locationServicesEnabled() {
+            throw WatchLocationError.locationUnavailable
+        }
+        if let cachedLocation = currentUsableLocation() {
+            return cachedLocation.coordinate
+        }
 
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
+            self.startTimeout()
 
             if status == .notDetermined {
                 waitingForAuthorization = true
                 manager.requestWhenInUseAuthorization()
             } else {
-                manager.requestLocation()
+                startLocationAcquisition()
+            }
+        }
+    }
+
+    private func startLocationAcquisition() {
+        manager.startUpdatingLocation()
+        manager.requestLocation()
+    }
+
+    private func currentUsableLocation() -> CLLocation? {
+        guard let location = manager.location else { return nil }
+        guard location.horizontalAccuracy > 0 else { return nil }
+        guard abs(location.timestamp.timeIntervalSinceNow) <= staleLocationThreshold else { return nil }
+        return location
+    }
+
+    private func finish(with result: Result<CLLocationCoordinate2D, Error>) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        waitingForAuthorization = false
+        manager.stopUpdatingLocation()
+
+        guard let continuation else { return }
+        self.continuation = nil
+
+        switch result {
+        case .success(let coordinate):
+            continuation.resume(returning: coordinate)
+        case .failure(let error):
+            continuation.resume(throwing: error)
+        }
+    }
+
+    private func startTimeout() {
+        timeoutTask?.cancel()
+        timeoutTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(requestTimeout * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            if let cachedLocation = self.currentUsableLocation() {
+                self.finish(with: .success(cachedLocation.coordinate))
+            } else {
+                self.finish(with: .failure(WatchLocationError.timeout))
             }
         }
     }
@@ -40,30 +94,29 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
 
         switch manager.authorizationStatus {
         case .authorizedAlways, .authorizedWhenInUse:
-            waitingForAuthorization = false
-            manager.requestLocation()
+            startLocationAcquisition()
         case .denied, .restricted:
-            waitingForAuthorization = false
-            continuation?.resume(throwing: WatchLocationError.permissionDenied)
-            continuation = nil
+            finish(with: .failure(WatchLocationError.permissionDenied))
         default:
             break
         }
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
-        guard let location = locations.first else {
-            continuation?.resume(throwing: WatchLocationError.locationUnavailable)
-            continuation = nil
+        guard let location = locations.last(where: { $0.horizontalAccuracy > 0 }) ?? locations.last else {
+            finish(with: .failure(WatchLocationError.locationUnavailable))
             return
         }
-        continuation?.resume(returning: location.coordinate)
-        continuation = nil
+        finish(with: .success(location.coordinate))
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
-        continuation?.resume(throwing: error)
-        continuation = nil
+        let nsError = error as NSError
+        if nsError.domain == kCLErrorDomain,
+           nsError.code == CLError.locationUnknown.rawValue {
+            return
+        }
+        finish(with: .failure(error))
     }
 }
 
@@ -135,6 +188,8 @@ struct ContentView: View {
             }
         } catch WatchLocationError.permissionDenied {
             statusText = copy.text(.locationDenied)
+        } catch WatchLocationError.timeout {
+            statusText = copy.text(.locationUnavailable)
         } catch WatchLocationError.locationUnavailable {
             statusText = copy.text(.locationUnavailable)
         } catch {
