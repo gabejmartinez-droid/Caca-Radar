@@ -3399,7 +3399,14 @@ async def _save_location_impl(data: SavedLocationCreate, request: Request):
         {"$set": loc},
         upsert=True
     )
-    return loc
+    return {
+        "id": loc["id"],
+        "name": loc["name"],
+        "label": loc["label"],
+        "latitude": loc["latitude"],
+        "longitude": loc["longitude"],
+        "created_at": loc["created_at"],
+    }
 
 @api_router.post("/users/saved-locations")
 @api_router.post("/push/saved-locations")
@@ -3409,7 +3416,17 @@ async def save_location(data: SavedLocationCreate, request: Request):
 async def _get_saved_locations_impl(request: Request):
     user = await require_subscriber(request)
     locs = await db.saved_locations.find({"user_id": user["_id"]}, {"_id": 0}).to_list(10)
-    return locs
+    return [
+        {
+            "id": loc.get("id"),
+            "name": loc.get("name"),
+            "label": loc.get("label") or loc.get("name"),
+            "latitude": loc.get("latitude"),
+            "longitude": loc.get("longitude"),
+            "created_at": loc.get("created_at"),
+        }
+        for loc in locs
+    ]
 
 @api_router.get("/users/saved-locations")
 @api_router.get("/push/saved-locations")
