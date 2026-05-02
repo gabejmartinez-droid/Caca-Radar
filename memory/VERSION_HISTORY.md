@@ -44,6 +44,22 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.39-web.1`
+- iOS `1.1.53 (55)`
+- Android `1.1.56 (58)`
+- Backend `1.1.10-api.1`
+
+Changes:
+- Fixed the native startup auth race where the app could call `/auth/me` before bootstrapping native companion tokens, get a 401, and clear watch companion auth state back to false.
+- Native auth refresh now avoids wiping companion state when no refresh token exists yet, allowing the cookie-backed native bootstrap flow to complete first.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.38-web.1`
 - iOS `1.1.52 (54)`
 - Android `1.1.55 (57)`

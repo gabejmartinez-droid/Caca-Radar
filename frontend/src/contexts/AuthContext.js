@@ -42,6 +42,7 @@ axios.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
+    const nativeRefreshToken = isCapacitorNative() ? getRefreshToken() : null;
     if (
       error.response?.status === 401 &&
       !original._retry &&
@@ -64,8 +65,11 @@ axios.interceptors.response.use(
       isRefreshing = true;
       try {
         const refreshPayload = isCapacitorNative()
-          ? { refresh_token: getRefreshToken() }
+          ? { refresh_token: nativeRefreshToken }
           : {};
+        if (isCapacitorNative() && !nativeRefreshToken) {
+          throw error;
+        }
         const { data } = await axios.post(`${API}/auth/refresh`, refreshPayload, {
           withCredentials: !isCapacitorNative(),
         });
@@ -119,12 +123,12 @@ export function AuthProvider({ children }) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const { data } = await axios.get(`${API}/auth/me`, {
-        withCredentials: !isCapacitorNative(),
-      });
       if (isCapacitorNative()) {
         await ensureNativeSessionTokens();
       }
+      const { data } = await axios.get(`${API}/auth/me`, {
+        withCredentials: !isCapacitorNative(),
+      });
       syncUserLanguage(data);
       setUser(data);
       return data;
