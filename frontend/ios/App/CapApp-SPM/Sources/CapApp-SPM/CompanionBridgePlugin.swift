@@ -166,7 +166,12 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     }
 
     @objc func getAuthState(_ call: CAPPluginCall) {
-        call.resolve(JSObject(dictionary: CompanionBridgeStorage.currentAuthState()))
+        let authState = CompanionBridgeStorage.currentAuthState()
+        var payload = JSObject()
+        payload["accessToken"] = authState["accessToken"] ?? ""
+        payload["refreshToken"] = authState["refreshToken"] ?? ""
+        payload["apiBaseUrl"] = authState["apiBaseUrl"] ?? ""
+        call.resolve(payload)
     }
 
     @objc func syncPreferences(_ call: CAPPluginCall) {

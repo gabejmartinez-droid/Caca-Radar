@@ -44,6 +44,21 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.30-web.1`
+- iOS `1.1.44 (46)`
+- Android `1.1.47 (49)`
+
+Changes:
+- Fixed the Capacitor iOS companion bridge compile error by replacing the invalid `JSObject(dictionary:)` initializer with explicit `JSObject` payload construction for `getAuthState`.
+- Rebuilt the shared mobile bundle and refreshed mobile versions so the next iOS/Xcode Cloud and Android artifacts clearly include this companion-bridge fix.
+
+Verification:
+- `yarn build:mobile:raw` passed after the fix.
+- Android release bundle was rebuilt on the updated versions.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.29-web.1`
 - iOS `1.1.43 (45)`
 - Android `1.1.46 (48)`
