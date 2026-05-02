@@ -537,15 +537,21 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
 
 
-def should_return_body_tokens(request: Request) -> bool:
+def is_explicit_native_app_request(request: Request) -> bool:
     context = get_request_context(request)
     platform = normalize_login_platform(request)
     origin = (context.get("origin") or "").strip().lower()
     referer = (context.get("referer") or "").strip().lower()
     native_app = (context.get("native_app") or "").strip().lower()
     native_origin = origin.startswith("capacitor://") or origin.startswith("ionic://") or not origin
-    web_referer = "cacaradar.es" in referer or "emergent.host" in referer or "localhost" in referer
+    web_referer = (
+        referer.startswith("http://") or referer.startswith("https://")
+    ) and ("cacaradar.es" in referer or "emergent.host" in referer or "localhost" in referer)
     return platform in {"ios", "android", "native"} and native_origin and not web_referer and native_app == "1"
+
+
+def should_return_body_tokens(request: Request) -> bool:
+    return is_explicit_native_app_request(request)
 
 
 def issue_auth_session(user: dict, request: Request, response: Response) -> tuple[str, str]:
@@ -1373,6 +1379,20 @@ async def get_me(request: Request):
     user["needs_username"] = not bool(user.get("username"))
     user["geo_review_exempt"] = user.get("geo_review_exempt", False)
     return user
+
+@api_router.post("/auth/native/session-tokens")
+async def issue_native_session_tokens(request: Request):
+    if not is_explicit_native_app_request(request):
+        raise HTTPException(status_code=403, detail="Native app request required")
+    user = await get_current_user(request)
+    if not user:
+        raise HTTPException(status_code=401, detail="No autenticado")
+    access_token = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
+    refresh_token = create_refresh_token(str(user["_id"]))
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+    }
 
 @api_router.post("/auth/refresh")
 async def refresh_token_endpoint(request: Request, response: Response):

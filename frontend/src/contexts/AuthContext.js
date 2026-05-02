@@ -24,8 +24,11 @@ axios.interceptors.request.use(async (config) => {
     }
     config.headers["X-Platform"] = getCurrentPlatform();
     config.headers["X-Native-App"] = "1";
-    // Don't send cookies on native (they won't work due to proxy CORS)
-    config.withCredentials = false;
+    // Default to token-based native requests, but allow explicit cookie-backed
+    // bootstrap calls to opt in.
+    if (typeof config.withCredentials === "undefined") {
+      config.withCredentials = false;
+    }
   } else {
     config.headers["X-Platform"] = "web";
   }
@@ -89,6 +92,25 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  const ensureNativeSessionTokens = useCallback(async () => {
+    if (!isCapacitorNative()) return;
+    if (getAccessToken() && getRefreshToken()) return;
+    const { data } = await axios.post(
+      `${API}/auth/native/session-tokens`,
+      {},
+      {
+        withCredentials: true,
+        headers: {
+          "X-Platform": getCurrentPlatform(),
+          "X-Native-App": "1",
+        },
+      },
+    );
+    if (data?.access_token && data?.refresh_token) {
+      await setTokens(data.access_token, data.refresh_token);
+    }
+  }, []);
+
   const syncUserLanguage = useCallback((data) => {
     if (data?.preferred_language) {
       applyLanguagePreference(data.preferred_language);
@@ -100,6 +122,9 @@ export function AuthProvider({ children }) {
       const { data } = await axios.get(`${API}/auth/me`, {
         withCredentials: !isCapacitorNative(),
       });
+      if (isCapacitorNative()) {
+        await ensureNativeSessionTokens();
+      }
       syncUserLanguage(data);
       setUser(data);
       return data;
@@ -109,7 +134,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [syncUserLanguage]);
+  }, [ensureNativeSessionTokens, syncUserLanguage]);
 
   useEffect(() => {
     let cancelled = false;

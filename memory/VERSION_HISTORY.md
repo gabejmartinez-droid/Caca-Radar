@@ -44,6 +44,23 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.37-web.1`
+- iOS `1.1.51 (53)`
+- Android `1.1.54 (56)`
+- Backend `1.1.9-api.1`
+
+Changes:
+- Fixed native session token bootstrap so a logged-in Capacitor app can rehydrate companion tokens from its existing authenticated session instead of requiring a fresh manual login before the watch can report.
+- Relaxed the native body-token heuristic for Capacitor webview requests so native login/registration responses can return tokens again even when the referer contains the app’s local host.
+
+Verification:
+- Backend compile will be re-run after the change.
+- Mobile bundle will be rebuilt and re-synced after the change.
+- Android release bundle will be rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.36-web.1`
 - iOS `1.1.50 (52)`
 - Android `1.1.53 (55)`
