@@ -301,7 +301,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     )
                     Button(
                         onClick = { submitQuickReport() },
-                        enabled = !isSubmitting && phoneAvailable && authenticated,
+                        enabled = !isSubmitting && phoneAvailable,
                     ) {
                         Text(
                             if (isSubmitting) wearStrings(uiLanguage).text(WatchStringKey.SENDING)
@@ -436,7 +436,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     private fun strings(): WearStrings = wearStrings(preferredLanguage)
 
     private fun idleStatus(language: String, authenticated: Boolean, phoneAvailable: Boolean): String = when {
-        authenticated && phoneAvailable -> wearStrings(language).text(WatchStringKey.TAP_TO_REPORT)
+        phoneAvailable -> wearStrings(language).text(WatchStringKey.TAP_TO_REPORT)
         !authenticated -> wearStrings(language).text(WatchStringKey.MISSING_ACCESS_TOKEN)
         else -> wearStrings(language).text(WatchStringKey.PHONE_UNAVAILABLE)
     }

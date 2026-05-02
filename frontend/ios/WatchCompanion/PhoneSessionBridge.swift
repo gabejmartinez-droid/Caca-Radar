@@ -280,7 +280,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     var canSubmitReport: Bool {
-        hasSyncedAuthContext || (reachable && authenticated)
+        hasSyncedAuthContext || reachable
     }
 
     func activate() {

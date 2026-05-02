@@ -247,6 +247,9 @@ struct ContentView: View {
         if bridge.canSubmitReport {
             return copy.text(.tapToReport)
         }
-        return bridge.authenticated ? copy.text(.phoneUnavailable) : copy.text(.missingAccessToken)
+        if bridge.authenticated {
+            return copy.text(.phoneUnavailable)
+        }
+        return bridge.reachable ? copy.text(.tapToReport) : copy.text(.missingAccessToken)
     }
 }

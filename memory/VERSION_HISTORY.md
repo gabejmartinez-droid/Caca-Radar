@@ -44,6 +44,21 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.34-web.1`
+- iOS `1.1.48 (50)`
+- Android `1.1.51 (53)`
+
+Changes:
+- Stopped gating Apple Watch and Wear OS quick reports on a potentially stale “authenticated” companion flag when the paired phone is reachable.
+- Both watch UIs now allow report attempts whenever the phone bridge is reachable, so the real relay/direct report logic can run instead of the watch disabling the action prematurely.
+
+Verification:
+- Mobile bundle will be rebuilt and re-synced after the change.
+- Android release bundle will be rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.33-web.1`
 - iOS `1.1.47 (49)`
 - Android `1.1.50 (52)`
