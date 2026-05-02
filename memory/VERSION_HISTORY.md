@@ -44,6 +44,16 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Backend `1.1.7-api.1`
+
+Changes:
+- Removed hardcoded fallback seed passwords for admin, demo municipality, and App Review startup accounts so GitGuardian no longer sees a checked-in company email password in source.
+- Production seeding now requires those credentials to come from environment variables instead of silently inheriting checked-in defaults.
+- Non-production seeding now generates random credentials at startup when explicit passwords are not supplied, preserving local convenience without baking secrets into the repository.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.27-web.1`
 - iOS `1.1.41 (43)`
 - Android `1.1.44 (46)`

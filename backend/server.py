@@ -5,6 +5,7 @@ from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File
 from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 from bson import ObjectId
 import os
+import secrets
 import subprocess
 import logging
 import uuid
@@ -4623,8 +4624,8 @@ def credentials_report_enabled() -> bool:
     return not is_production_env() and env_flag("WRITE_STARTUP_CREDENTIAL_REPORT")
 
 
-def using_fallback_credential(env_name: str, fallback_value: str) -> bool:
-    return os.environ.get(env_name) in (None, "", fallback_value)
+def generated_seed_password(label: str) -> str:
+    return f"{label}-{secrets.token_urlsafe(18)}"
 
 
 async def seed_users():
@@ -4634,24 +4635,30 @@ async def seed_users():
         return None
 
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
-    admin_password = os.environ.get("ADMIN_PASSWORD", "Cacaradar123$")
+    admin_password = os.environ.get("ADMIN_PASSWORD") or (
+        generated_seed_password("admin") if not is_production_env() else None
+    )
     demo_muni_email = os.environ.get("DEMO_MUNI_EMAIL", "madrid@cacaradar.es")
-    demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD", "madrid123")
+    demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD") or (
+        generated_seed_password("municipality") if not is_production_env() else None
+    )
     review_email = os.environ.get("APP_REVIEW_EMAIL", "appletest@cacaradar.es").lower()
-    review_password = os.environ.get("APP_REVIEW_PASSWORD", "appletest123")
+    review_password = os.environ.get("APP_REVIEW_PASSWORD") or (
+        generated_seed_password("app-review") if not is_production_env() else None
+    )
 
     if is_production_env():
-        insecure_defaults = []
-        if using_fallback_credential("ADMIN_PASSWORD", "Cacaradar123$"):
-            insecure_defaults.append("ADMIN_PASSWORD")
-        if using_fallback_credential("DEMO_MUNI_PASSWORD", "madrid123"):
-            insecure_defaults.append("DEMO_MUNI_PASSWORD")
-        if using_fallback_credential("APP_REVIEW_PASSWORD", "appletest123"):
-            insecure_defaults.append("APP_REVIEW_PASSWORD")
-        if insecure_defaults:
+        missing_credentials = []
+        if not admin_password:
+            missing_credentials.append("ADMIN_PASSWORD")
+        if not demo_muni_password:
+            missing_credentials.append("DEMO_MUNI_PASSWORD")
+        if not review_password:
+            missing_credentials.append("APP_REVIEW_PASSWORD")
+        if missing_credentials:
             raise RuntimeError(
                 "FATAL: startup seeding is enabled in production but secure credentials were not provided for: "
-                + ", ".join(insecure_defaults)
+                + ", ".join(missing_credentials)
             )
 
     existing = await db.users.find_one({"email": admin_email})
