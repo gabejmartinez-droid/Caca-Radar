@@ -241,6 +241,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     @Published var reachable = false
     @Published var preferredLanguage = PhoneSessionBridge.defaultLanguage()
     @Published var authenticated = PhoneSessionBridge.defaultAuthenticated()
+    @Published var runtimeDebug = "idle"
 
     private static let preferredLanguageKey = "watch_preferred_language"
     private static let authenticatedKey = "watch_authenticated"
@@ -359,6 +360,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         session.delegate = self
         session.activate()
         reachable = session.isReachable
+        updateDebug("activate reachable=\(session.isReachable)")
         if let preferredLanguage = session.receivedApplicationContext["preferredLanguage"] as? String {
             updatePreferredLanguage(preferredLanguage)
         }
@@ -369,18 +371,23 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     func sendQuickReport(latitude: Double, longitude: Double) async throws -> QuickReportReply {
         let phoneReachable = WCSession.default.isReachable
+        updateDebug("start reachable=\(phoneReachable) synced=\(hasSyncedAuthContext)")
 
         if phoneReachable {
             await refreshCompanionContext()
+            updateDebug("context refreshed synced=\(hasSyncedAuthContext)")
         }
 
         if hasSyncedAuthContext {
             do {
+                updateDebug("path=direct")
                 return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
             } catch {
                 let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
+                updateDebug("direct error=\(appErrorCode ?? "unknown")")
                 if phoneReachable,
                    appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" || appErrorCode == "restricted_account" {
+                    updateDebug("fallback=phone_relay reason=\(appErrorCode ?? "unknown")")
                     return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
                 }
                 throw error
@@ -388,9 +395,11 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
 
         if phoneReachable {
+            updateDebug("path=phone_relay_only")
             return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
         }
 
+        updateDebug("error=phone_unavailable")
         throw NSError(
             domain: "PhoneSessionBridge",
             code: 1,
@@ -420,8 +429,10 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             await MainActor.run {
                 self.apply(applicationContext: response)
             }
+            updateDebug("context ok auth=\(authenticated) synced=\(hasSyncedAuthContext)")
             return hasSyncedAuthContext || authenticated
         } catch {
+            updateDebug("context error")
             return hasSyncedAuthContext || authenticated
         }
     }
@@ -452,6 +463,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
             group.addTask {
                 try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+                self.updateDebug("timeout action=\(message["action"] as? String ?? "unknown")")
                 throw NSError(
                     domain: "PhoneSessionBridge",
                     code: 408,
@@ -469,6 +481,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     private func sendQuickReportViaPhone(latitude: Double, longitude: Double) async throws -> QuickReportReply {
+        updateDebug("relay send")
         let reply = try await sendMessageWithTimeout(
             [
                 "action": "quick_report",
@@ -478,6 +491,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         ) { response in
             let success = response["ok"] as? Bool ?? false
             if success {
+                self.updateDebug("relay ok")
                 return QuickReportReply(
                     ok: true,
                     reportId: response["reportId"] as? String ?? "",
@@ -487,6 +501,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             }
             let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
             let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+            self.updateDebug("relay error=\(errorCode)")
             throw NSError(
                 domain: "PhoneSessionBridge",
                 code: 2,
@@ -502,6 +517,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     func sendQuickReportUsingPhoneLocation() async throws -> QuickReportReply {
         guard WCSession.default.isReachable else {
+            updateDebug("phone_location error=phone_unavailable")
             throw NSError(
                 domain: "PhoneSessionBridge",
                 code: 1,
@@ -512,11 +528,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             )
         }
 
+        updateDebug("phone_location relay")
         let reply = try await sendMessageWithTimeout(
             ["action": "quick_report_phone_location"]
         ) { response in
             let success = response["ok"] as? Bool ?? false
             if success {
+                self.updateDebug("phone_location ok")
                 return QuickReportReply(
                     ok: true,
                     reportId: response["reportId"] as? String ?? "",
@@ -526,6 +544,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             }
             let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
             let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+            self.updateDebug("phone_location error=\(errorCode)")
             throw NSError(
                 domain: "PhoneSessionBridge",
                 code: 2,
@@ -555,6 +574,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
         func refreshedAccessToken() async throws -> String {
             guard let refreshToken = storedRefreshToken else {
+                updateDebug("direct refresh missing_refresh")
                 throw NSError(
                     domain: "PhoneSessionBridge",
                     code: 401,
@@ -564,6 +584,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
                     ]
                 )
             }
+            updateDebug("direct refresh start")
             return try await refreshAccessToken(apiBase: apiBase, refreshToken: refreshToken)
         }
 
@@ -604,9 +625,12 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
 
         var (data, http) = try await performRequest(with: initialToken)
+        updateDebug("direct status=\(http.statusCode)")
         if http.statusCode == 401, storedRefreshToken != nil {
             let refreshedToken = try await refreshedAccessToken()
+            updateDebug("direct refreshed retry")
             (data, http) = try await performRequest(with: refreshedToken)
+            updateDebug("direct retry status=\(http.statusCode)")
         }
 
         guard (200...299).contains(http.statusCode) else {
@@ -634,6 +658,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
 
         let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        updateDebug("direct ok")
         return QuickReportReply(
             ok: true,
             reportId: payload["id"] as? String ?? "",
@@ -679,6 +704,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
               let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let accessToken = payload["access_token"] as? String,
               !accessToken.isEmpty else {
+            updateDebug("refresh error status=\(http.statusCode)")
             throw NSError(
                 domain: "PhoneSessionBridge",
                 code: http.statusCode,
@@ -691,6 +717,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
         WatchSecureStorage.write(accessToken, service: WatchSecureStorage.accessService)
         WatchSecureStorage.write(refreshToken, service: WatchSecureStorage.refreshService)
+        updateDebug("refresh ok")
         return accessToken
     }
 
@@ -724,11 +751,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     func session(_ session: WCSession, activationDidCompleteWith activationState: WCSessionActivationState, error: Error?) {
         reachable = session.isReachable
+        updateDebug("activation state=\(activationState.rawValue) reachable=\(session.isReachable)")
         apply(applicationContext: session.receivedApplicationContext)
     }
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         reachable = session.isReachable
+        updateDebug("reachability=\(session.isReachable)")
         if session.isReachable {
             Task { await refreshCompanionContext() }
         }
@@ -746,6 +775,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     private func apply(applicationContext: [String: Any]) {
+        var authStateForDebug = authenticated
         if let preferredLanguage = applicationContext["preferredLanguage"] as? String {
             updatePreferredLanguage(preferredLanguage)
         }
@@ -760,6 +790,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
         if let authenticated = applicationContext["authenticated"] as? Bool {
             self.authenticated = authenticated
+            authStateForDebug = authenticated
             UserDefaults.standard.set(authenticated, forKey: Self.authenticatedKey)
             if !authenticated {
                 WatchSecureStorage.clear(service: WatchSecureStorage.accessService)
@@ -768,6 +799,14 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             }
         } else {
             self.authenticated = hasSyncedAuthContext
+            authStateForDebug = self.authenticated
+        }
+        updateDebug("apply auth=\(authStateForDebug) synced=\(hasSyncedAuthContext)")
+    }
+
+    private func updateDebug(_ message: String) {
+        DispatchQueue.main.async {
+            self.runtimeDebug = message
         }
     }
 }

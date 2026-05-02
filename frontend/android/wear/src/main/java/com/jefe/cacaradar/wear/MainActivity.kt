@@ -242,6 +242,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     private var authUpdater: ((Boolean) -> Unit)? = null
     private var phoneAvailabilityUpdater: ((Boolean) -> Unit)? = null
     private var submittingUpdater: ((Boolean) -> Unit)? = null
+    private var debugUpdater: ((String) -> Unit)? = null
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
             submitQuickReport()
@@ -258,10 +259,12 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         setContent {
             var uiLanguage by remember { mutableStateOf(preferredLanguage) }
             var status by remember { mutableStateOf(idleStatus(uiLanguage, false, false)) }
+            var debugStatus by remember { mutableStateOf("idle") }
             var authenticated by remember { mutableStateOf(false) }
             var phoneAvailable by remember { mutableStateOf(false) }
             var isSubmitting by remember { mutableStateOf(false) }
             statusUpdater = { status = it }
+            debugUpdater = { debugStatus = it }
             languageUpdater = { nextLanguage ->
                 uiLanguage = nextLanguage
                 if (!isSubmitting) {
@@ -298,6 +301,14 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
+                    )
+                    Text(
+                        debugStatus,
+                        textAlign = TextAlign.Center,
+                        maxLines = 6,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
                     )
                     Button(
                         onClick = { submitQuickReport() },
@@ -338,6 +349,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 val errorDetail = json.optString("errorDetail", errorCode)
                 runOnUiThread {
                     submittingUpdater?.invoke(false)
+                    debugUpdater?.invoke(
+                        if (ok) "result ok converted=$converted"
+                        else "result error=$errorCode detail=$errorDetail"
+                    )
                     statusUpdater?.invoke(
                         if (ok) {
                             if (converted) strings().text(WatchStringKey.REPORT_CONFIRMED).format(municipality)
@@ -357,6 +372,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 val authenticated = json.optBoolean("authenticated", false)
                 preferredLanguage = nextLanguage
                 runOnUiThread {
+                    debugUpdater?.invoke("settings auth=$authenticated lang=$nextLanguage")
                     phoneAvailabilityUpdater?.invoke(true)
                     authUpdater?.invoke(authenticated)
                     languageUpdater?.invoke(nextLanguage)
@@ -374,21 +390,26 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         lifecycleScope.launch {
             submittingUpdater?.invoke(true)
             statusUpdater?.invoke(strings().text(WatchStringKey.WAITING_FOR_LOCATION))
+            debugUpdater?.invoke("start report")
             try {
                 val location = getCurrentLocation() ?: run {
                     submittingUpdater?.invoke(false)
+                    debugUpdater?.invoke("location unavailable")
                     statusUpdater?.invoke(strings().text(WatchStringKey.LOCATION_UNAVAILABLE))
                     return@launch
                 }
                 statusUpdater?.invoke(strings().text(WatchStringKey.WAITING_FOR_PHONE))
+                debugUpdater?.invoke("location ok")
                 val nodes = Tasks.await(Wearable.getNodeClient(this@MainActivity).connectedNodes, 10, TimeUnit.SECONDS)
                 if (nodes.isEmpty()) {
                     submittingUpdater?.invoke(false)
                     phoneAvailabilityUpdater?.invoke(false)
+                    debugUpdater?.invoke("phone unavailable")
                     statusUpdater?.invoke(strings().text(WatchStringKey.PHONE_UNAVAILABLE))
                     return@launch
                 }
                 phoneAvailabilityUpdater?.invoke(true)
+                debugUpdater?.invoke("relay send nodes=${nodes.size}")
                 val payload = JSONObject()
                     .put("latitude", location.latitude)
                     .put("longitude", location.longitude)
@@ -400,6 +421,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 statusUpdater?.invoke(strings().text(WatchStringKey.SENDING))
             } catch (exception: Exception) {
                 submittingUpdater?.invoke(false)
+                debugUpdater?.invoke("exception=${exception.javaClass.simpleName}")
                 statusUpdater?.invoke(localizeError("quick_report_failed", exception.message))
             }
         }
@@ -411,6 +433,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 val nodes = Tasks.await(Wearable.getNodeClient(this@MainActivity).connectedNodes, 10, TimeUnit.SECONDS)
                 if (nodes.isEmpty()) {
                     runOnUiThread {
+                        debugUpdater?.invoke("settings phone unavailable")
                         phoneAvailabilityUpdater?.invoke(false)
                         authUpdater?.invoke(false)
                     }
@@ -424,8 +447,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         TimeUnit.SECONDS,
                     )
                 }
+                runOnUiThread { debugUpdater?.invoke("settings requested nodes=${nodes.size}") }
             } catch (_: Exception) {
                 runOnUiThread {
+                    debugUpdater?.invoke("settings request failed")
                     phoneAvailabilityUpdater?.invoke(false)
                     authUpdater?.invoke(false)
                 }

@@ -44,6 +44,21 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.36-web.1`
+- iOS `1.1.50 (52)`
+- Android `1.1.53 (55)`
+
+Changes:
+- Added explicit runtime diagnostics to the Apple Watch screen so it now exposes the active quick-report branch and failure state, including direct token path, refresh, phone relay fallback, timeout, and returned error-code breadcrumbs.
+- Mirrored a comparable debug-status line on Wear OS so Android watch behavior is inspectable too.
+
+Verification:
+- Mobile bundle will be rebuilt and re-synced after the change.
+- Android release bundle will be rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.35-web.1`
 - iOS `1.1.49 (51)`
 - Android `1.1.52 (54)`

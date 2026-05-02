@@ -149,6 +149,15 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity)
                 .foregroundStyle(.white.opacity(0.85))
 
+            Text(bridge.runtimeDebug)
+                .font(.system(size: 10, design: .monospaced))
+                .multilineTextAlignment(.center)
+                .lineLimit(6)
+                .minimumScaleFactor(0.65)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
+                .foregroundStyle(.yellow.opacity(0.9))
+
             Button {
                 Task { await submitQuickReport() }
             } label: {
