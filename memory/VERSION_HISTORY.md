@@ -44,6 +44,22 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.31-web.1`
+- iOS `1.1.45 (47)`
+- Android `1.1.48 (50)`
+
+Changes:
+- Restored a direct Apple Watch quick-report fallback using a synced short-lived access token and API base URL from the iPhone, while still keeping the refresh token off the watch.
+- The watch now enables reporting when it has a valid synced auth context, instead of requiring the iPhone relay to be actively reachable for every report tap.
+- If the phone relay is available, the watch still prefers that path first; direct watch submission is the fallback for the unreachable/too-brittle cases that were leaving the report button gray.
+
+Verification:
+- Mobile bundle rebuilt and re-synced into embedded iOS/Android web assets.
+- Android release bundle rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.30-web.1`
 - iOS `1.1.44 (46)`
 - Android `1.1.47 (49)`

@@ -74,12 +74,20 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
     private func currentCompanionContext() -> [String: Any] {
         let preferredLanguage = CompanionBridgeStorage.readPreferredLanguage() ?? "es"
-        let hasAccessToken = !(CompanionBridgeStorage.readAccessToken() ?? "").isEmpty
+        let accessToken = CompanionBridgeStorage.readAccessToken() ?? ""
         let hasRefreshToken = !(CompanionBridgeStorage.readRefreshToken() ?? "").isEmpty
-        return [
+        let apiBaseUrl = CompanionBridgeStorage.readApiBaseUrl() ?? ""
+        var context: [String: Any] = [
             "preferredLanguage": preferredLanguage,
-            "authenticated": hasAccessToken || hasRefreshToken,
+            "authenticated": !accessToken.isEmpty || hasRefreshToken,
         ]
+        if !accessToken.isEmpty {
+            context["accessToken"] = accessToken
+        }
+        if !apiBaseUrl.isEmpty {
+            context["apiBaseUrl"] = apiBaseUrl
+        }
+        return context
     }
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
