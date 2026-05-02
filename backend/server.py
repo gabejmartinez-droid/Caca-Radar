@@ -2306,6 +2306,16 @@ async def get_my_validation(report_id: str, request: Request):
     val = await db.validations.find_one({"report_id": report_id, "user_id": user_id}, {"_id": 0})
     return {"validation": val}
 
+@api_router.get("/reports/{report_id}/my-report-vote")
+async def get_my_report_vote(report_id: str, request: Request):
+    user = await get_current_user(request)
+    anon_id = request.cookies.get("anon_id")
+    user_id = user["_id"] if user else anon_id
+    if not user_id:
+        return {"vote": None}
+    vote = await db.report_votes.find_one({"report_id": report_id, "user_id": user_id}, {"_id": 0})
+    return {"vote": vote}
+
 # ==================== UPVOTE / DOWNVOTE ====================
 
 @api_router.post("/reports/{report_id}/upvote")

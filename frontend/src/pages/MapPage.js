@@ -153,6 +153,7 @@ export default function MapPage() {
   const [photoFile, setPhotoFile] = useState(null);
   const [photoPreview, setPhotoPreview] = useState(null);
   const [myVote, setMyVote] = useState(null);
+  const [myReportVote, setMyReportVote] = useState(null);
   const [selectedFlagReason, setSelectedFlagReason] = useState(null);
   const [myValidation, setMyValidation] = useState(null);
   const [description, setDescription] = useState("");
@@ -292,6 +293,38 @@ export default function MapPage() {
     return t(fallbackKey);
   }, [t, tf]);
 
+  const closeDetailsDrawer = useCallback(() => {
+    setShowDetailsDrawer(false);
+    setSelectedReport(null);
+    setMyVote(null);
+    setMyReportVote(null);
+    setMyValidation(null);
+  }, []);
+
+  const loadSelectedReportContext = useCallback(async (reportId) => {
+    const myReportVoteRequest = axios
+      .get(`${API}/reports/${reportId}/my-report-vote`, { withCredentials: true })
+      .catch((error) => {
+        if (error?.response?.status === 404) {
+          return { data: { vote: null } };
+        }
+        throw error;
+      });
+
+    const [detailRes, voteRes, valRes, reportVoteRes] = await Promise.all([
+      axios.get(`${API}/reports/${reportId}`, { withCredentials: true }),
+      axios.get(`${API}/reports/${reportId}/my-vote`, { withCredentials: true }),
+      axios.get(`${API}/reports/${reportId}/my-validation`, { withCredentials: true }),
+      myReportVoteRequest,
+    ]);
+
+    setSelectedReport(detailRes.data);
+    setMyVote(voteRes.data.vote?.vote_type || null);
+    setMyValidation(valRes.data.validation?.vote || null);
+    setMyReportVote(reportVoteRes.data.vote?.vote_type || null);
+    return detailRes.data;
+  }, []);
+
   // Check push notification status from backend
   useEffect(() => {
     return scheduleAfterFirstPaint(() => setShowAmbientUi(true), 1400);
@@ -374,21 +407,18 @@ export default function MapPage() {
   const handleMarkerClick = useCallback(async (report) => {
     setSelectedReport(report);
     setShowDetailsDrawer(true);
+    setMyVote(null);
+    setMyReportVote(null);
+    setMyValidation(null);
     try {
-      const [detailRes, voteRes, valRes] = await Promise.all([
-        axios.get(`${API}/reports/${report.id}`, { withCredentials: true }),
-        axios.get(`${API}/reports/${report.id}/my-vote`, { withCredentials: true }),
-        axios.get(`${API}/reports/${report.id}/my-validation`, { withCredentials: true })
-      ]);
-      setSelectedReport(detailRes.data);
-      setMyVote(voteRes.data.vote?.vote_type || null);
-      setMyValidation(valRes.data.validation?.vote || null);
+      await loadSelectedReportContext(report.id);
     } catch (err) {
       console.error("Failed to load report details:", err);
       setMyVote(null);
+      setMyReportVote(null);
       setMyValidation(null);
     }
-  }, []);
+  }, [loadSelectedReportContext]);
 
   useEffect(() => {
     return () => {
@@ -479,8 +509,7 @@ export default function MapPage() {
       setMyVote(voteType);
       toast.success(t("mapUi.voteSuccess.noLongerHere"));
       fetchReports();
-      const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
-      setSelectedReport(data);
+      await loadSelectedReportContext(selectedReport.id);
     } catch (error) {
       if (!error?.response && !userLocation) {
         toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
@@ -532,22 +561,27 @@ export default function MapPage() {
 
   const handleReportVote = async (voteType) => {
     if (!selectedReport) return;
+    const reportId = selectedReport.id;
     try {
       const endpoint = voteType === "upvote" ? "upvote" : "downvote";
-      const voteResponse = await axios.post(`${API}/reports/${selectedReport.id}/${endpoint}`, {}, { withCredentials: true });
+      const voteResponse = await axios.post(`${API}/reports/${reportId}/${endpoint}`, {}, { withCredentials: true });
+      setMyReportVote(voteType);
       if (voteType === "downvote" && voteResponse.data?.cleared) {
         toast.success(t("mapUi.voteSuccess.noLongerHere"));
+        await fetchReports();
+        closeDetailsDrawer();
       } else {
         toast.success(voteType === "upvote" ? t("mapUi.voteSuccess.upvote") : t("mapUi.voteSuccess.downvote"));
+        await fetchReports();
+        try {
+          await loadSelectedReportContext(reportId);
+        } catch (refreshError) {
+          console.error("Failed to refresh report after vote:", refreshError);
+        }
       }
-      const [detailRes, valRes] = await Promise.all([
-        axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true }),
-        axios.get(`${API}/reports/${selectedReport.id}/my-validation`, { withCredentials: true }),
-      ]);
-      const data = detailRes.data;
-      setSelectedReport(data);
-      setMyValidation(valRes.data.validation?.vote || null);
-    } catch (error) { toast.error(error.response?.data?.detail || "Error"); }
+    } catch (error) {
+      toast.error(getActionErrorMessage(error, "mapUi.voteError"));
+    }
   };
 
   const getReportSharePayload = async () => {
@@ -634,13 +668,25 @@ export default function MapPage() {
     280,
     viewportHeight - (viewportWidth < 640 ? 240 : 180)
   );
-  const detailsCardBottomPx = user?.subscription_active ? 226 : 158;
+  const detailsCardBottomPx = viewportWidth < 768 ? 18 : user?.subscription_active ? 226 : 158;
   const detailsCardMaxHeightPx = (() => {
     if (viewportWidth < 768) {
-      return Math.min(Math.max(Math.round(viewportHeight * 0.2), 176), 208);
+      return Math.min(Math.max(Math.round(viewportHeight * 0.58), 360), Math.max(viewportHeight - 132, 360));
     }
     return Math.min(Math.max(Math.round(viewportHeight * 0.17), 168), 200);
   })();
+  const currentUserId = user?._id || user?.id || null;
+  const isOwnSelectedReport = Boolean(selectedReport?.user_id && currentUserId && selectedReport.user_id === currentUserId);
+  const reportVoteStatusLabel = myReportVote === "upvote" ? t("mapUi.helpful") : t("mapUi.notHelpful");
+  const voteUiCopy = language === "en"
+    ? {
+        ownReportInfo: "You can't vote on your own report.",
+        alreadyVotedInfo: `You already voted on this report: ${reportVoteStatusLabel}.`,
+      }
+    : {
+        ownReportInfo: "No puedes votar tu propio reporte.",
+        alreadyVotedInfo: `Ya votaste este reporte: ${reportVoteStatusLabel}.`,
+      };
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -1063,7 +1109,7 @@ export default function MapPage() {
         <>
           <div
             className="fixed inset-0 z-[1600] bg-black/20"
-            onClick={() => setShowDetailsDrawer(false)}
+            onClick={closeDetailsDrawer}
             aria-hidden="true"
           />
           <div
@@ -1079,7 +1125,7 @@ export default function MapPage() {
             <div className="px-3 pt-2 pb-3 overflow-y-auto">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <h2 className="text-lg font-bold text-[#2B2D42] truncate" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</h2>
-                <Button variant="ghost" className="text-[#8D99AE] h-7 px-2 shrink-0" onClick={() => setShowDetailsDrawer(false)}>
+                <Button variant="ghost" className="text-[#8D99AE] h-7 px-2 shrink-0" onClick={closeDetailsDrawer}>
                   {t("close")}
                 </Button>
               </div>
@@ -1147,30 +1193,40 @@ export default function MapPage() {
                 {tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS })}
               </div>
 
-              <div className="grid grid-cols-2 gap-2 mb-2">
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleReportVote("upvote")}
-                  disabled={loading}
-                  className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10"
-                  data-testid="upvote-btn"
-                >
-                  <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
-                </Button>
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="outline"
-                  onClick={() => handleReportVote("downvote")}
-                  disabled={loading}
-                  className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10"
-                  data-testid="downvote-btn"
-                >
-                  <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}
-                </Button>
-              </div>
+              {isOwnSelectedReport ? (
+                <div className="bg-[#FFF4E5] border border-[#FFD59E] rounded-xl p-2.5 mb-2 text-center text-xs text-[#9A6700]">
+                  {voteUiCopy.ownReportInfo}
+                </div>
+              ) : myReportVote ? (
+                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#5C677D]">
+                  {voteUiCopy.alreadyVotedInfo}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 gap-2 mb-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReportVote("upvote")}
+                    disabled={loading}
+                    className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10"
+                    data-testid="upvote-btn"
+                  >
+                    <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleReportVote("downvote")}
+                    disabled={loading}
+                    className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10"
+                    data-testid="downvote-btn"
+                  >
+                    <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}
+                  </Button>
+                </div>
+              )}
 
               {myValidation ? (
                 <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">

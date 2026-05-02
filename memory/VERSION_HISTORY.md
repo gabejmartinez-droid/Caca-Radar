@@ -41,6 +41,26 @@ Production notes:
 
 ## Unreleased / Next Batch
 
+### 2026-05-03 — Pending
+
+Impacted environments:
+- Web `1.1.43-web.1`
+- iOS `1.1.57 (59)`
+- Android `1.1.60 (62)`
+- Backend `1.1.12-api.1`
+
+Changes:
+- Expanded the report details popup on mobile so the report-vote controls stay visible and reachable inside the floating window on iPhone.
+- Added per-user report-vote state loading so web and mobile can clearly show when a user already marked a report as helpful or not helpful.
+- Prevented successful "not helpful" votes from looking broken when they archive a report by refreshing the map and closing the details popup cleanly instead of re-requesting a now-missing record.
+- Added `/api/reports/{report_id}/my-report-vote` so the frontend can mirror vote state across platforms.
+
+Verification:
+- Backend compile passed.
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully after switching to a fresh Gradle home.
+- Local iOS CLI build still hits the existing watch-target product-type issue and is not a reliable signal for this change.
+
 ### 2026-05-02 — Pending
 
 Impacted environments:
