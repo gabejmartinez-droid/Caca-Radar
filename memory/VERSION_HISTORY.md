@@ -44,10 +44,10 @@ Production notes:
 ### 2026-05-01 — Pending
 
 Impacted environments:
-- Web `1.1.23-web.1`
-- iOS `1.1.34 (36)`
-- Android `1.1.36 (38)`
-- Backend `1.1.2-api.1`
+- Web `1.1.24-web.1`
+- iOS `1.1.35 (37)`
+- Android `1.1.37 (39)`
+- Backend `1.1.3-api.1`
 
 Changes:
 - Apple Watch companion is now embedded into the main iPhone archive path with a proper watch extension, so TestFlight builds can carry the watch app.
@@ -70,6 +70,8 @@ Changes:
 - Fixed the Apple Watch quick-report flow so location permission is handled asynchronously instead of failing with the generic “operation couldn’t be completed” error when the watch asks for GPS access.
 - Made the Apple Watch location lookup more resilient by accepting a fresh cached fix, starting live updates, and timing out cleanly instead of hanging forever on “Buscando tu ubicación”.
 - Let the Apple Watch send quick reports using its synced auth/server context even when the paired iPhone app is not actively reachable, so the report button no longer flips back to disabled just because the phone fell to the background.
+- Added a dedicated App Review user (`appletest`) with VIP access and a server-backed geo-review exemption, and updated the Spain gate so signed-in exempt reviewers can use the app outside Spain without disabling the normal production geo block for everyone else.
+- Removed the Spain gate from the login and registration screens so App Review can actually sign into the exempt account before the rest of the app applies the location restriction.
 - Added a saved `preferred_language` user preference that now travels through auth/profile responses, persists to the backend, and restores automatically when the same user signs in on another device.
 - Synced the saved language into both companion bridges so the Apple Watch and Wear OS quick-report UIs can mirror the phone app language instead of falling back to device defaults.
 

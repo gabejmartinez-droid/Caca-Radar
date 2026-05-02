@@ -3,11 +3,13 @@ import { Link } from "react-router-dom";
 import { Loader2, MapPin, ShieldAlert } from "lucide-react";
 import { Button } from "./ui/button";
 import { useLanguage } from "../contexts/LanguageContext";
+import { useAuth } from "../contexts/AuthContext";
 import { formatTranslation } from "../utils/ranks";
 import { isWithinSpain } from "../utils/spainLocation";
 
 export default function SpainLocationGate({ children }) {
   const { t } = useLanguage();
+  const { user, loading } = useAuth();
   const [status, setStatus] = useState("checking");
   const [errorKey, setErrorKey] = useState("");
 
@@ -50,8 +52,14 @@ export default function SpainLocationGate({ children }) {
   }, []);
 
   useEffect(() => {
+    if (loading) return;
+    if (user?.geo_review_exempt) {
+      setStatus("allowed");
+      setErrorKey("");
+      return;
+    }
     checkLocation();
-  }, [checkLocation]);
+  }, [checkLocation, loading, user]);
 
   if (status === "allowed") {
     return children;

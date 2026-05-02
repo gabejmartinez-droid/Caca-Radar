@@ -135,8 +135,8 @@ function App() {
           <UsernameGate>
             <Routes>
               <Route path="/" element={<SpainLocationGate><MapPage /></SpainLocationGate>} />
-              <Route path="/login" element={<SpainLocationGate><LoginPage /></SpainLocationGate>} />
-              <Route path="/register" element={<SpainLocationGate><RegisterPage /></SpainLocationGate>} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
               <Route path="/leaderboard" element={<SpainLocationGate><LeaderboardPage /></SpainLocationGate>} />
               <Route path="/rankings" element={<SpainLocationGate><RankingsPage /></SpainLocationGate>} />
               <Route path="/city-report" element={<SpainLocationGate><CityReportPage /></SpainLocationGate>} />

@@ -550,6 +550,7 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str) -> dic
         "level": user.get("level", 1),
         "streak_days": user.get("streak_days", 0),
         "preferred_language": user.get("preferred_language"),
+        "geo_review_exempt": user.get("geo_review_exempt", False),
         "needs_username": not bool(user.get("username")),
         "access_token": access_token,
         "refresh_token": refresh_token,
@@ -1333,6 +1334,7 @@ async def get_me(request: Request):
         raise HTTPException(status_code=401, detail="No autenticado")
     user["auth_methods"] = normalize_auth_methods(user)
     user["needs_username"] = not bool(user.get("username"))
+    user["geo_review_exempt"] = user.get("geo_review_exempt", False)
     return user
 
 @api_router.post("/auth/refresh")
@@ -4425,7 +4427,7 @@ async def init_database():
     await db.report_audit_log.create_index([("latitude", 1), ("longitude", 1)])
 
 async def seed_users():
-    """Create admin and demo municipality accounts if missing."""
+    """Create admin, review, and demo municipality accounts if missing."""
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Cacaradar123$")
     existing = await db.users.find_one({"email": admin_email})
@@ -4453,7 +4455,48 @@ async def seed_users():
             "created_at": datetime.now(timezone.utc)
         })
         logger.info("Demo municipality user created")
-    return admin_email, admin_password, demo_muni_email, demo_muni_password
+
+    review_email = os.environ.get("APP_REVIEW_EMAIL", "appletest@cacaradar.es").lower()
+    review_password = os.environ.get("APP_REVIEW_PASSWORD", "appletest123")
+    review_username = os.environ.get("APP_REVIEW_USERNAME", "appletest").lower()
+    review_user = await db.users.find_one({"email": review_email})
+    review_updates = {
+        "email": review_email,
+        "name": "Apple Review",
+        "username": review_username,
+        "role": "user",
+        "auth_provider": "password",
+        "auth_methods": ["password"],
+        "linked_providers": {},
+        "subscription_active": True,
+        "subscription_type": "lifetime",
+        "subscription_expires": None,
+        "geo_review_exempt": True,
+        "trust_score": 50,
+        "rank": DEFAULT_RANK_NAME,
+        "rank_key": get_rank_key(DEFAULT_RANK_NAME),
+        "level": 1,
+        "report_count": 0,
+        "vote_count": 0,
+        "daily_report_count": 0,
+        "streak_days": 0,
+        "last_active_date": None,
+    }
+    if review_user is None:
+        await db.users.insert_one({
+            **review_updates,
+            "password_hash": hash_password(review_password),
+            "total_score": 0,
+            "created_at": datetime.now(timezone.utc),
+        })
+        logger.info("App review user created")
+    else:
+        review_mutations = dict(review_updates)
+        if not verify_password(review_password, review_user.get("password_hash", "")):
+            review_mutations["password_hash"] = hash_password(review_password)
+        await db.users.update_one({"_id": review_user["_id"]}, {"$set": review_mutations})
+
+    return admin_email, admin_password, demo_muni_email, demo_muni_password, review_email, review_password, review_username
 
 async def run_maintenance():
     """Archive old reports, deactivate expired subscriptions, recalculate ranks."""
@@ -4490,7 +4533,7 @@ async def run_maintenance():
 async def startup():
     init_storage()
     await init_database()
-    admin_email, admin_password, demo_muni_email, demo_muni_password = await seed_users()
+    admin_email, admin_password, demo_muni_email, demo_muni_password, review_email, review_password, review_username = await seed_users()
     await run_maintenance()
 
     # Write test credentials (non-critical)
@@ -4500,6 +4543,7 @@ async def startup():
             f.write("# Test Credentials\n\n")
             f.write(f"## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
             f.write(f"## Demo Municipality\n- Email: {demo_muni_email}\n- Password: {demo_muni_password}\n- Role: municipality\n- Municipality: Madrid\n\n")
+            f.write(f"## App Review\n- Email: {review_email}\n- Username: {review_username}\n- Password: {review_password}\n- Role: user\n- VIP Access: true\n- Geo Review Exempt: true\n\n")
             f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/google/login\n- POST /api/auth/google/link\n- POST /api/auth/logout\n- GET /api/auth/me\n")
             f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
             f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
