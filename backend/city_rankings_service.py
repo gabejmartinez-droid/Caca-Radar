@@ -1,6 +1,6 @@
 """City & Barrio Rankings Service — Population data from Wikipedia, report density calculations."""
 import logging
-import requests
+import httpx
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from typing import Optional
@@ -439,12 +439,15 @@ async def _get_barrio_name(db, lat: float, lng: float, city: str) -> str:
 
     # Reverse geocode with high zoom for neighborhood detail
     try:
-        resp = requests.get(
-            "https://nominatim.openstreetmap.org/reverse",
-            params={"lat": lat, "lon": lng, "format": "json", "addressdetails": 1, "zoom": 16},
+        async with httpx.AsyncClient(
+            timeout=httpx.Timeout(connect=5, read=5, write=10, pool=5),
             headers={"User-Agent": "CacaRadar/1.0"},
-            timeout=5
-        )
+        ) as client:
+            resp = await client.get(
+                "https://nominatim.openstreetmap.org/reverse",
+                params={"lat": lat, "lon": lng, "format": "json", "addressdetails": 1, "zoom": 16},
+                timeout=5
+            )
         resp.raise_for_status()
         data = resp.json()
         address = data.get("address", {})

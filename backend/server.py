@@ -10,6 +10,7 @@ import logging
 import uuid
 import asyncio
 import json
+import time
 from html import escape
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -21,8 +22,8 @@ from deps import (
     db, client, logger,
     hash_password, verify_password, create_access_token, create_refresh_token,
     get_jwt_secret, JWT_ALGORITHM,
-    init_storage, put_object, get_object, APP_NAME,
-    reverse_geocode,
+    init_storage_async, put_object_async, get_object_async, APP_NAME,
+    reverse_geocode_async, close_http_client, get_mongo_runtime_config,
     get_current_user, require_auth, require_subscriber, require_municipality, require_registered, get_anonymous_id,
     UserRegister, UserLogin, ReportCreate, VoteCreate, ReportVote, ValidationCreate, FlagCreate,
     UsernameUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
@@ -1729,7 +1730,7 @@ async def _create_report_impl(
             return confirmed
         # Fallback — shouldn't happen but create normally if report vanished
     
-    geo = reverse_geocode(data.latitude, data.longitude)
+    geo = await reverse_geocode_async(data.latitude, data.longitude)
     report_id = str(uuid.uuid4())
 
     report_doc = build_report_doc(report_id, data, user_id, user, geo, False)
@@ -2035,7 +2036,7 @@ async def upload_photo(report_id: str, request: Request, file: UploadFile = File
     ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
     path = f"{APP_NAME}/reports/{report_id}/{uuid.uuid4()}.{ext}"
     
-    result = put_object(path, data, file.content_type or "image/jpeg")
+    result = await put_object_async(path, data, file.content_type or "image/jpeg")
     
     await db.reports.update_one({"id": report_id}, {"$set": {"photo_url": result["path"]}})
     
@@ -2056,7 +2057,7 @@ async def upload_photo(report_id: str, request: Request, file: UploadFile = File
 @api_router.get("/files/{path:path}")
 async def get_file(path: str):
     try:
-        data, content_type = get_object(path)
+        data, content_type = await get_object_async(path)
         return Response(content=data, media_type=content_type)
     except Exception as e:
         logger.error(f"Error getting file: {e}")
@@ -4163,7 +4164,85 @@ async def root():
 
 @api_router.get("/health")
 async def health():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "checks": {
+            "process": "ok",
+            "readiness_endpoint": "/api/ready",
+            "deep_health_endpoint": "/api/health/deep",
+        },
+    }
+
+
+READINESS_TIMEOUT_MS = int(os.environ.get("READINESS_TIMEOUT_MS", "5000"))
+READINESS_WARN_MS = int(os.environ.get("READINESS_WARN_MS", "1500"))
+
+
+async def build_readiness_payload(include_runtime: bool = False) -> tuple[dict, int]:
+    checks = {
+        "status": "ok",
+        "database": False,
+        "reports_readable": False,
+        "users_readable": False,
+        "production_db_safe": not is_mongo_local() and db_name != "test_database",
+        "timeouts": {
+            "readiness_timeout_ms": READINESS_TIMEOUT_MS,
+            "warn_threshold_ms": READINESS_WARN_MS,
+        },
+        "mongo_client": get_mongo_runtime_config(),
+    }
+    started = time.perf_counter()
+
+    async def run_probe(name: str, operation):
+        probe_started = time.perf_counter()
+        try:
+            result = await asyncio.wait_for(operation, timeout=READINESS_TIMEOUT_MS / 1000)
+            checks[f"{name}_latency_ms"] = round((time.perf_counter() - probe_started) * 1000, 1)
+            return result
+        except Exception as e:
+            checks[f"{name}_latency_ms"] = round((time.perf_counter() - probe_started) * 1000, 1)
+            checks[f"{name}_error"] = str(e)
+            raise
+
+    try:
+        result = await run_probe("database", db.command("ping"))
+        checks["database"] = result.get("ok") == 1.0
+    except Exception:
+        checks["status"] = "error"
+        checks["total_duration_ms"] = round((time.perf_counter() - started) * 1000, 1)
+        if include_runtime:
+            checks["runtime"] = get_runtime_metadata()
+        return checks, 503
+
+    try:
+        await run_probe("reports_read", db.reports.find_one({}, {"_id": 1}))
+        checks["reports_readable"] = True
+    except Exception:
+        checks["status"] = "degraded"
+
+    try:
+        await run_probe("users_read", db.users.find_one({}, {"_id": 1}))
+        checks["users_readable"] = True
+    except Exception:
+        checks["status"] = "degraded"
+
+    checks["total_duration_ms"] = round((time.perf_counter() - started) * 1000, 1)
+    if checks["total_duration_ms"] > READINESS_WARN_MS and checks["status"] == "ok":
+        checks["warning"] = "Readiness checks exceeded the warning threshold."
+
+    if not checks["production_db_safe"]:
+        checks["status"] = "error"
+
+    status_code = 200 if checks["status"] == "ok" else 503
+    if include_runtime:
+        checks["runtime"] = get_runtime_metadata()
+    return checks, status_code
+
+
+@api_router.get("/ready")
+async def ready():
+    payload, status_code = await build_readiness_payload(include_runtime=False)
+    return JSONResponse(content=payload, status_code=status_code)
 
 
 @api_router.get("/version")
@@ -4185,37 +4264,8 @@ async def version():
 @api_router.get("/health/deep")
 async def health_deep():
     """Deep health check — verifies database connectivity and read access."""
-    checks = {
-        "status": "ok",
-        "database": False,
-        "reports_readable": False,
-        "users_readable": False,
-        "production_db_safe": not is_mongo_local() and db_name != "test_database",
-    }
-    try:
-        result = await db.command("ping")
-        checks["database"] = result.get("ok") == 1.0
-    except Exception as e:
-        checks["status"] = "error"
-        checks["database_error"] = str(e)
-        return checks
-
-    try:
-        await db.reports.find_one({}, {"_id": 1})
-        checks["reports_readable"] = True
-    except Exception as e:
-        checks["reports_error"] = str(e)
-
-    try:
-        await db.users.find_one({}, {"_id": 1})
-        checks["users_readable"] = True
-    except Exception as e:
-        checks["users_error"] = str(e)
-
-    if not all([checks["database"], checks["reports_readable"], checks["users_readable"]]):
-        checks["status"] = "degraded"
-    checks["runtime"] = get_runtime_metadata()
-    return checks
+    payload, status_code = await build_readiness_payload(include_runtime=True)
+    return JSONResponse(content=payload, status_code=status_code)
 
 
 @api_router.get("/health/auth")
@@ -4531,7 +4581,7 @@ async def run_maintenance():
 # Startup
 @app.on_event("startup")
 async def startup():
-    init_storage()
+    await init_storage_async()
     await init_database()
     admin_email, admin_password, demo_muni_email, demo_muni_password, review_email, review_password, review_username = await seed_users()
     await run_maintenance()
@@ -4562,4 +4612,5 @@ async def startup():
 
 @app.on_event("shutdown")
 async def shutdown():
+    await close_http_client()
     client.close()

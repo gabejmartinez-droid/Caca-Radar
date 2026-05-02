@@ -10,7 +10,7 @@ import logging
 import uuid
 import bcrypt
 import jwt
-import requests
+import httpx
 import re
 import random
 import string
@@ -73,8 +73,41 @@ def validate_database_config() -> None:
 
 validate_database_config()
 
-client = AsyncIOMotorClient(mongo_url)
+MONGO_SERVER_SELECTION_TIMEOUT_MS = int(os.environ.get("MONGO_SERVER_SELECTION_TIMEOUT_MS", "5000" if is_production_env() else "15000"))
+MONGO_CONNECT_TIMEOUT_MS = int(os.environ.get("MONGO_CONNECT_TIMEOUT_MS", "5000" if is_production_env() else "10000"))
+MONGO_SOCKET_TIMEOUT_MS = int(os.environ.get("MONGO_SOCKET_TIMEOUT_MS", "15000" if is_production_env() else "30000"))
+MONGO_WAIT_QUEUE_TIMEOUT_MS = int(os.environ.get("MONGO_WAIT_QUEUE_TIMEOUT_MS", "5000" if is_production_env() else "15000"))
+MONGO_MAX_POOL_SIZE = int(os.environ.get("MONGO_MAX_POOL_SIZE", "100"))
+MONGO_MIN_POOL_SIZE = int(os.environ.get("MONGO_MIN_POOL_SIZE", "5" if is_production_env() else "1"))
+MONGO_MAX_IDLE_TIME_MS = int(os.environ.get("MONGO_MAX_IDLE_TIME_MS", "60000"))
+MONGO_HEARTBEAT_FREQUENCY_MS = int(os.environ.get("MONGO_HEARTBEAT_FREQUENCY_MS", "10000"))
+
+client = AsyncIOMotorClient(
+    mongo_url,
+    appname="caca-radar-api",
+    serverSelectionTimeoutMS=MONGO_SERVER_SELECTION_TIMEOUT_MS,
+    connectTimeoutMS=MONGO_CONNECT_TIMEOUT_MS,
+    socketTimeoutMS=MONGO_SOCKET_TIMEOUT_MS,
+    waitQueueTimeoutMS=MONGO_WAIT_QUEUE_TIMEOUT_MS,
+    maxPoolSize=MONGO_MAX_POOL_SIZE,
+    minPoolSize=MONGO_MIN_POOL_SIZE,
+    maxIdleTimeMS=MONGO_MAX_IDLE_TIME_MS,
+    heartbeatFrequencyMS=MONGO_HEARTBEAT_FREQUENCY_MS,
+)
 db = client[db_name]
+
+
+def get_mongo_runtime_config() -> dict:
+    return {
+        "serverSelectionTimeoutMS": MONGO_SERVER_SELECTION_TIMEOUT_MS,
+        "connectTimeoutMS": MONGO_CONNECT_TIMEOUT_MS,
+        "socketTimeoutMS": MONGO_SOCKET_TIMEOUT_MS,
+        "waitQueueTimeoutMS": MONGO_WAIT_QUEUE_TIMEOUT_MS,
+        "maxPoolSize": MONGO_MAX_POOL_SIZE,
+        "minPoolSize": MONGO_MIN_POOL_SIZE,
+        "maxIdleTimeMS": MONGO_MAX_IDLE_TIME_MS,
+        "heartbeatFrequencyMS": MONGO_HEARTBEAT_FREQUENCY_MS,
+    }
 
 # ── JWT ──────────────────────────────────────────────
 JWT_ALGORITHM = "HS256"
@@ -102,51 +135,94 @@ STORAGE_URL = "https://integrations.emergentagent.com/objstore/api/v1/storage"
 EMERGENT_KEY = os.environ.get("EMERGENT_LLM_KEY")
 APP_NAME = "caca-radar"
 storage_key = None
+storage_lock = asyncio.Lock()
+http_client: Optional[httpx.AsyncClient] = None
+HTTP_CONNECT_TIMEOUT_SECONDS = float(os.environ.get("HTTP_CONNECT_TIMEOUT_SECONDS", "5"))
+HTTP_READ_TIMEOUT_SECONDS = float(os.environ.get("HTTP_READ_TIMEOUT_SECONDS", "15"))
+HTTP_WRITE_TIMEOUT_SECONDS = float(os.environ.get("HTTP_WRITE_TIMEOUT_SECONDS", "30"))
+HTTP_POOL_TIMEOUT_SECONDS = float(os.environ.get("HTTP_POOL_TIMEOUT_SECONDS", "5"))
 
-def init_storage():
+async def get_http_client() -> httpx.AsyncClient:
+    global http_client
+    if http_client is None:
+        http_client = httpx.AsyncClient(
+            timeout=httpx.Timeout(
+                connect=HTTP_CONNECT_TIMEOUT_SECONDS,
+                read=HTTP_READ_TIMEOUT_SECONDS,
+                write=HTTP_WRITE_TIMEOUT_SECONDS,
+                pool=HTTP_POOL_TIMEOUT_SECONDS,
+            ),
+            limits=httpx.Limits(max_connections=200, max_keepalive_connections=40),
+            headers={"User-Agent": "CacaRadar/1.0"},
+        )
+    return http_client
+
+
+async def close_http_client() -> None:
+    global http_client
+    if http_client is not None:
+        await http_client.aclose()
+        http_client = None
+
+
+async def init_storage_async():
     global storage_key
     if storage_key:
         return storage_key
-    try:
-        resp = requests.post(f"{STORAGE_URL}/init", json={"emergent_key": EMERGENT_KEY}, timeout=30)
-        resp.raise_for_status()
-        storage_key = resp.json()["storage_key"]
-        logger.info("Storage initialized successfully")
-        return storage_key
-    except Exception as e:
-        logger.error(f"Storage init failed: {e}")
-        return None
+    async with storage_lock:
+        if storage_key:
+            return storage_key
+        try:
+            client = await get_http_client()
+            resp = await client.post(
+                f"{STORAGE_URL}/init",
+                json={"emergent_key": EMERGENT_KEY},
+                timeout=30,
+            )
+            resp.raise_for_status()
+            storage_key = resp.json()["storage_key"]
+            logger.info("Storage initialized successfully")
+            return storage_key
+        except Exception as e:
+            logger.error(f"Storage init failed: {e}")
+            return None
 
-def put_object(path: str, data: bytes, content_type: str) -> dict:
-    key = init_storage()
+
+async def put_object_async(path: str, data: bytes, content_type: str) -> dict:
+    key = await init_storage_async()
     if not key:
         raise HTTPException(status_code=500, detail="Storage not available")
-    resp = requests.put(
+    client = await get_http_client()
+    resp = await client.put(
         f"{STORAGE_URL}/objects/{path}",
         headers={"X-Storage-Key": key, "Content-Type": content_type},
-        data=data, timeout=120
+        content=data,
+        timeout=120,
     )
     resp.raise_for_status()
     return resp.json()
 
-def get_object(path: str) -> tuple:
-    key = init_storage()
+
+async def get_object_async(path: str) -> tuple:
+    key = await init_storage_async()
     if not key:
         raise HTTPException(status_code=500, detail="Storage not available")
-    resp = requests.get(
+    client = await get_http_client()
+    resp = await client.get(
         f"{STORAGE_URL}/objects/{path}",
-        headers={"X-Storage-Key": key}, timeout=60
+        headers={"X-Storage-Key": key},
+        timeout=60,
     )
     resp.raise_for_status()
     return resp.content, resp.headers.get("content-type", "application/octet-stream")
 
 # ── Reverse Geocode ──────────────────────────────────
-def reverse_geocode(lat: float, lon: float) -> dict:
+async def reverse_geocode_async(lat: float, lon: float) -> dict:
     try:
-        resp = requests.get(
+        client = await get_http_client()
+        resp = await client.get(
             "https://nominatim.openstreetmap.org/reverse",
             params={"lat": lat, "lon": lon, "format": "json", "addressdetails": 1, "zoom": 16},
-            headers={"User-Agent": "CacaRadar/1.0"},
             timeout=10
         )
         resp.raise_for_status()

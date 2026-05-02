@@ -1379,3 +1379,41 @@ Notes:
 - Add iPhone location fallback for Apple Watch reports
 ```
 
+### 2026-05-02 — Pending
+
+Release metadata:
+- Commit SHA: `0410ac724a8d8bb92ccbcc74988dec6179d491bb-dirty`
+- Deployment status: `pending`
+- Rollback target: `afe809468c3eb5b472ab4334f61c992c5cb38df5`
+
+Exact versions:
+- Web: `1.1.24-web.1`
+- iOS: `1.1.37 (39)`
+- Android: `1.1.40 (42)`
+- Backend: `1.1.4-api.1`
+
+User-facing release notes:
+- Harden readiness checks and async IO paths.
+
+Internal release notes:
+- Harden readiness checks and async IO paths
+
+Store submission notes:
+```text
+- Harden readiness checks and async IO paths.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 0410ac724a8d8bb92ccbcc74988dec6179d491bb-dirty
+Deployment status: pending
+Rollback target: afe809468c3eb5b472ab4334f61c992c5cb38df5
+Versions:
+• Web: `1.1.24-web.1`
+• iOS: `1.1.37 (39)`
+• Android: `1.1.40 (42)`
+• Backend: `1.1.4-api.1`
+Notes:
+- Harden readiness checks and async IO paths
+```
+
