@@ -44,6 +44,21 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.32-web.1`
+- iOS `1.1.46 (48)`
+- Android `1.1.49 (51)`
+
+Changes:
+- Changed Apple Watch quick-report submission to prefer the watch’s synced short-lived access token path first, instead of always favoring the paired iPhone relay whenever the phone happened to be reachable.
+- The iPhone relay remains as a fallback for recoverable auth/response failures, but the watch no longer blocks on that relay in the common case where it already has valid synced auth context.
+
+Verification:
+- Mobile bundle rebuilt and re-synced after the change.
+- Android release bundle rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.31-web.1`
 - iOS `1.1.45 (47)`
 - Android `1.1.48 (50)`

@@ -304,21 +304,21 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             await refreshCompanionContext()
         }
 
-        if phoneReachable {
+        if hasSyncedAuthContext {
             do {
-                return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
+                return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
             } catch {
                 let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
-                if hasSyncedAuthContext,
-                   appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
-                    return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
+                if phoneReachable,
+                   appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" || appErrorCode == "restricted_account" {
+                    return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
                 }
                 throw error
             }
         }
 
-        if hasSyncedAuthContext {
-            return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
+        if phoneReachable {
+            return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
         }
 
         throw NSError(
