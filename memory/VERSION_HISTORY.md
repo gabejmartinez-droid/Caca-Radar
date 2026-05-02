@@ -1382,38 +1382,37 @@ Notes:
 ### 2026-05-02 — Pending
 
 Release metadata:
-- Commit SHA: `0410ac724a8d8bb92ccbcc74988dec6179d491bb-dirty`
+- Commit SHA: `working-tree-dirty`
 - Deployment status: `pending`
-- Rollback target: `afe809468c3eb5b472ab4334f61c992c5cb38df5`
+- Rollback target: `b9672de`
 
 Exact versions:
 - Web: `1.1.24-web.1`
-- iOS: `1.1.37 (39)`
-- Android: `1.1.40 (42)`
+- iOS: `1.1.38 (40)`
+- Android: `1.1.41 (43)`
 - Backend: `1.1.4-api.1`
 
 User-facing release notes:
-- Harden readiness checks and async IO paths.
+- Refresh companion watch auth and align Wear OS watch polish.
 
 Internal release notes:
-- Harden readiness checks and async IO paths
+- Refresh Apple Watch auth context before report submission and mirror watch copy/layout updates on Wear OS.
 
 Store submission notes:
 ```text
-- Harden readiness checks and async IO paths.
+- Refresh companion watch auth and align Wear OS watch polish.
 ```
 
 Internal release notes block:
 ```text
-Commit SHA: 0410ac724a8d8bb92ccbcc74988dec6179d491bb-dirty
+Commit SHA: working-tree-dirty
 Deployment status: pending
-Rollback target: afe809468c3eb5b472ab4334f61c992c5cb38df5
+Rollback target: b9672de
 Versions:
 • Web: `1.1.24-web.1`
-• iOS: `1.1.37 (39)`
-• Android: `1.1.40 (42)`
+• iOS: `1.1.38 (40)`
+• Android: `1.1.41 (43)`
 • Backend: `1.1.4-api.1`
 Notes:
-- Harden readiness checks and async IO paths
+- Refresh Apple Watch auth context before report submission and mirror watch copy/layout updates on Wear OS.
 ```
-

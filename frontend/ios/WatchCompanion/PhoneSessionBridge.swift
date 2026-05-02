@@ -292,9 +292,16 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         if let preferredLanguage = session.receivedApplicationContext["preferredLanguage"] as? String {
             updatePreferredLanguage(preferredLanguage)
         }
+        if session.isReachable {
+            Task { await refreshCompanionContext() }
+        }
     }
 
     func sendQuickReport(latitude: Double, longitude: Double) async throws -> QuickReportReply {
+        if WCSession.default.isReachable && !hasSyncedAuthContext {
+            await refreshCompanionContext()
+        }
+
         if hasSyncedAuthContext {
             do {
                 return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
@@ -302,6 +309,18 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
                 let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
                 if WCSession.default.isReachable,
                    appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
+                    await refreshCompanionContext()
+                    if hasSyncedAuthContext {
+                        do {
+                            return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
+                        } catch {
+                            let refreshedErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
+                            if refreshedErrorCode == "missing_access_token" || refreshedErrorCode == "quick_report_failed" || refreshedErrorCode == "invalid_response" {
+                                return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
+                            }
+                            throw error
+                        }
+                    }
                     return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
                 }
                 throw error
@@ -320,6 +339,31 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
 
         return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
+    }
+
+    @discardableResult
+    func refreshCompanionContext() async -> Bool {
+        guard WCSession.default.isReachable else { return hasSyncedAuthContext }
+
+        do {
+            let response = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[String: Any], Error>) in
+                WCSession.default.sendMessage(
+                    ["action": "companion_context"],
+                    replyHandler: { response in
+                        continuation.resume(returning: response)
+                    },
+                    errorHandler: { error in
+                        continuation.resume(throwing: error)
+                    }
+                )
+            }
+            await MainActor.run {
+                self.apply(applicationContext: response)
+            }
+            return hasSyncedAuthContext
+        } catch {
+            return hasSyncedAuthContext
+        }
     }
 
     private func sendQuickReportViaPhone(latitude: Double, longitude: Double) async throws -> QuickReportReply {
@@ -522,6 +566,9 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     func sessionReachabilityDidChange(_ session: WCSession) {
         reachable = session.isReachable
+        if session.isReachable {
+            Task { await refreshCompanionContext() }
+        }
     }
 
     func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String : Any]) {

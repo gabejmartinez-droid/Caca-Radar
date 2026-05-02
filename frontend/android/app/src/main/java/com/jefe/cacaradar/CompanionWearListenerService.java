@@ -116,8 +116,10 @@ public class CompanionWearListenerService extends WearableListenerService {
 
     private void sendSettings(String nodeId) throws Exception {
         SharedPreferences prefs = getSharedPreferences(CompanionBridgePlugin.PREFS_NAME, Context.MODE_PRIVATE);
+        String accessToken = prefs.getString(CompanionBridgePlugin.ACCESS_TOKEN_KEY, "");
         JSONObject result = new JSONObject();
         result.put("preferredLanguage", prefs.getString(CompanionBridgePlugin.PREFERRED_LANGUAGE_KEY, "es"));
+        result.put("authenticated", accessToken != null && !accessToken.isEmpty());
         MessageClient client = Wearable.getMessageClient(this);
         Tasks.await(client.sendMessage(nodeId, SETTINGS_RESULT_PATH, result.toString().getBytes(StandardCharsets.UTF_8)), 15, TimeUnit.SECONDS);
     }

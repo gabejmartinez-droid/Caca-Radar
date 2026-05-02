@@ -496,7 +496,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -504,7 +504,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -517,7 +517,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -525,7 +525,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -538,7 +538,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -546,7 +546,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -564,11 +564,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;
@@ -586,7 +586,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -594,7 +594,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -611,11 +611,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 39;
+				CURRENT_PROJECT_VERSION = 40;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-				MARKETING_VERSION = 1.1.37;
+				MARKETING_VERSION = 1.1.38;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;

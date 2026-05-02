@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -66,7 +67,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "en" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Tap to report poop here.",
-        WatchStringKey.REPORT_NOW to "Report now",
+        WatchStringKey.REPORT_NOW to "Report here",
         WatchStringKey.SENDING to "Sending...",
         WatchStringKey.PHONE_UNAVAILABLE to "Open the phone app or bring it closer to the watch.",
         WatchStringKey.REPORT_SENT to "Report sent in %s.",
@@ -83,7 +84,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "de" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Tippe hier, um Hundekot zu melden.",
-        WatchStringKey.REPORT_NOW to "Jetzt melden",
+        WatchStringKey.REPORT_NOW to "Hier melden",
         WatchStringKey.SENDING to "Wird gesendet...",
         WatchStringKey.PHONE_UNAVAILABLE to "Öffne die Handy-App oder bringe das Handy näher an die Uhr.",
         WatchStringKey.REPORT_SENT to "Meldung in %s gesendet.",
@@ -100,7 +101,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "nl" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Tik om hier hondenpoep te melden.",
-        WatchStringKey.REPORT_NOW to "Nu melden",
+        WatchStringKey.REPORT_NOW to "Hier melden",
         WatchStringKey.SENDING to "Verzenden...",
         WatchStringKey.PHONE_UNAVAILABLE to "Open de telefoonapp of houd de telefoon dichter bij het horloge.",
         WatchStringKey.REPORT_SENT to "Melding verzonden in %s.",
@@ -117,7 +118,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "pl" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Stuknij, aby zgłosić tu kupę.",
-        WatchStringKey.REPORT_NOW to "Zgłoś teraz",
+        WatchStringKey.REPORT_NOW to "Zgłoś tutaj",
         WatchStringKey.SENDING to "Wysyłanie...",
         WatchStringKey.PHONE_UNAVAILABLE to "Otwórz aplikację w telefonie lub zbliż telefon do zegarka.",
         WatchStringKey.REPORT_SENT to "Zgłoszenie wysłane w %s.",
@@ -134,7 +135,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "uk" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Натисніть, щоб повідомити про собачі екскременти тут.",
-        WatchStringKey.REPORT_NOW to "Повідомити",
+        WatchStringKey.REPORT_NOW to "Повідомити тут",
         WatchStringKey.SENDING to "Надсилання...",
         WatchStringKey.PHONE_UNAVAILABLE to "Відкрийте застосунок на телефоні або піднесіть його ближче до годинника.",
         WatchStringKey.REPORT_SENT to "Звіт надіслано в %s.",
@@ -151,7 +152,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "ru" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Нажмите, чтобы сообщить о собачьих отходах здесь.",
-        WatchStringKey.REPORT_NOW to "Сообщить",
+        WatchStringKey.REPORT_NOW to "Сообщить тут",
         WatchStringKey.SENDING to "Отправка...",
         WatchStringKey.PHONE_UNAVAILABLE to "Откройте приложение на телефоне или поднесите его ближе к часам.",
         WatchStringKey.REPORT_SENT to "Сообщение отправлено в %s.",
@@ -168,7 +169,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "ca" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Toca per informar de caca de gos aquí.",
-        WatchStringKey.REPORT_NOW to "Informa ara",
+        WatchStringKey.REPORT_NOW to "Informa aquí",
         WatchStringKey.SENDING to "Enviant...",
         WatchStringKey.PHONE_UNAVAILABLE to "Obre l'app del telèfon o acosta'l més al rellotge.",
         WatchStringKey.REPORT_SENT to "Avís enviat a %s.",
@@ -185,7 +186,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "val" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Toca per a informar de caca de gos ací.",
-        WatchStringKey.REPORT_NOW to "Informa ara",
+        WatchStringKey.REPORT_NOW to "Informa ací",
         WatchStringKey.SENDING to "Enviant...",
         WatchStringKey.PHONE_UNAVAILABLE to "Obri l'app del telèfon o acosta'l més al rellotge.",
         WatchStringKey.REPORT_SENT to "Avís enviat a %s.",
@@ -202,7 +203,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     "eu" -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
         WatchStringKey.TAP_TO_REPORT to "Sakatu hemen txakur-kakaren abisua bidaltzeko.",
-        WatchStringKey.REPORT_NOW to "Jakinarazi orain",
+        WatchStringKey.REPORT_NOW to "Hemen salatu",
         WatchStringKey.SENDING to "Bidaltzen...",
         WatchStringKey.PHONE_UNAVAILABLE to "Ireki telefonoko aplikazioa edo hurbildu telefonoa erlojuara.",
         WatchStringKey.REPORT_SENT to "Abisua %s herrian bidali da.",
@@ -218,8 +219,8 @@ private fun wearStrings(code: String): WearStrings = when (code) {
     ))
     else -> WearStrings(mapOf(
         WatchStringKey.APP_TITLE to "Caca Radar",
-        WatchStringKey.TAP_TO_REPORT to "Pulsa para enviar un aviso sin foto.",
-        WatchStringKey.REPORT_NOW to "Reportar ahora",
+        WatchStringKey.TAP_TO_REPORT to "Pulsa para reportar caca aquí.",
+        WatchStringKey.REPORT_NOW to "Reporta aquí",
         WatchStringKey.SENDING to "Enviando...",
         WatchStringKey.PHONE_UNAVAILABLE to "Abre la app del teléfono o acércalo al reloj.",
         WatchStringKey.REPORT_SENT to "Aviso enviado en %s.",
@@ -238,6 +239,9 @@ private fun wearStrings(code: String): WearStrings = when (code) {
 class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListener {
     private var preferredLanguage = Locale.getDefault().language.ifEmpty { "es" }
     private var languageUpdater: ((String) -> Unit)? = null
+    private var authUpdater: ((Boolean) -> Unit)? = null
+    private var phoneAvailabilityUpdater: ((Boolean) -> Unit)? = null
+    private var submittingUpdater: ((Boolean) -> Unit)? = null
     private val permissionLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) {
             submitQuickReport()
@@ -254,26 +258,68 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         setContent {
             var uiLanguage by remember { mutableStateOf(preferredLanguage) }
             var status by remember { mutableStateOf(wearStrings(uiLanguage).text(WatchStringKey.TAP_TO_REPORT)) }
+            var authenticated by remember { mutableStateOf(false) }
+            var phoneAvailable by remember { mutableStateOf(false) }
+            var isSubmitting by remember { mutableStateOf(false) }
             statusUpdater = { status = it }
             languageUpdater = { nextLanguage ->
                 uiLanguage = nextLanguage
-                status = wearStrings(nextLanguage).text(WatchStringKey.TAP_TO_REPORT)
+                if (!isSubmitting) {
+                    status = wearStrings(nextLanguage).text(WatchStringKey.TAP_TO_REPORT)
+                }
             }
+            authUpdater = { authenticated = it }
+            phoneAvailabilityUpdater = { phoneAvailable = it }
+            submittingUpdater = { isSubmitting = it }
             MaterialTheme {
                 Column(
                     modifier = Modifier.fillMaxSize().padding(12.dp),
                     verticalArrangement = Arrangement.Center,
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
-                    Text(wearStrings(uiLanguage).text(WatchStringKey.APP_TITLE), textAlign = TextAlign.Center)
-                    Text(status, textAlign = TextAlign.Center, modifier = Modifier.padding(vertical = 8.dp))
-                    Button(onClick = { submitQuickReport() }) {
-                        Text(wearStrings(uiLanguage).text(WatchStringKey.REPORT_NOW))
+                    Text(
+                        wearStrings(uiLanguage).text(WatchStringKey.APP_TITLE),
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        status,
+                        textAlign = TextAlign.Center,
+                        maxLines = 5,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 8.dp),
+                    )
+                    Button(
+                        onClick = { submitQuickReport() },
+                        enabled = !isSubmitting && phoneAvailable && authenticated,
+                    ) {
+                        Text(
+                            if (isSubmitting) wearStrings(uiLanguage).text(WatchStringKey.SENDING)
+                            else wearStrings(uiLanguage).text(WatchStringKey.REPORT_NOW),
+                            textAlign = TextAlign.Center,
+                            maxLines = 2,
+                        )
+                    }
+                    if (!phoneAvailable || !authenticated) {
+                        Text(
+                            if (!phoneAvailable) wearStrings(uiLanguage).text(WatchStringKey.PHONE_UNAVAILABLE)
+                            else wearStrings(uiLanguage).text(WatchStringKey.MISSING_ACCESS_TOKEN),
+                            textAlign = TextAlign.Center,
+                            maxLines = 4,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 8.dp),
+                        )
                     }
                 }
             }
         }
 
+        requestPhoneSettings()
+    }
+
+    override fun onResume() {
+        super.onResume()
         requestPhoneSettings()
     }
 
@@ -292,11 +338,15 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 val errorCode = json.optString("error", "quick_report_failed")
                 val errorDetail = json.optString("errorDetail", errorCode)
                 runOnUiThread {
+                    submittingUpdater?.invoke(false)
                     statusUpdater?.invoke(
                         if (ok) {
                             if (converted) strings().text(WatchStringKey.REPORT_CONFIRMED).format(municipality)
                             else strings().text(WatchStringKey.REPORT_SENT).format(municipality)
                         } else {
+                            if (errorCode == "missing_access_token") {
+                                authUpdater?.invoke(false)
+                            }
                             localizeError(errorCode, errorDetail)
                         }
                     )
@@ -305,8 +355,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             SETTINGS_RESULT_PATH -> {
                 val json = JSONObject(String(messageEvent.data, StandardCharsets.UTF_8))
                 val nextLanguage = json.optString("preferredLanguage", preferredLanguage).ifBlank { preferredLanguage }
+                val authenticated = json.optBoolean("authenticated", false)
                 preferredLanguage = nextLanguage
                 runOnUiThread {
+                    phoneAvailabilityUpdater?.invoke(true)
+                    authUpdater?.invoke(authenticated)
                     languageUpdater?.invoke(nextLanguage)
                 }
             }
@@ -320,18 +373,23 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         }
 
         lifecycleScope.launch {
+            submittingUpdater?.invoke(true)
             statusUpdater?.invoke(strings().text(WatchStringKey.WAITING_FOR_LOCATION))
             try {
                 val location = getCurrentLocation() ?: run {
+                    submittingUpdater?.invoke(false)
                     statusUpdater?.invoke(strings().text(WatchStringKey.LOCATION_UNAVAILABLE))
                     return@launch
                 }
                 statusUpdater?.invoke(strings().text(WatchStringKey.WAITING_FOR_PHONE))
                 val nodes = Tasks.await(Wearable.getNodeClient(this@MainActivity).connectedNodes, 10, TimeUnit.SECONDS)
                 if (nodes.isEmpty()) {
+                    submittingUpdater?.invoke(false)
+                    phoneAvailabilityUpdater?.invoke(false)
                     statusUpdater?.invoke(strings().text(WatchStringKey.PHONE_UNAVAILABLE))
                     return@launch
                 }
+                phoneAvailabilityUpdater?.invoke(true)
                 val payload = JSONObject()
                     .put("latitude", location.latitude)
                     .put("longitude", location.longitude)
@@ -342,6 +400,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                 }
                 statusUpdater?.invoke(strings().text(WatchStringKey.SENDING))
             } catch (exception: Exception) {
+                submittingUpdater?.invoke(false)
                 statusUpdater?.invoke(localizeError("quick_report_failed", exception.message))
             }
         }
@@ -351,6 +410,13 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         lifecycleScope.launch {
             try {
                 val nodes = Tasks.await(Wearable.getNodeClient(this@MainActivity).connectedNodes, 10, TimeUnit.SECONDS)
+                if (nodes.isEmpty()) {
+                    runOnUiThread {
+                        phoneAvailabilityUpdater?.invoke(false)
+                        authUpdater?.invoke(false)
+                    }
+                    return@launch
+                }
                 nodes.forEach { node ->
                     Tasks.await(
                         Wearable.getMessageClient(this@MainActivity)
@@ -360,6 +426,10 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                     )
                 }
             } catch (_: Exception) {
+                runOnUiThread {
+                    phoneAvailabilityUpdater?.invoke(false)
+                    authUpdater?.invoke(false)
+                }
             }
         }
     }

@@ -32,18 +32,7 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
     func pushCompanionContext() {
         guard WCSession.isSupported() else { return }
-        let defaults = UserDefaults.standard
-        let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
-        let accessToken = defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? ""
-        let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
-        let hasAccessToken = !accessToken.isEmpty
-
-        try? WCSession.default.updateApplicationContext([
-            "preferredLanguage": preferredLanguage,
-            "authenticated": hasAccessToken,
-            "accessToken": accessToken,
-            "apiBaseUrl": apiBaseUrl,
-        ])
+        try? WCSession.default.updateApplicationContext(currentCompanionContext())
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String : Any], replyHandler: @escaping ([String : Any]) -> Void) {
@@ -56,6 +45,10 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             do {
                 let result: [String: Any]
                 switch action {
+                case "companion_context":
+                    pushCompanionContext()
+                    replyHandler(currentCompanionContext())
+                    return
                 case "quick_report":
                     guard let latitude = message["latitude"] as? Double,
                           let longitude = message["longitude"] as? Double else {
@@ -81,6 +74,21 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
                 ])
             }
         }
+    }
+
+    private func currentCompanionContext() -> [String: Any] {
+        let defaults = UserDefaults.standard
+        let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
+        let accessToken = defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? ""
+        let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
+        let hasAccessToken = !accessToken.isEmpty
+
+        return [
+            "preferredLanguage": preferredLanguage,
+            "authenticated": hasAccessToken,
+            "accessToken": accessToken,
+            "apiBaseUrl": apiBaseUrl,
+        ]
     }
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
