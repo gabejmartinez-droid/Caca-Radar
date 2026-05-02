@@ -44,6 +44,18 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.28-web.1`
+- iOS `1.1.42 (44)`
+- Android `1.1.45 (47)`
+
+Changes:
+- Stopped the iPhone companion from overwriting the watch with empty auth payloads during context sync, which could leave the watch stuck in the disabled “open the iPhone app” state even after re-login.
+- The watch now keeps its last usable direct-report auth context unless the phone explicitly marks the session unauthenticated.
+- Rebuilt the shared mobile web bundle and refreshed mobile version numbers so this watch-auth state fix is easy to identify in testing.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Backend `1.1.7-api.1`
 
 Changes:

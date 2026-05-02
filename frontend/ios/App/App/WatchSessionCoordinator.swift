@@ -86,13 +86,17 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
         let hasAccessToken = !accessToken.isEmpty
         let hasRefreshToken = !refreshToken.isEmpty
-
-        return [
+        var context: [String: Any] = [
             "preferredLanguage": preferredLanguage,
             "authenticated": hasAccessToken || hasRefreshToken,
-            "accessToken": accessToken,
-            "apiBaseUrl": apiBaseUrl,
         ]
+        if hasAccessToken {
+            context["accessToken"] = accessToken
+        }
+        if !apiBaseUrl.isEmpty {
+            context["apiBaseUrl"] = apiBaseUrl
+        }
+        return context
     }
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {

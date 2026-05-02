@@ -591,15 +591,19 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         if let preferredLanguage = applicationContext["preferredLanguage"] as? String {
             updatePreferredLanguage(preferredLanguage)
         }
-        if let accessToken = applicationContext["accessToken"] as? String {
+        if let accessToken = applicationContext["accessToken"] as? String, !accessToken.isEmpty {
             UserDefaults.standard.set(accessToken, forKey: Self.accessTokenKey)
         }
-        if let apiBaseUrl = applicationContext["apiBaseUrl"] as? String {
+        if let apiBaseUrl = applicationContext["apiBaseUrl"] as? String, !apiBaseUrl.isEmpty {
             UserDefaults.standard.set(apiBaseUrl, forKey: Self.apiBaseUrlKey)
         }
         if let authenticated = applicationContext["authenticated"] as? Bool {
             self.authenticated = authenticated
             UserDefaults.standard.set(authenticated, forKey: Self.authenticatedKey)
+            if !authenticated {
+                UserDefaults.standard.removeObject(forKey: Self.accessTokenKey)
+                UserDefaults.standard.removeObject(forKey: Self.apiBaseUrlKey)
+            }
         } else {
             self.authenticated = hasSyncedAuthContext
         }
