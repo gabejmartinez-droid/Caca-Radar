@@ -18,6 +18,7 @@ enum WatchCopyKey: String {
     case reportCooldown
     case restrictedAccount
     case quickReportFailed
+    case usingPhoneLocation
 }
 
 struct WatchCopy {
@@ -43,6 +44,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Getting your location…",
                 .locationDenied: "Allow location access on the watch to send reports.",
                 .locationUnavailable: "We couldn't get your location.",
+                .usingPhoneLocation: "Trying with your iPhone location…",
                 .missingAccessToken: "Open Caca Radar on the iPhone and sign in again.",
                 .invalidApiUrl: "The phone app has an invalid server URL.",
                 .invalidResponse: "The phone sent an invalid response.",
@@ -62,6 +64,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Standort wird ermittelt…",
                 .locationDenied: "Erlaube den Standortzugriff auf der Uhr, um Meldungen zu senden.",
                 .locationUnavailable: "Der Standort konnte nicht ermittelt werden.",
+                .usingPhoneLocation: "Versuche es mit dem iPhone-Standort…",
                 .missingAccessToken: "Öffne Caca Radar auf dem iPhone und melde dich erneut an.",
                 .invalidApiUrl: "Die iPhone-App hat eine ungültige Server-URL.",
                 .invalidResponse: "Die Antwort des iPhones war ungültig.",
@@ -81,6 +84,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Locatie ophalen…",
                 .locationDenied: "Geef locatie-toegang op het horloge om meldingen te versturen.",
                 .locationUnavailable: "We konden je locatie niet ophalen.",
+                .usingPhoneLocation: "We proberen je iPhone-locatie…",
                 .missingAccessToken: "Open Caca Radar op de iPhone en log opnieuw in.",
                 .invalidApiUrl: "De iPhone-app heeft een ongeldige server-URL.",
                 .invalidResponse: "De iPhone stuurde een ongeldige reactie.",
@@ -100,6 +104,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Pobieranie lokalizacji…",
                 .locationDenied: "Zezwól zegarkowi na dostęp do lokalizacji, aby wysyłać zgłoszenia.",
                 .locationUnavailable: "Nie udało się pobrać lokalizacji.",
+                .usingPhoneLocation: "Próbujemy użyć lokalizacji z iPhone’a…",
                 .missingAccessToken: "Otwórz Caca Radar na iPhonie i zaloguj się ponownie.",
                 .invalidApiUrl: "Aplikacja na iPhonie ma nieprawidłowy adres serwera.",
                 .invalidResponse: "iPhone zwrócił nieprawidłową odpowiedź.",
@@ -119,6 +124,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Отримуємо геопозицію…",
                 .locationDenied: "Дозвольте доступ до геопозиції на годиннику, щоб надсилати звіти.",
                 .locationUnavailable: "Не вдалося отримати вашу геопозицію.",
+                .usingPhoneLocation: "Пробуємо геопозицію з iPhone…",
                 .missingAccessToken: "Відкрийте Caca Radar на iPhone та увійдіть ще раз.",
                 .invalidApiUrl: "У застосунку iPhone неправильна адреса сервера.",
                 .invalidResponse: "iPhone надіслав некоректну відповідь.",
@@ -138,6 +144,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Получаем геопозицию…",
                 .locationDenied: "Разрешите доступ к геопозиции на часах, чтобы отправлять сообщения.",
                 .locationUnavailable: "Не удалось получить вашу геопозицию.",
+                .usingPhoneLocation: "Пробуем геопозицию с iPhone…",
                 .missingAccessToken: "Откройте Caca Radar на iPhone и войдите снова.",
                 .invalidApiUrl: "В приложении iPhone неверный адрес сервера.",
                 .invalidResponse: "iPhone прислал неверный ответ.",
@@ -157,6 +164,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Obtenint la ubicació…",
                 .locationDenied: "Permet l'accés a la ubicació al rellotge per enviar avisos.",
                 .locationUnavailable: "No hem pogut obtenir la teva ubicació.",
+                .usingPhoneLocation: "Provem amb la ubicació de l’iPhone…",
                 .missingAccessToken: "Obre Caca Radar a l'iPhone i torna a iniciar sessió.",
                 .invalidApiUrl: "L'app de l'iPhone té una URL del servidor no vàlida.",
                 .invalidResponse: "L'iPhone ha enviat una resposta no vàlida.",
@@ -176,6 +184,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Obtenint la ubicació…",
                 .locationDenied: "Permet l'accés a la ubicació al rellotge per a enviar avisos.",
                 .locationUnavailable: "No hem pogut obtindre la teua ubicació.",
+                .usingPhoneLocation: "Provem amb la ubicació de l’iPhone…",
                 .missingAccessToken: "Obri Caca Radar a l'iPhone i torna a iniciar sessió.",
                 .invalidApiUrl: "L'app de l'iPhone té una URL del servidor no vàlida.",
                 .invalidResponse: "L'iPhone ha enviat una resposta no vàlida.",
@@ -195,6 +204,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Kokapena lortzen…",
                 .locationDenied: "Baimendu kokapena erlojuan abisuak bidaltzeko.",
                 .locationUnavailable: "Ezin izan dugu zure kokapena lortu.",
+                .usingPhoneLocation: "iPhonearen kokapena probatzen…",
                 .missingAccessToken: "Ireki Caca Radar iPhonean eta hasi saioa berriro.",
                 .invalidApiUrl: "iPhone aplikazioak zerbitzariaren URL baliogabea dauka.",
                 .invalidResponse: "iPhoneak erantzun baliogabea bidali du.",
@@ -214,6 +224,7 @@ enum WatchCopyCatalog {
                 .waitingForLocation: "Buscando tu ubicación…",
                 .locationDenied: "Permite la ubicación en el reloj para enviar avisos.",
                 .locationUnavailable: "No pudimos obtener tu ubicación.",
+                .usingPhoneLocation: "Probando con la ubicación del iPhone…",
                 .missingAccessToken: "Abre Caca Radar en el iPhone e inicia sesión de nuevo.",
                 .invalidApiUrl: "La app del iPhone tiene una URL de servidor no válida.",
                 .invalidResponse: "El iPhone devolvió una respuesta no válida.",
@@ -351,6 +362,52 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         return reply
     }
 
+    func sendQuickReportUsingPhoneLocation() async throws -> QuickReportReply {
+        guard WCSession.default.isReachable else {
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: copy.text(.phoneUnavailable),
+                    "appErrorCode": "phone_unavailable",
+                ]
+            )
+        }
+
+        let reply = try await withCheckedThrowingContinuation { continuation in
+            WCSession.default.sendMessage(
+                ["action": "quick_report_phone_location"],
+                replyHandler: { response in
+                    let success = response["ok"] as? Bool ?? false
+                    if success {
+                        continuation.resume(returning: QuickReportReply(
+                            ok: true,
+                            reportId: response["reportId"] as? String ?? "",
+                            municipality: response["municipality"] as? String ?? "",
+                            convertedToConfirmation: response["convertedToConfirmation"] as? Bool ?? false
+                        ))
+                    } else {
+                        let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
+                        let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+                        continuation.resume(throwing: NSError(
+                            domain: "PhoneSessionBridge",
+                            code: 2,
+                            userInfo: [
+                                NSLocalizedDescriptionKey: errorDetail,
+                                "appErrorCode": errorCode,
+                            ]
+                        ))
+                    }
+                },
+                errorHandler: { error in
+                    continuation.resume(throwing: error)
+                }
+            )
+        }
+
+        return reply
+    }
+
     private func sendQuickReportDirectly(latitude: Double, longitude: Double) async throws -> QuickReportReply {
         guard let accessToken = storedAccessToken else {
             throw NSError(
@@ -445,6 +502,10 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             return copy.text(.reportCooldown)
         case "restricted_account":
             return copy.text(.restrictedAccount)
+        case "location_permission_denied":
+            return copy.text(.locationDenied)
+        case "location_unavailable":
+            return copy.text(.locationUnavailable)
         default:
             let message = (error as NSError).localizedDescription
             if message == "The operation couldn’t be completed." || message == "The operation could not be completed." {

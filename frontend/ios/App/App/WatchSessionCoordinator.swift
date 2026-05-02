@@ -1,3 +1,4 @@
+import CoreLocation
 import Foundation
 import WatchConnectivity
 
@@ -46,20 +47,29 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     }
 
     func session(_ session: WCSession, didReceiveMessage message: [String : Any], replyHandler: @escaping ([String : Any]) -> Void) {
-        guard let action = message["action"] as? String, action == "quick_report" else {
+        guard let action = message["action"] as? String else {
             replyHandler(["ok": false, "error": "unsupported_action"])
-            return
-        }
-
-        guard let latitude = message["latitude"] as? Double,
-              let longitude = message["longitude"] as? Double else {
-            replyHandler(["ok": false, "error": "missing_coordinates"])
             return
         }
 
         Task {
             do {
-                let result = try await sendQuickReport(latitude: latitude, longitude: longitude)
+                let result: [String: Any]
+                switch action {
+                case "quick_report":
+                    guard let latitude = message["latitude"] as? Double,
+                          let longitude = message["longitude"] as? Double else {
+                        replyHandler(["ok": false, "error": "missing_coordinates"])
+                        return
+                    }
+                    result = try await sendQuickReport(latitude: latitude, longitude: longitude)
+                case "quick_report_phone_location":
+                    let coordinate = try await phoneLocationProvider.requestCurrentLocation()
+                    result = try await sendQuickReport(latitude: coordinate.latitude, longitude: coordinate.longitude)
+                default:
+                    replyHandler(["ok": false, "error": "unsupported_action"])
+                    return
+                }
                 replyHandler(result)
             } catch {
                 let nsError = error as NSError
@@ -153,3 +163,153 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         ]
     }
 }
+
+private final class PhoneQuickReportLocationProvider: NSObject, CLLocationManagerDelegate {
+    private let manager = CLLocationManager()
+    private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
+    private var waitingForAuthorization = false
+    private var timeoutTask: Task<Void, Never>?
+    private let staleLocationThreshold: TimeInterval = 120
+    private let requestTimeout: TimeInterval = 12
+
+    override init() {
+        super.init()
+        manager.delegate = self
+        manager.desiredAccuracy = kCLLocationAccuracyBest
+    }
+
+    func requestCurrentLocation() async throws -> CLLocationCoordinate2D {
+        let status = manager.authorizationStatus
+        if status == .denied || status == .restricted {
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 403,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "location_permission_denied",
+                    "appErrorCode": "location_permission_denied",
+                ]
+            )
+        }
+        if !CLLocationManager.locationServicesEnabled() {
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 500,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "location_unavailable",
+                    "appErrorCode": "location_unavailable",
+                ]
+            )
+        }
+        if let cachedLocation = currentUsableLocation() {
+            return cachedLocation.coordinate
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            self.continuation = continuation
+            self.startTimeout()
+
+            if status == .notDetermined {
+                waitingForAuthorization = true
+                manager.requestWhenInUseAuthorization()
+            } else {
+                startLocationAcquisition()
+            }
+        }
+    }
+
+    private func startLocationAcquisition() {
+        manager.startUpdatingLocation()
+        manager.requestLocation()
+    }
+
+    private func currentUsableLocation() -> CLLocation? {
+        guard let location = manager.location else { return nil }
+        guard location.horizontalAccuracy > 0 else { return nil }
+        guard abs(location.timestamp.timeIntervalSinceNow) <= staleLocationThreshold else { return nil }
+        return location
+    }
+
+    private func finish(with result: Result<CLLocationCoordinate2D, Error>) {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        waitingForAuthorization = false
+        manager.stopUpdatingLocation()
+
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(with: result)
+    }
+
+    private func startTimeout() {
+        timeoutTask?.cancel()
+        timeoutTask = Task { [weak self] in
+            guard let self else { return }
+            try? await Task.sleep(nanoseconds: UInt64(requestTimeout * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            if let cachedLocation = self.currentUsableLocation() {
+                self.finish(with: .success(cachedLocation.coordinate))
+            } else {
+                self.finish(with: .failure(NSError(
+                    domain: "WatchSessionCoordinator",
+                    code: 408,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "location_unavailable",
+                        "appErrorCode": "location_unavailable",
+                    ]
+                )))
+            }
+        }
+    }
+
+    func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
+        guard waitingForAuthorization else { return }
+
+        switch manager.authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse:
+            startLocationAcquisition()
+        case .denied, .restricted:
+            finish(with: .failure(NSError(
+                domain: "WatchSessionCoordinator",
+                code: 403,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "location_permission_denied",
+                    "appErrorCode": "location_permission_denied",
+                ]
+            )))
+        default:
+            break
+        }
+    }
+
+    func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard let location = locations.last(where: { $0.horizontalAccuracy > 0 }) ?? locations.last else {
+            finish(with: .failure(NSError(
+                domain: "WatchSessionCoordinator",
+                code: 500,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "location_unavailable",
+                    "appErrorCode": "location_unavailable",
+                ]
+            )))
+            return
+        }
+        finish(with: .success(location.coordinate))
+    }
+
+    func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
+        let nsError = error as NSError
+        if nsError.domain == kCLErrorDomain,
+           nsError.code == CLError.locationUnknown.rawValue {
+            return
+        }
+        finish(with: .failure(NSError(
+            domain: "WatchSessionCoordinator",
+            code: nsError.code,
+            userInfo: [
+                NSLocalizedDescriptionKey: "location_unavailable",
+                "appErrorCode": "location_unavailable",
+            ]
+        )))
+    }
+}
+    private let phoneLocationProvider = PhoneQuickReportLocationProvider()

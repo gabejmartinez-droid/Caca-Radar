@@ -192,19 +192,41 @@ struct ContentView: View {
         do {
             let coordinate = try await locationManager.requestCurrentLocation()
             let result = try await bridge.sendQuickReport(latitude: coordinate.latitude, longitude: coordinate.longitude)
-            if result.convertedToConfirmation {
-                statusText = String(format: copy.text(.reportConfirmed), result.municipality)
-            } else {
-                statusText = String(format: copy.text(.reportSent), result.municipality)
-            }
+            apply(result: result, copy: copy)
         } catch WatchLocationError.permissionDenied {
-            statusText = copy.text(.locationDenied)
+            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationDenied))
         } catch WatchLocationError.timeout {
-            statusText = copy.text(.locationUnavailable)
+            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationUnavailable))
         } catch WatchLocationError.locationUnavailable {
-            statusText = copy.text(.locationUnavailable)
+            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationUnavailable))
         } catch {
             statusText = bridge.localizedMessage(for: error)
+        }
+    }
+
+    @MainActor
+    private func retryUsingPhoneLocation(copy: WatchCopy, fallbackMessage: String) async {
+        guard bridge.reachable else {
+            statusText = fallbackMessage
+            return
+        }
+
+        statusText = copy.text(.usingPhoneLocation)
+
+        do {
+            let result = try await bridge.sendQuickReportUsingPhoneLocation()
+            apply(result: result, copy: copy)
+        } catch {
+            statusText = bridge.localizedMessage(for: error)
+        }
+    }
+
+    @MainActor
+    private func apply(result: QuickReportReply, copy: WatchCopy) {
+        if result.convertedToConfirmation {
+            statusText = String(format: copy.text(.reportConfirmed), result.municipality)
+        } else {
+            statusText = String(format: copy.text(.reportSent), result.municipality)
         }
     }
 }

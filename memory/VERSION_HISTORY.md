@@ -1341,3 +1341,41 @@ Notes:
 - Refined Apple Watch text layout and button copy
 ```
 
+### 2026-05-02 — Pending
+
+Release metadata:
+- Commit SHA: `afe809468c3eb5b472ab4334f61c992c5cb38df5-dirty`
+- Deployment status: `pending`
+- Rollback target: `eb56ba005ede0b61c7995608c23c0366f421947e`
+
+Exact versions:
+- Web: `1.1.24-web.1`
+- iOS: `1.1.37 (39)`
+- Android: `1.1.39 (41)`
+- Backend: `1.1.3-api.1`
+
+User-facing release notes:
+- Add iPhone location fallback for Apple Watch reports.
+
+Internal release notes:
+- Add iPhone location fallback for Apple Watch reports
+
+Store submission notes:
+```text
+- Add iPhone location fallback for Apple Watch reports.
+```
+
+Internal release notes block:
+```text
+Commit SHA: afe809468c3eb5b472ab4334f61c992c5cb38df5-dirty
+Deployment status: pending
+Rollback target: eb56ba005ede0b61c7995608c23c0366f421947e
+Versions:
+• Web: `1.1.24-web.1`
+• iOS: `1.1.37 (39)`
+• Android: `1.1.39 (41)`
+• Backend: `1.1.3-api.1`
+Notes:
+- Add iPhone location fallback for Apple Watch reports
+```
+
