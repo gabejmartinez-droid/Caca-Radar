@@ -202,6 +202,7 @@ struct ContentView: View {
 
         do {
             let coordinate = try await locationManager.requestCurrentLocation()
+            statusText = copy.text(.sending)
             let result = try await bridge.sendQuickReport(latitude: coordinate.latitude, longitude: coordinate.longitude)
             apply(result: result, copy: copy)
         } catch WatchLocationError.permissionDenied {
@@ -225,6 +226,7 @@ struct ContentView: View {
         statusText = copy.text(.usingPhoneLocation)
 
         do {
+            statusText = copy.text(.sending)
             let result = try await bridge.sendQuickReportUsingPhoneLocation()
             apply(result: result, copy: copy)
         } catch {

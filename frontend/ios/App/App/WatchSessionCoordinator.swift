@@ -75,7 +75,8 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     private func currentCompanionContext() -> [String: Any] {
         let preferredLanguage = CompanionBridgeStorage.readPreferredLanguage() ?? "es"
         let accessToken = CompanionBridgeStorage.readAccessToken() ?? ""
-        let hasRefreshToken = !(CompanionBridgeStorage.readRefreshToken() ?? "").isEmpty
+        let refreshToken = CompanionBridgeStorage.readRefreshToken() ?? ""
+        let hasRefreshToken = !refreshToken.isEmpty
         let apiBaseUrl = CompanionBridgeStorage.readApiBaseUrl() ?? ""
         var context: [String: Any] = [
             "preferredLanguage": preferredLanguage,
@@ -83,6 +84,9 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         ]
         if !accessToken.isEmpty {
             context["accessToken"] = accessToken
+        }
+        if hasRefreshToken {
+            context["refreshToken"] = refreshToken
         }
         if !apiBaseUrl.isEmpty {
             context["apiBaseUrl"] = apiBaseUrl
@@ -123,8 +127,11 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         func performRequest(with bearerToken: String) async throws -> (Data, HTTPURLResponse) {
             var request = URLRequest(url: url)
             request.httpMethod = "POST"
+            request.timeoutInterval = 15
             request.setValue("application/json", forHTTPHeaderField: "Content-Type")
             request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            request.setValue("ios", forHTTPHeaderField: "X-Platform")
+            request.setValue("1", forHTTPHeaderField: "X-Native-App")
             request.httpBody = try JSONSerialization.data(withJSONObject: [
                 "latitude": latitude,
                 "longitude": longitude,
@@ -206,7 +213,10 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
         var request = URLRequest(url: refreshUrl)
         request.httpMethod = "POST"
+        request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.setValue("1", forHTTPHeaderField: "X-Native-App")
         request.httpBody = try JSONSerialization.data(withJSONObject: [
             "refresh_token": refreshToken,
         ])

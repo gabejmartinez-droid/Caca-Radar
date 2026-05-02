@@ -1,4 +1,5 @@
 import Foundation
+import Security
 import WatchConnectivity
 
 enum WatchCopyKey: String {
@@ -243,8 +244,72 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
 
     private static let preferredLanguageKey = "watch_preferred_language"
     private static let authenticatedKey = "watch_authenticated"
-    private static let accessTokenKey = "watch_access_token"
     private static let apiBaseUrlKey = "watch_api_base_url"
+
+    private enum WatchSecureStorage {
+        static let accessService = "com.jefe.cacaradar.watch.access"
+        static let refreshService = "com.jefe.cacaradar.watch.refresh"
+        static let account = "primary"
+
+        static func read(service: String) -> String? {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: account,
+                kSecReturnData as String: true,
+                kSecMatchLimit as String: kSecMatchLimitOne,
+            ]
+            var item: CFTypeRef?
+            let status = SecItemCopyMatching(query as CFDictionary, &item)
+            guard status == errSecSuccess, let data = item as? Data else {
+                return nil
+            }
+            let value = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines)
+            return value?.isEmpty == false ? value : nil
+        }
+
+        static func write(_ value: String?, service: String) {
+            let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            if trimmed.isEmpty {
+                clear(service: service)
+                return
+            }
+
+            let data = Data(trimmed.utf8)
+            let baseQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: account,
+            ]
+            let updateStatus = SecItemUpdate(
+                baseQuery as CFDictionary,
+                [
+                    kSecValueData as String: data,
+                    kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
+                ] as CFDictionary
+            )
+            if updateStatus == errSecSuccess {
+                return
+            }
+            guard updateStatus == errSecItemNotFound else {
+                return
+            }
+
+            var addQuery = baseQuery
+            addQuery[kSecValueData as String] = data
+            addQuery[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+            SecItemAdd(addQuery as CFDictionary, nil)
+        }
+
+        static func clear(service: String) {
+            let query: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: account,
+            ]
+            SecItemDelete(query as CFDictionary)
+        }
+    }
 
     override init() {
         super.init()
@@ -258,12 +323,17 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     static func defaultAuthenticated() -> Bool {
-        UserDefaults.standard.bool(forKey: authenticatedKey) || !(UserDefaults.standard.string(forKey: accessTokenKey) ?? "").isEmpty
+        UserDefaults.standard.bool(forKey: authenticatedKey)
+            || WatchSecureStorage.read(service: WatchSecureStorage.accessService) != nil
+            || WatchSecureStorage.read(service: WatchSecureStorage.refreshService) != nil
     }
 
     private var storedAccessToken: String? {
-        let token = UserDefaults.standard.string(forKey: Self.accessTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return token?.isEmpty == false ? token : nil
+        WatchSecureStorage.read(service: WatchSecureStorage.accessService)
+    }
+
+    private var storedRefreshToken: String? {
+        WatchSecureStorage.read(service: WatchSecureStorage.refreshService)
     }
 
     private var storedApiBaseUrl: String? {
@@ -272,7 +342,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     private var hasSyncedAuthContext: Bool {
-        storedAccessToken != nil && storedApiBaseUrl != nil
+        storedApiBaseUrl != nil && (storedAccessToken != nil || storedRefreshToken != nil)
     }
 
     var copy: WatchCopy {
@@ -356,40 +426,74 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         }
     }
 
-    private func sendQuickReportViaPhone(latitude: Double, longitude: Double) async throws -> QuickReportReply {
-
-        let reply = try await withCheckedThrowingContinuation { continuation in
-            WCSession.default.sendMessage(
-                [
-                    "action": "quick_report",
-                    "latitude": latitude,
-                    "longitude": longitude,
-                ],
-                replyHandler: { response in
-                    let success = response["ok"] as? Bool ?? false
-                    if success {
-                        continuation.resume(returning: QuickReportReply(
-                            ok: true,
-                            reportId: response["reportId"] as? String ?? "",
-                            municipality: response["municipality"] as? String ?? "",
-                            convertedToConfirmation: response["convertedToConfirmation"] as? Bool ?? false
-                        ))
-                    } else {
-                        let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
-                        let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
-                        continuation.resume(throwing: NSError(
-                            domain: "PhoneSessionBridge",
-                            code: 2,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: errorDetail,
-                                "appErrorCode": errorCode,
-                            ]
-                        ))
-                    }
-                },
-                errorHandler: { error in
-                    continuation.resume(throwing: error)
+    private func sendMessageWithTimeout<T>(
+        _ message: [String: Any],
+        timeoutSeconds: TimeInterval = 12,
+        transform: @escaping ([String: Any]) throws -> T
+    ) async throws -> T {
+        try await withThrowingTaskGroup(of: T.self) { group in
+            group.addTask {
+                try await withCheckedThrowingContinuation { continuation in
+                    WCSession.default.sendMessage(
+                        message,
+                        replyHandler: { response in
+                            do {
+                                continuation.resume(returning: try transform(response))
+                            } catch {
+                                continuation.resume(throwing: error)
+                            }
+                        },
+                        errorHandler: { error in
+                            continuation.resume(throwing: error)
+                        }
+                    )
                 }
+            }
+
+            group.addTask {
+                try await Task.sleep(nanoseconds: UInt64(timeoutSeconds * 1_000_000_000))
+                throw NSError(
+                    domain: "PhoneSessionBridge",
+                    code: 408,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: self.copy.text(.quickReportFailed),
+                        "appErrorCode": "quick_report_failed",
+                    ]
+                )
+            }
+
+            let result = try await group.next()!
+            group.cancelAll()
+            return result
+        }
+    }
+
+    private func sendQuickReportViaPhone(latitude: Double, longitude: Double) async throws -> QuickReportReply {
+        let reply = try await sendMessageWithTimeout(
+            [
+                "action": "quick_report",
+                "latitude": latitude,
+                "longitude": longitude,
+            ]
+        ) { response in
+            let success = response["ok"] as? Bool ?? false
+            if success {
+                return QuickReportReply(
+                    ok: true,
+                    reportId: response["reportId"] as? String ?? "",
+                    municipality: response["municipality"] as? String ?? "",
+                    convertedToConfirmation: response["convertedToConfirmation"] as? Bool ?? false
+                )
+            }
+            let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
+            let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: errorDetail,
+                    "appErrorCode": errorCode,
+                ]
             )
         }
 
@@ -408,34 +512,27 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             )
         }
 
-        let reply = try await withCheckedThrowingContinuation { continuation in
-            WCSession.default.sendMessage(
-                ["action": "quick_report_phone_location"],
-                replyHandler: { response in
-                    let success = response["ok"] as? Bool ?? false
-                    if success {
-                        continuation.resume(returning: QuickReportReply(
-                            ok: true,
-                            reportId: response["reportId"] as? String ?? "",
-                            municipality: response["municipality"] as? String ?? "",
-                            convertedToConfirmation: response["convertedToConfirmation"] as? Bool ?? false
-                        ))
-                    } else {
-                        let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
-                        let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
-                        continuation.resume(throwing: NSError(
-                            domain: "PhoneSessionBridge",
-                            code: 2,
-                            userInfo: [
-                                NSLocalizedDescriptionKey: errorDetail,
-                                "appErrorCode": errorCode,
-                            ]
-                        ))
-                    }
-                },
-                errorHandler: { error in
-                    continuation.resume(throwing: error)
-                }
+        let reply = try await sendMessageWithTimeout(
+            ["action": "quick_report_phone_location"]
+        ) { response in
+            let success = response["ok"] as? Bool ?? false
+            if success {
+                return QuickReportReply(
+                    ok: true,
+                    reportId: response["reportId"] as? String ?? "",
+                    municipality: response["municipality"] as? String ?? "",
+                    convertedToConfirmation: response["convertedToConfirmation"] as? Bool ?? false
+                )
+            }
+            let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "quick_report_failed"
+            let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: errorDetail,
+                    "appErrorCode": errorCode,
+                ]
             )
         }
 
@@ -443,16 +540,6 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     private func sendQuickReportDirectly(latitude: Double, longitude: Double) async throws -> QuickReportReply {
-        guard let accessToken = storedAccessToken else {
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: 401,
-                userInfo: [
-                    NSLocalizedDescriptionKey: copy.text(.missingAccessToken),
-                    "appErrorCode": "missing_access_token",
-                ]
-            )
-        }
         let configuredBase = storedApiBaseUrl ?? "https://cacaradar.es/api"
         let apiBase = configuredBase.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(apiBase)/reports/quick") else {
@@ -466,26 +553,60 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             )
         }
 
+        func refreshedAccessToken() async throws -> String {
+            guard let refreshToken = storedRefreshToken else {
+                throw NSError(
+                    domain: "PhoneSessionBridge",
+                    code: 401,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: copy.text(.missingAccessToken),
+                        "appErrorCode": "missing_access_token",
+                    ]
+                )
+            }
+            return try await refreshAccessToken(apiBase: apiBase, refreshToken: refreshToken)
+        }
+
+        let initialToken = try await {
+            if let accessToken = storedAccessToken {
+                return accessToken
+            }
+            return try await refreshedAccessToken()
+        }()
+
         var request = URLRequest(url: url)
         request.httpMethod = "POST"
+        request.timeoutInterval = 15
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "latitude": latitude,
-            "longitude": longitude,
-            "source": "apple_watch",
-        ])
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.setValue("1", forHTTPHeaderField: "X-Native-App")
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: 500,
-                userInfo: [
-                    NSLocalizedDescriptionKey: copy.text(.invalidResponse),
-                    "appErrorCode": "invalid_response",
-                ]
-            )
+        func performRequest(with bearerToken: String) async throws -> (Data, HTTPURLResponse) {
+            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: [
+                "latitude": latitude,
+                "longitude": longitude,
+                "source": "apple_watch",
+            ])
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw NSError(
+                    domain: "PhoneSessionBridge",
+                    code: 500,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: copy.text(.invalidResponse),
+                        "appErrorCode": "invalid_response",
+                    ]
+                )
+            }
+            return (data, http)
+        }
+
+        var (data, http) = try await performRequest(with: initialToken)
+        if http.statusCode == 401, storedRefreshToken != nil {
+            let refreshedToken = try await refreshedAccessToken()
+            (data, http) = try await performRequest(with: refreshedToken)
         }
 
         guard (200...299).contains(http.statusCode) else {
@@ -519,6 +640,58 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             municipality: payload["municipality"] as? String ?? "",
             convertedToConfirmation: payload["converted_to_confirmation"] as? Bool ?? false
         )
+    }
+
+    private func refreshAccessToken(apiBase: String, refreshToken: String) async throws -> String {
+        guard let refreshUrl = URL(string: "\(apiBase)/auth/refresh") else {
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 400,
+                userInfo: [
+                    NSLocalizedDescriptionKey: copy.text(.invalidApiUrl),
+                    "appErrorCode": "invalid_api_url",
+                ]
+            )
+        }
+
+        var request = URLRequest(url: refreshUrl)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 15
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.setValue("1", forHTTPHeaderField: "X-Native-App")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "refresh_token": refreshToken,
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 500,
+                userInfo: [
+                    NSLocalizedDescriptionKey: copy.text(.invalidResponse),
+                    "appErrorCode": "invalid_response",
+                ]
+            )
+        }
+        guard (200...299).contains(http.statusCode),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let accessToken = payload["access_token"] as? String,
+              !accessToken.isEmpty else {
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: http.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: copy.text(.missingAccessToken),
+                    "appErrorCode": "missing_access_token",
+                ]
+            )
+        }
+
+        WatchSecureStorage.write(accessToken, service: WatchSecureStorage.accessService)
+        WatchSecureStorage.write(refreshToken, service: WatchSecureStorage.refreshService)
+        return accessToken
     }
 
     func localizedMessage(for error: Error) -> String {
@@ -577,7 +750,10 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             updatePreferredLanguage(preferredLanguage)
         }
         if let accessToken = applicationContext["accessToken"] as? String, !accessToken.isEmpty {
-            UserDefaults.standard.set(accessToken, forKey: Self.accessTokenKey)
+            WatchSecureStorage.write(accessToken, service: WatchSecureStorage.accessService)
+        }
+        if let refreshToken = applicationContext["refreshToken"] as? String, !refreshToken.isEmpty {
+            WatchSecureStorage.write(refreshToken, service: WatchSecureStorage.refreshService)
         }
         if let apiBaseUrl = applicationContext["apiBaseUrl"] as? String, !apiBaseUrl.isEmpty {
             UserDefaults.standard.set(apiBaseUrl, forKey: Self.apiBaseUrlKey)
@@ -586,7 +762,8 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             self.authenticated = authenticated
             UserDefaults.standard.set(authenticated, forKey: Self.authenticatedKey)
             if !authenticated {
-                UserDefaults.standard.removeObject(forKey: Self.accessTokenKey)
+                WatchSecureStorage.clear(service: WatchSecureStorage.accessService)
+                WatchSecureStorage.clear(service: WatchSecureStorage.refreshService)
                 UserDefaults.standard.removeObject(forKey: Self.apiBaseUrlKey)
             }
         } else {

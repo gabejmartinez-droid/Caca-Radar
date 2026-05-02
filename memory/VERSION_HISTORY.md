@@ -44,6 +44,22 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.35-web.1`
+- iOS `1.1.49 (51)`
+- Android `1.1.52 (54)`
+
+Changes:
+- Apple Watch quick reporting now syncs a secure refresh path from the iPhone companion context, so the watch can recover a fresh access token without requiring the phone app to stay open at the same time.
+- Added explicit network/request timeouts to Apple Watch phone-relay and direct-report paths to avoid hanging indefinitely on “Enviando...” when the relay or request stalls.
+- Updated the Apple Watch status flow so it switches from location search to a real sending state once coordinates are available.
+
+Verification:
+- Mobile bundle will be rebuilt and re-synced after the change.
+- Android release bundle will be rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.34-web.1`
 - iOS `1.1.48 (50)`
 - Android `1.1.51 (53)`
