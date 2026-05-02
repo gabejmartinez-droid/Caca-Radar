@@ -1,13 +1,26 @@
 import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
-import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Globe, Smartphone, MonitorSmartphone, Clock3, Skull } from "lucide-react";
+import { Shield, Users, FileText, Eye, AlertTriangle, DollarSign, TrendingUp, Search, ChevronLeft, ChevronRight, Loader2, LogOut, Image, CheckCircle, XCircle, Globe, Smartphone, MonitorSmartphone, Clock3, Skull, Building2, MapPin, Flag, Archive, RefreshCw, Camera, BarChart3 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../components/ui/table";
+import { Badge } from "../components/ui/badge";
+import MunicipalityMapCard from "../components/MunicipalityMapCard";
 import { toast } from "sonner";
 import axios from "axios";
 
 import { API } from "../config";
+
+const FLAG_REASON_LABELS = {
+  license_plate: "Matrícula visible",
+  face: "Cara visible",
+  name: "Nombre visible",
+  personal_info: "Info personal",
+  inappropriate: "Contenido inapropiado",
+  spam: "Spam / Falso",
+  other: "Otro",
+};
 
 function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
   return (
@@ -54,6 +67,13 @@ function PlatformBadge({ platform }) {
   );
 }
 
+function municipalityLabel(municipality) {
+  if (!municipality) return "Selecciona un municipio";
+  return municipality.province
+    ? `${municipality.municipality_name} · ${municipality.province}`
+    : municipality.municipality_name;
+}
+
 export default function AdminDashboardPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("overview");
@@ -67,6 +87,13 @@ export default function AdminDashboardPage() {
   const [recentReports, setRecentReports] = useState([]);
   const [reportTotal, setReportTotal] = useState(0);
   const [reportPage, setReportPage] = useState(0);
+  const [municipalityDashboards, setMunicipalityDashboards] = useState([]);
+  const [selectedMunicipality, setSelectedMunicipality] = useState("");
+  const [municipalityDashboard, setMunicipalityDashboard] = useState(null);
+  const [municipalityLoading, setMunicipalityLoading] = useState(false);
+  const [municipalityView, setMunicipalityView] = useState("map");
+  const [municipalityReportFilter, setMunicipalityReportFilter] = useState("active");
+  const [municipalityReportPage, setMunicipalityReportPage] = useState(1);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboard = useCallback(async () => {
@@ -110,6 +137,48 @@ export default function AdminDashboardPage() {
     }
   }, [reportPage]);
 
+  const fetchMunicipalityDashboards = useCallback(async () => {
+    try {
+      const { data } = await axios.get(`${API}/admin/municipalities`, { withCredentials: true });
+      const options = data.municipalities || [];
+      setMunicipalityDashboards(options);
+      setSelectedMunicipality((current) => {
+        if (current && options.some((item) => item.municipality_name === current)) {
+          return current;
+        }
+        return options[0]?.municipality_name || "";
+      });
+    } catch {
+      toast.error("Error cargando dashboards municipales");
+    }
+  }, []);
+
+  const fetchMunicipalityDashboard = useCallback(async () => {
+    if (!selectedMunicipality) {
+      setMunicipalityDashboard(null);
+      return;
+    }
+    setMunicipalityLoading(true);
+    try {
+      const params = new URLSearchParams({
+        municipality: selectedMunicipality,
+        status: municipalityReportFilter,
+        page: String(municipalityReportPage),
+        limit: "20",
+      });
+      const { data } = await axios.get(`${API}/admin/municipality-dashboard?${params.toString()}`, { withCredentials: true });
+      setMunicipalityDashboard(data);
+    } catch (err) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        navigate("/admin/login");
+      } else {
+        toast.error(err.response?.data?.detail || "Error cargando el dashboard municipal");
+      }
+    } finally {
+      setMunicipalityLoading(false);
+    }
+  }, [municipalityReportFilter, municipalityReportPage, navigate, selectedMunicipality]);
+
   useEffect(() => {
     fetchDashboard();
   }, [fetchDashboard]);
@@ -118,7 +187,14 @@ export default function AdminDashboardPage() {
     if (tab === "users") fetchUsers();
     if (tab === "violations") fetchViolations();
     if (tab === "reports") fetchRecentReports();
-  }, [fetchUsers, fetchViolations, fetchRecentReports, tab]);
+    if (tab === "municipalities") fetchMunicipalityDashboards();
+  }, [fetchMunicipalityDashboards, fetchUsers, fetchViolations, fetchRecentReports, tab]);
+
+  useEffect(() => {
+    if (tab === "municipalities" && selectedMunicipality) {
+      fetchMunicipalityDashboard();
+    }
+  }, [fetchMunicipalityDashboard, selectedMunicipality, tab]);
 
   const handleModerate = async (reportId, action) => {
     try {
@@ -161,6 +237,7 @@ export default function AdminDashboardPage() {
       <div className="flex border-b border-[#8D99AE]/10 bg-white">
         {[
           { id: "overview", label: "Resumen", icon: TrendingUp },
+          { id: "municipalities", label: "Municipios", icon: Building2 },
           { id: "reports", label: "Reportes", icon: FileText },
           { id: "users", label: "Usuarios", icon: Users },
           { id: "violations", label: "Violaciones", icon: AlertTriangle },
@@ -178,7 +255,7 @@ export default function AdminDashboardPage() {
         ))}
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-5 pb-20">
+      <div className="max-w-6xl mx-auto px-4 py-5 pb-20">
         {tab === "overview" && d && (
           <>
             {/* User Stats */}
@@ -212,6 +289,286 @@ export default function AdminDashboardPage() {
               <StatCard icon={Clock3} label="Antiguos" value={d.reports.old} sub="1–7 días" color="#FFA726" />
               <StatCard icon={Skull} label="Fósiles" value={d.reports.fossil} sub="> 7 días" color="#FF5252" />
             </div>
+          </>
+        )}
+
+        {tab === "municipalities" && (
+          <>
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-[#2B2D42]">Dashboards municipales</h2>
+                  <p className="text-sm text-[#8D99AE]">
+                    Selecciona un municipio activo para ver su panel con el mismo alcance que tiene ese ayuntamiento.
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    fetchMunicipalityDashboards();
+                    fetchMunicipalityDashboard();
+                  }}
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" /> Actualizar
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
+                <div>
+                  <label className="text-xs font-bold text-[#8D99AE] mb-2 block">Municipio activo</label>
+                  <Select
+                    value={selectedMunicipality}
+                    onValueChange={(value) => {
+                      setSelectedMunicipality(value);
+                      setMunicipalityReportPage(1);
+                      setMunicipalityReportFilter("active");
+                      setMunicipalityView("map");
+                    }}
+                  >
+                    <SelectTrigger className="bg-[#F8F9FA] border-0 h-11 rounded-xl">
+                      <SelectValue placeholder="Selecciona un municipio" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {municipalityDashboards.map((municipality) => (
+                        <SelectItem key={municipality.municipality_name} value={municipality.municipality_name}>
+                          {municipalityLabel(municipality)}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="bg-[#F8F9FA] rounded-xl px-4 py-3">
+                  <p className="text-xs font-bold text-[#8D99AE]">Dashboards activos</p>
+                  <p className="text-2xl font-black text-[#2B2D42]">{municipalityDashboards.length}</p>
+                </div>
+              </div>
+            </div>
+
+            {!municipalityDashboards.length && !municipalityLoading && (
+              <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+                <Building2 className="w-10 h-10 text-[#8D99AE] mx-auto mb-3" />
+                <p className="text-[#2B2D42] font-bold mb-1">No hay dashboards municipales activos</p>
+                <p className="text-sm text-[#8D99AE]">Cuando un municipio tenga acceso activo, aparecerá aquí para revisión admin.</p>
+              </div>
+            )}
+
+            {municipalityLoading && (
+              <div className="bg-white rounded-2xl shadow-sm p-10 flex items-center justify-center">
+                <Loader2 className="w-7 h-7 animate-spin text-[#FF6B6B]" />
+              </div>
+            )}
+
+            {!municipalityLoading && municipalityDashboard && (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
+                  {[
+                    { label: "Total reportes", value: municipalityDashboard.stats?.total_reports, icon: MapPin, color: "#FF6B6B" },
+                    { label: "Activos", value: municipalityDashboard.stats?.active_reports, icon: Eye, color: "#FFA726" },
+                    { label: "Reportados", value: municipalityDashboard.stats?.flagged_reports, icon: Flag, color: "#FF5252" },
+                    { label: "Archivados", value: municipalityDashboard.stats?.archived_reports, icon: Archive, color: "#66BB6A" },
+                    { label: "Últimos 7 días", value: municipalityDashboard.stats?.recent_reports_7d, icon: BarChart3, color: "#42A5F5" },
+                    { label: "Flags pendientes", value: municipalityDashboard.stats?.pending_flags, icon: AlertTriangle, color: "#FF5252" },
+                  ].map(({ label, value, icon, color }) => (
+                    <StatCard key={label} icon={icon} label={label} value={value ?? 0} color={color} />
+                  ))}
+                </div>
+
+                <div className="flex gap-2 mb-4 flex-wrap">
+                  {[
+                    { id: "map", label: "Mapa" },
+                    { id: "reports", label: "Reportes" },
+                    { id: "photos", label: `Fotos (${municipalityDashboard.photo_reviews?.length || 0})` },
+                    { id: "flags", label: `Flags (${municipalityDashboard.flags?.length || 0})` },
+                  ].map((view) => (
+                    <Button
+                      key={view.id}
+                      size="sm"
+                      variant={municipalityView === view.id ? "default" : "outline"}
+                      className={municipalityView === view.id ? "bg-[#2B2D42]" : ""}
+                      onClick={() => setMunicipalityView(view.id)}
+                    >
+                      {view.label}
+                    </Button>
+                  ))}
+                </div>
+
+                {municipalityView === "map" && (
+                  <MunicipalityMapCard
+                    mapData={municipalityDashboard.map}
+                    title={`Mapa de ${municipalityDashboard.municipality}`}
+                    subtitle="Vista admin reflejada del mapa municipal activo."
+                  />
+                )}
+
+                {municipalityView === "reports" && (
+                  <>
+                    <div className="flex gap-2 mb-4 flex-wrap">
+                      {[
+                        { id: "active", label: "Activos" },
+                        { id: "flagged", label: "Reportados" },
+                        { id: "archived", label: "Archivados" },
+                      ].map((filter) => (
+                        <Button
+                          key={filter.id}
+                          size="sm"
+                          variant={municipalityReportFilter === filter.id ? "default" : "outline"}
+                          className={municipalityReportFilter === filter.id ? "bg-[#2B2D42]" : ""}
+                          onClick={() => {
+                            setMunicipalityReportFilter(filter.id);
+                            setMunicipalityReportPage(1);
+                          }}
+                        >
+                          {filter.label}
+                        </Button>
+                      ))}
+                    </div>
+
+                    <div className="bg-white rounded-xl shadow-sm overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-[#F8F9FA] border-b">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Ubicación</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Contribuidor</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Fecha</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Votos</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Flags</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Estado</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y">
+                            {(municipalityDashboard.reports?.reports || []).length === 0 ? (
+                              <tr>
+                                <td colSpan={6} className="px-4 py-8 text-center text-[#8D99AE]">No hay reportes</td>
+                              </tr>
+                            ) : (municipalityDashboard.reports?.reports || []).map((report) => (
+                              <tr key={report.id} className="hover:bg-[#F8F9FA]">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center gap-2">
+                                    {report.photo_url ? (
+                                      <img src={`${API}/files/${report.photo_url}`} alt="" className="w-8 h-8 rounded object-cover" />
+                                    ) : null}
+                                    <span className="text-xs text-[#2B2D42]">
+                                      {report.latitude?.toFixed?.(4)}, {report.longitude?.toFixed?.(4)}
+                                    </span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="text-xs">
+                                    <p className="font-bold text-[#2B2D42]">{report.contributor_name || "Anónimo"}</p>
+                                    <p className="text-[#8D99AE]">{report.contributor_rank || "Sin rango"}</p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-xs text-[#8D99AE]">{formatDateTime(report.created_at)}</td>
+                                <td className="px-4 py-3 text-xs">
+                                  <span className="text-[#66BB6A]">{report.upvotes || 0}</span>
+                                  <span className="text-[#8D99AE] mx-1">/</span>
+                                  <span className="text-[#FF5252]">{report.downvotes || 0}</span>
+                                </td>
+                                <td className="px-4 py-3 text-xs font-bold text-[#FF5252]">{report.flag_count || 0}</td>
+                                <td className="px-4 py-3">
+                                  {report.flagged ? (
+                                    <Badge variant="destructive" className="text-xs">Reportado</Badge>
+                                  ) : report.archived ? (
+                                    <Badge variant="secondary" className="text-xs">Archivado</Badge>
+                                  ) : (
+                                    <Badge className="text-xs bg-[#66BB6A]">Activo</Badge>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                      <div className="flex justify-between items-center px-4 py-3 border-t">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={(municipalityDashboard.reports?.page || 1) <= 1}
+                          onClick={() => setMunicipalityReportPage((page) => Math.max(1, page - 1))}
+                        >
+                          <ChevronLeft className="w-4 h-4" />
+                        </Button>
+                        <span className="text-xs text-[#8D99AE]">
+                          Pág {municipalityDashboard.reports?.page || 1} de {Math.max(1, municipalityDashboard.reports?.pages || 1)}
+                        </span>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          disabled={(municipalityDashboard.reports?.page || 1) >= Math.max(1, municipalityDashboard.reports?.pages || 1)}
+                          onClick={() => setMunicipalityReportPage((page) => page + 1)}
+                        >
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {municipalityView === "photos" && (
+                  <div className="space-y-4">
+                    {(municipalityDashboard.photo_reviews || []).length === 0 ? (
+                      <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-[#8D99AE]">
+                        No hay revisiones de foto pendientes.
+                      </div>
+                    ) : (municipalityDashboard.photo_reviews || []).map((review, index) => (
+                      <div key={review.report?.id || index} className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-start gap-3 mb-3">
+                          {review.report?.photo_url ? (
+                            <img src={`${API}/files/${review.report.photo_url}`} alt="Foto reportada" className="w-20 h-20 object-cover rounded-lg" />
+                          ) : (
+                            <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <Camera className="w-6 h-6 text-[#8D99AE]" />
+                            </div>
+                          )}
+                          <div className="min-w-0 flex-1">
+                            <p className="font-bold text-[#2B2D42] mb-1">{review.report?.contributor_name || "Anónimo"}</p>
+                            <p className="text-xs text-[#8D99AE] mb-2">{formatDateTime(review.report?.created_at)}</p>
+                            <div className="flex flex-wrap gap-2">
+                              {(review.flags || []).map((flag, flagIndex) => (
+                                <span key={`${review.report?.id || index}-${flagIndex}`} className="text-[10px] px-2 py-1 rounded-full font-bold bg-[#FFE8E8] text-[#FF5252]">
+                                  {FLAG_REASON_LABELS[flag.reason] || flag.reason}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {municipalityView === "flags" && (
+                  <div className="space-y-4">
+                    {(municipalityDashboard.flags || []).length === 0 ? (
+                      <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-[#8D99AE]">
+                        No hay flags pendientes.
+                      </div>
+                    ) : (municipalityDashboard.flags || []).map((flag, index) => (
+                      <div key={`${flag.report_id}-${index}`} className="bg-white rounded-xl p-4 shadow-sm">
+                        <div className="flex items-start justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="font-bold text-[#2B2D42]">{FLAG_REASON_LABELS[flag.reason] || flag.reason}</p>
+                            <p className="text-xs text-[#8D99AE]">{formatDateTime(flag.created_at)}</p>
+                            <p className="text-xs text-[#8D99AE]">
+                              {flag.report?.latitude?.toFixed?.(4)}, {flag.report?.longitude?.toFixed?.(4)}
+                            </p>
+                          </div>
+                          {flag.report?.photo_url ? (
+                            <img src={`${API}/files/${flag.report.photo_url}`} alt="Flag" className="w-14 h-14 object-cover rounded-lg" />
+                          ) : (
+                            <div className="w-14 h-14 bg-gray-100 rounded-lg flex items-center justify-center">
+                              <Image className="w-5 h-5 text-[#8D99AE]" />
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </>
         )}
 

@@ -3066,23 +3066,26 @@ async def subscribe_municipality(request: Request):
     )
     return {"message": "Suscripción de municipio activada (€50/mes)", "plan": "monthly", "price": "€50/mes", "expires": expires.isoformat()}
 
-@api_router.get("/municipality/stats")
-async def get_municipality_stats(request: Request):
-    user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
-    
+def _build_municipality_report_query(muni_name: str, status: Optional[str] = None) -> dict:
+    query = {"municipality": muni_name}
+    if status == "active":
+        query["archived"] = False
+        query["flagged"] = False
+    elif status == "flagged":
+        query["flagged"] = True
+    elif status == "archived":
+        query["archived"] = True
+    return query
+
+
+async def _get_municipality_stats_data(muni_name: str) -> dict:
     total = await db.reports.count_documents({"municipality": muni_name})
     active = await db.reports.count_documents({"municipality": muni_name, "archived": False, "flagged": False})
     flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
     archived = await db.reports.count_documents({"municipality": muni_name, "archived": True})
-    
-    # Reports in last 7 days
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     recent = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": week_ago}})
-    
-    # Pending flags
     pending_flags = await db.flags.count_documents({"municipality": muni_name, "status": "pending"})
-    
     return {
         "municipality": muni_name,
         "total_reports": total,
@@ -3090,14 +3093,11 @@ async def get_municipality_stats(request: Request):
         "flagged_reports": flagged,
         "archived_reports": archived,
         "recent_reports_7d": recent,
-        "pending_flags": pending_flags
+        "pending_flags": pending_flags,
     }
 
-@api_router.get("/municipality/map")
-async def get_municipality_map(request: Request):
-    user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
 
+async def _get_municipality_map_data(muni_name: str) -> dict:
     reports = await db.reports.find(
         {"municipality": muni_name},
         {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "archived": 1, "flagged": 1, "created_at": 1}
@@ -3148,42 +3148,184 @@ async def get_municipality_map(request: Request):
         "archived_reports": sum(1 for point in points if point["type"] == "archived"),
     }
 
-@api_router.get("/municipality/reports")
-async def get_municipality_reports(request: Request, status: Optional[str] = None, page: int = 1, limit: int = 20):
-    user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
-    
-    query = {"municipality": muni_name}
-    if status == "active":
-        query["archived"] = False
-        query["flagged"] = False
-    elif status == "flagged":
-        query["flagged"] = True
-    elif status == "archived":
-        query["archived"] = True
-    
-    skip = (page - 1) * limit
-    total = await db.reports.count_documents(query)
-    reports = await db.reports.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
-    
-    return {"reports": reports, "total": total, "page": page, "pages": (total + limit - 1) // limit}
 
-@api_router.get("/municipality/flags")
-async def get_municipality_flags(request: Request, status: str = "pending"):
-    user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
-    
+async def _get_municipality_reports_data(
+    muni_name: str,
+    status: Optional[str] = None,
+    page: int = 1,
+    limit: int = 20,
+) -> dict:
+    safe_page = max(page, 1)
+    safe_limit = max(1, min(limit, 100))
+    query = _build_municipality_report_query(muni_name, status)
+    skip = (safe_page - 1) * safe_limit
+    total = await db.reports.count_documents(query)
+    reports = await db.reports.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(safe_limit).to_list(safe_limit)
+    return {
+        "reports": reports,
+        "total": total,
+        "page": safe_page,
+        "pages": (total + safe_limit - 1) // safe_limit,
+        "limit": safe_limit,
+        "status": status or "all",
+    }
+
+
+async def _get_municipality_flags_data(muni_name: str, status: str = "pending") -> list[dict]:
     flags = await db.flags.find(
         {"municipality": muni_name, "status": status},
         {"_id": 0}
     ).sort("created_at", -1).to_list(100)
-    
-    # Attach report data
+
     for flag in flags:
-        report = await db.reports.find_one({"id": flag["report_id"]}, {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "created_at": 1})
+        report = await db.reports.find_one(
+            {"id": flag["report_id"]},
+            {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "created_at": 1}
+        )
         flag["report"] = report
-    
+
     return flags
+
+
+async def _get_municipality_photo_reviews_data(muni_name: str) -> list[dict]:
+    photo_violation_reasons = ["license_plate", "face", "name", "personal_info"]
+    flags = await db.flags.find(
+        {"municipality": muni_name, "reason": {"$in": photo_violation_reasons}, "status": "pending"},
+        {"_id": 0}
+    ).sort("created_at", -1).to_list(100)
+
+    seen_reports = set()
+    reviews = []
+    for flag in flags:
+        rid = flag["report_id"]
+        if rid in seen_reports:
+            continue
+        seen_reports.add(rid)
+
+        report = await db.reports.find_one({"id": rid}, {"_id": 0})
+        if not report:
+            continue
+
+        all_flags = await db.flags.find({"report_id": rid}, {"_id": 0, "reason": 1, "created_at": 1}).to_list(20)
+
+        reviews.append({
+            "report": report,
+            "flags": all_flags,
+            "flag_count": len(all_flags),
+            "photo_violation_count": sum(1 for item in all_flags if item["reason"] in photo_violation_reasons),
+        })
+
+    return reviews
+
+
+async def _get_municipality_analytics_data(muni_name: str) -> dict:
+    now = datetime.now(timezone.utc)
+    thirty_days_ago = (now - timedelta(days=30)).isoformat()
+    sixty_days_ago = (now - timedelta(days=60)).isoformat()
+
+    summary = await calc_analytics_summary(db, muni_name, now, thirty_days_ago, sixty_days_ago)
+    daily_reports = await calc_daily_reports(db, muni_name, now)
+    hourly_distribution = await calc_hourly_distribution(db, muni_name, thirty_days_ago)
+    status_distribution = await calc_status_distribution(db, muni_name)
+    top_zones = await calc_top_zones(db, muni_name, thirty_days_ago)
+
+    return {
+        "municipality": muni_name,
+        "summary": summary,
+        "daily_reports": daily_reports,
+        "hourly_distribution": hourly_distribution,
+        "status_distribution": status_distribution,
+        "top_zones": top_zones,
+    }
+
+
+async def _build_municipality_dashboard_payload(
+    muni_name: str,
+    report_status: Optional[str] = "active",
+    report_page: int = 1,
+    report_limit: int = 20,
+    flag_status: str = "pending",
+) -> dict:
+    stats, map_data, reports, flags, photo_reviews, analytics = await asyncio.gather(
+        _get_municipality_stats_data(muni_name),
+        _get_municipality_map_data(muni_name),
+        _get_municipality_reports_data(muni_name, report_status, report_page, report_limit),
+        _get_municipality_flags_data(muni_name, flag_status),
+        _get_municipality_photo_reviews_data(muni_name),
+        _get_municipality_analytics_data(muni_name),
+    )
+
+    return {
+        "municipality": muni_name,
+        "stats": stats,
+        "map": map_data,
+        "reports": reports,
+        "flags": flags,
+        "photo_reviews": photo_reviews,
+        "analytics": analytics,
+        "generated_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _get_active_admin_municipality_dashboards() -> list[dict]:
+    municipality_users = await db.users.find(
+        {
+            "role": "municipality",
+            "municipality_subscription_active": True,
+            "municipality_name": {"$exists": True, "$ne": ""},
+        },
+        {
+            "_id": 0,
+            "municipality_name": 1,
+            "province": 1,
+            "email_verified": 1,
+            "created_at": 1,
+            "last_login_at": 1,
+        },
+    ).to_list(500)
+
+    municipalities = {}
+    for user in municipality_users:
+        name = (user.get("municipality_name") or "").strip()
+        if not name:
+            continue
+        province = (user.get("province") or "").strip()
+        entry = municipalities.setdefault(name, {
+            "municipality_name": name,
+            "province": province,
+            "dashboard_count": 0,
+            "verified_accounts": 0,
+            "latest_login_at": None,
+        })
+        entry["dashboard_count"] += 1
+        if user.get("email_verified"):
+            entry["verified_accounts"] += 1
+        last_login = user.get("last_login_at")
+        if last_login and (not entry["latest_login_at"] or last_login > entry["latest_login_at"]):
+            entry["latest_login_at"] = last_login
+
+    return sorted(municipalities.values(), key=lambda item: (item["municipality_name"].lower(), item["province"].lower()))
+
+
+@api_router.get("/municipality/stats")
+async def get_municipality_stats(request: Request):
+    user = await require_municipality(request)
+    return await _get_municipality_stats_data(user.get("municipality_name", ""))
+
+@api_router.get("/municipality/map")
+async def get_municipality_map(request: Request):
+    user = await require_municipality(request)
+    return await _get_municipality_map_data(user.get("municipality_name", ""))
+
+@api_router.get("/municipality/reports")
+async def get_municipality_reports(request: Request, status: Optional[str] = None, page: int = 1, limit: int = 20):
+    user = await require_municipality(request)
+    return await _get_municipality_reports_data(user.get("municipality_name", ""), status, page, limit)
+
+@api_router.get("/municipality/flags")
+async def get_municipality_flags(request: Request, status: str = "pending"):
+    user = await require_municipality(request)
+    return await _get_municipality_flags_data(user.get("municipality_name", ""), status)
 
 @api_router.post("/municipality/moderate/{report_id}")
 async def moderate_report(report_id: str, data: ModerationAction, request: Request):
@@ -3209,40 +3351,7 @@ async def moderate_report(report_id: str, data: ModerationAction, request: Reque
 async def get_photo_reviews(request: Request):
     """Get reports with photos that have been flagged for photo violations (license_plate, face, name, personal_info)."""
     user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
-    
-    photo_violation_reasons = ["license_plate", "face", "name", "personal_info"]
-    
-    # Get flags with photo-related violations
-    flags = await db.flags.find(
-        {"municipality": muni_name, "reason": {"$in": photo_violation_reasons}, "status": "pending"},
-        {"_id": 0}
-    ).sort("created_at", -1).to_list(100)
-    
-    # Group by report and attach report data
-    seen_reports = set()
-    reviews = []
-    for flag in flags:
-        rid = flag["report_id"]
-        if rid in seen_reports:
-            continue
-        seen_reports.add(rid)
-        
-        report = await db.reports.find_one({"id": rid}, {"_id": 0})
-        if not report:
-            continue
-        
-        # Get all flags for this report
-        all_flags = await db.flags.find({"report_id": rid}, {"_id": 0, "reason": 1, "created_at": 1}).to_list(20)
-        
-        reviews.append({
-            "report": report,
-            "flags": all_flags,
-            "flag_count": len(all_flags),
-            "photo_violation_count": sum(1 for f in all_flags if f["reason"] in photo_violation_reasons)
-        })
-    
-    return reviews
+    return await _get_municipality_photo_reviews_data(user.get("municipality_name", ""))
 
 
 
@@ -3636,6 +3745,48 @@ async def admin_dashboard(request: Request):
         },
         "generated_at": now.isoformat(),
     }
+
+
+@api_router.get("/admin/municipalities")
+async def admin_municipality_dashboards(request: Request):
+    """List active municipality dashboards available for admin inspection."""
+    await _require_admin(request)
+    municipalities = await _get_active_admin_municipality_dashboards()
+    return {
+        "municipalities": municipalities,
+        "total": len(municipalities),
+    }
+
+
+@api_router.get("/admin/municipality-dashboard")
+async def admin_municipality_dashboard(
+    request: Request,
+    municipality: str = Query(..., min_length=1),
+    status: Optional[str] = Query("active"),
+    page: int = Query(1, ge=1),
+    limit: int = Query(20, ge=1, le=100),
+):
+    """Mirror a municipality dashboard for admins, scoped to one selected city."""
+    await _require_admin(request)
+    target_name = municipality.strip()
+    municipalities = await _get_active_admin_municipality_dashboards()
+    available_names = {item["municipality_name"] for item in municipalities}
+    if target_name not in available_names:
+        raise HTTPException(status_code=404, detail="Municipio no disponible en dashboards activos")
+
+    payload = await _build_municipality_dashboard_payload(
+        target_name,
+        report_status=status,
+        report_page=page,
+        report_limit=limit,
+    )
+    selected = next((item for item in municipalities if item["municipality_name"] == target_name), None)
+    payload["selection"] = {
+        "municipality_name": target_name,
+        "available_dashboards": len(municipalities),
+        "province": selected.get("province", "") if selected else "",
+    }
+    return payload
 
 
 @api_router.get("/admin/recent-reports")
@@ -4063,26 +4214,7 @@ async def get_share_data(report_id: str, request: Request):
 async def get_municipality_analytics(request: Request):
     """Advanced analytics for municipality dashboard."""
     user = await require_municipality(request)
-    muni_name = user.get("municipality_name", "")
-
-    now = datetime.now(timezone.utc)
-    thirty_days_ago = (now - timedelta(days=30)).isoformat()
-    sixty_days_ago = (now - timedelta(days=60)).isoformat()
-
-    summary = await calc_analytics_summary(db, muni_name, now, thirty_days_ago, sixty_days_ago)
-    daily_reports = await calc_daily_reports(db, muni_name, now)
-    hourly_distribution = await calc_hourly_distribution(db, muni_name, thirty_days_ago)
-    status_distribution = await calc_status_distribution(db, muni_name)
-    top_zones = await calc_top_zones(db, muni_name, thirty_days_ago)
-
-    return {
-        "municipality": muni_name,
-        "summary": summary,
-        "daily_reports": daily_reports,
-        "hourly_distribution": hourly_distribution,
-        "status_distribution": status_distribution,
-        "top_zones": top_zones
-    }
+    return await _get_municipality_analytics_data(user.get("municipality_name", ""))
 
 
 # ==================== WEBHOOKS ====================

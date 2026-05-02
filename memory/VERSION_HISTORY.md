@@ -1308,6 +1308,44 @@ Notes:
 Release metadata:
 - Commit SHA: `working-tree-dirty`
 - Deployment status: `pending`
+- Rollback target: `5895fdd`
+
+Exact versions:
+- Web: `1.1.26-web.1`
+- iOS: `1.1.40 (42)`
+- Android: `1.1.43 (45)`
+- Backend: `1.1.6-api.1`
+
+User-facing release notes:
+- Add an admin municipality tab with active-city selection and mirrored city dashboard data.
+
+Internal release notes:
+- Share municipality dashboard payloads between municipality and admin flows, then add admin municipality selection and mirrored map/reports/photos/flags views.
+
+Store submission notes:
+```text
+- Add municipality dashboard selection for admin oversight and align city-level dashboard views.
+```
+
+Internal release notes block:
+```text
+Commit SHA: working-tree-dirty
+Deployment status: pending
+Rollback target: 5895fdd
+Versions:
+• Web: `1.1.26-web.1`
+• iOS: `1.1.40 (42)`
+• Android: `1.1.43 (45)`
+• Backend: `1.1.6-api.1`
+Notes:
+- Share municipality dashboard payloads between municipality and admin flows, then add admin municipality selection and mirrored map/reports/photos/flags views.
+```
+
+### 2026-05-02 — Pending
+
+Release metadata:
+- Commit SHA: `working-tree-dirty`
+- Deployment status: `pending`
 - Rollback target: `daaec6e`
 
 Exact versions:
