@@ -44,6 +44,23 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.40-web.1`
+- iOS `1.1.54 (56)`
+- Android `1.1.57 (59)`
+- Backend `1.1.11-api.1`
+
+Changes:
+- Fixed native 401 handling so the app no longer clears watch companion auth state just because a request failed before a refresh token existed locally.
+- Native session bootstrap now falls back to the phone's refresh-cookie session, allowing the app to mint native companion tokens even when the access cookie is gone or the native token store is empty.
+
+Verification:
+- Backend compile passed.
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.39-web.1`
 - iOS `1.1.53 (55)`
 - Android `1.1.56 (58)`

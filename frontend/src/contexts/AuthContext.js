@@ -46,6 +46,7 @@ axios.interceptors.response.use(
     if (
       error.response?.status === 401 &&
       !original._retry &&
+      (!isCapacitorNative() || !!nativeRefreshToken) &&
       !original.url?.includes("/auth/login") &&
       !original.url?.includes("/auth/register") &&
       !original.url?.includes("/auth/google/login") &&
@@ -67,9 +68,6 @@ axios.interceptors.response.use(
         const refreshPayload = isCapacitorNative()
           ? { refresh_token: nativeRefreshToken }
           : {};
-        if (isCapacitorNative() && !nativeRefreshToken) {
-          throw error;
-        }
         const { data } = await axios.post(`${API}/auth/refresh`, refreshPayload, {
           withCredentials: !isCapacitorNative(),
         });
@@ -82,7 +80,9 @@ axios.interceptors.response.use(
       } catch {
         refreshQueue.forEach((p) => p.reject(error));
         refreshQueue = [];
-        await clearTokens();
+        if (!isCapacitorNative() || nativeRefreshToken) {
+          await clearTokens();
+        }
         return Promise.reject(error);
       } finally {
         isRefreshing = false;

@@ -1392,6 +1392,19 @@ async def issue_native_session_tokens(request: Request):
         raise HTTPException(status_code=403, detail="Native app request required")
     user = await get_current_user(request)
     if not user:
+        refresh_token = request.cookies.get("refresh_token")
+        if refresh_token:
+            try:
+                payload = jwt.decode(refresh_token, get_jwt_secret(), algorithms=[JWT_ALGORITHM])
+                if payload.get("type") == "refresh":
+                    fallback_user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
+                    if fallback_user:
+                        fallback_user["_id"] = str(fallback_user["_id"])
+                        fallback_user.pop("password_hash", None)
+                        user = fallback_user
+            except Exception:
+                user = None
+    if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
     access_token = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
     refresh_token = create_refresh_token(str(user["_id"]))
