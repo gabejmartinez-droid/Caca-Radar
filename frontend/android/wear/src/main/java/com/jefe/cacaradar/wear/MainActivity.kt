@@ -257,7 +257,7 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
 
         setContent {
             var uiLanguage by remember { mutableStateOf(preferredLanguage) }
-            var status by remember { mutableStateOf(wearStrings(uiLanguage).text(WatchStringKey.TAP_TO_REPORT)) }
+            var status by remember { mutableStateOf(idleStatus(uiLanguage, false, false)) }
             var authenticated by remember { mutableStateOf(false) }
             var phoneAvailable by remember { mutableStateOf(false) }
             var isSubmitting by remember { mutableStateOf(false) }
@@ -265,11 +265,21 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
             languageUpdater = { nextLanguage ->
                 uiLanguage = nextLanguage
                 if (!isSubmitting) {
-                    status = wearStrings(nextLanguage).text(WatchStringKey.TAP_TO_REPORT)
+                    status = idleStatus(nextLanguage, authenticated, phoneAvailable)
                 }
             }
-            authUpdater = { authenticated = it }
-            phoneAvailabilityUpdater = { phoneAvailable = it }
+            authUpdater = { nextAuthenticated ->
+                authenticated = nextAuthenticated
+                if (!isSubmitting) {
+                    status = idleStatus(uiLanguage, nextAuthenticated, phoneAvailable)
+                }
+            }
+            phoneAvailabilityUpdater = { nextPhoneAvailable ->
+                phoneAvailable = nextPhoneAvailable
+                if (!isSubmitting) {
+                    status = idleStatus(uiLanguage, authenticated, nextPhoneAvailable)
+                }
+            }
             submittingUpdater = { isSubmitting = it }
             MaterialTheme {
                 Column(
@@ -298,17 +308,6 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                             else wearStrings(uiLanguage).text(WatchStringKey.REPORT_NOW),
                             textAlign = TextAlign.Center,
                             maxLines = 2,
-                        )
-                    }
-                    if (!phoneAvailable || !authenticated) {
-                        Text(
-                            if (!phoneAvailable) wearStrings(uiLanguage).text(WatchStringKey.PHONE_UNAVAILABLE)
-                            else wearStrings(uiLanguage).text(WatchStringKey.MISSING_ACCESS_TOKEN),
-                            textAlign = TextAlign.Center,
-                            maxLines = 4,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 8.dp),
                         )
                     }
                 }
@@ -435,6 +434,12 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
     }
 
     private fun strings(): WearStrings = wearStrings(preferredLanguage)
+
+    private fun idleStatus(language: String, authenticated: Boolean, phoneAvailable: Boolean): String = when {
+        authenticated && phoneAvailable -> wearStrings(language).text(WatchStringKey.TAP_TO_REPORT)
+        !authenticated -> wearStrings(language).text(WatchStringKey.MISSING_ACCESS_TOKEN)
+        else -> wearStrings(language).text(WatchStringKey.PHONE_UNAVAILABLE)
+    }
 
     private fun localizeError(errorCode: String, fallback: String?): String = when (errorCode) {
         "missing_access_token" -> strings().text(WatchStringKey.MISSING_ACCESS_TOKEN)

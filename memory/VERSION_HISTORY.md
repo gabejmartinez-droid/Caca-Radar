@@ -44,6 +44,21 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.33-web.1`
+- iOS `1.1.47 (49)`
+- Android `1.1.50 (52)`
+
+Changes:
+- Replaced the generic helper copy under the Apple Watch and Wear OS titles with the live status line, so the same slot now shows the current ready state or the actual failure reason instead of a generic “tap to report” prompt.
+- Removed the duplicate secondary failure text block on both watch UIs so there is a single clearer source of truth for report availability and errors.
+
+Verification:
+- Mobile bundle will be rebuilt and re-synced after the change.
+- Android release bundle will be rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.32-web.1`
 - iOS `1.1.46 (48)`
 - Android `1.1.49 (51)`

@@ -123,9 +123,13 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
 struct ContentView: View {
     @StateObject private var bridge = PhoneSessionBridge()
     @StateObject private var locationManager = WatchLocationManager()
-    @State private var statusText = PhoneSessionBridge.defaultLanguage() == "en"
-        ? "Tap to report poop here."
-        : "Pulsa para reportar caca aquí."
+    @State private var statusText = PhoneSessionBridge.defaultAuthenticated()
+        ? (PhoneSessionBridge.defaultLanguage() == "en"
+            ? "Tap to report poop here."
+            : "Pulsa para reportar caca aquí.")
+        : (PhoneSessionBridge.defaultLanguage() == "en"
+            ? "Open Caca Radar on the iPhone and sign in again."
+            : "Abre Caca Radar en el iPhone e inicia sesión de nuevo.")
     @State private var isSubmitting = false
 
     var body: some View {
@@ -161,26 +165,30 @@ struct ContentView: View {
             .buttonStyle(.borderedProminent)
             .tint(.red)
             .disabled(isSubmitting || !bridge.canSubmitReport)
-
-            if !bridge.canSubmitReport {
-                Text(copy.text(.phoneUnavailable))
-                    .font(.caption2)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(4)
-                    .minimumScaleFactor(0.72)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .foregroundStyle(.yellow)
-            }
         }
         .padding()
         .background(Color.black)
         .onChange(of: bridge.preferredLanguage) {
             if !isSubmitting {
-                statusText = bridge.copy.text(.tapToReport)
+                statusText = idleStatusText()
+            }
+        }
+        .onChange(of: bridge.reachable) {
+            if !isSubmitting {
+                statusText = idleStatusText()
+            }
+        }
+        .onChange(of: bridge.authenticated) {
+            if !isSubmitting {
+                statusText = idleStatusText()
             }
         }
         .task {
+            statusText = idleStatusText()
             _ = await bridge.refreshCompanionContext()
+            if !isSubmitting {
+                statusText = idleStatusText()
+            }
         }
     }
 
@@ -231,5 +239,14 @@ struct ContentView: View {
         } else {
             statusText = String(format: copy.text(.reportSent), result.municipality)
         }
+    }
+
+    @MainActor
+    private func idleStatusText() -> String {
+        let copy = bridge.copy
+        if bridge.canSubmitReport {
+            return copy.text(.tapToReport)
+        }
+        return bridge.authenticated ? copy.text(.phoneUnavailable) : copy.text(.missingAccessToken)
     }
 }

@@ -14,8 +14,8 @@ android {
         applicationId "com.jefe.cacaradar"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 51
-        versionName "1.1.49"
+        versionCode 52
+        versionName "1.1.50"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
