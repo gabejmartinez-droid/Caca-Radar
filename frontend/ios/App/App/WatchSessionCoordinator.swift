@@ -4,12 +4,14 @@ import WatchConnectivity
 
 private enum WatchCompanionStorage {
     static let accessTokenKey = "companion.accessToken"
+    static let refreshTokenKey = "companion.refreshToken"
     static let apiBaseUrlKey = "companion.apiBaseUrl"
     static let preferredLanguageKey = "companion.preferredLanguage"
 }
 
 final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     static let shared = WatchSessionCoordinator()
+    private let phoneLocationProvider = PhoneQuickReportLocationProvider()
 
     private override init() {
         super.init()
@@ -80,12 +82,14 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
         let defaults = UserDefaults.standard
         let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
         let accessToken = defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? ""
+        let refreshToken = defaults.string(forKey: WatchCompanionStorage.refreshTokenKey) ?? ""
         let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
         let hasAccessToken = !accessToken.isEmpty
+        let hasRefreshToken = !refreshToken.isEmpty
 
         return [
             "preferredLanguage": preferredLanguage,
-            "authenticated": hasAccessToken,
+            "authenticated": hasAccessToken || hasRefreshToken,
             "accessToken": accessToken,
             "apiBaseUrl": apiBaseUrl,
         ]
@@ -93,17 +97,7 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
         let defaults = UserDefaults.standard
-        guard let token = defaults.string(forKey: WatchCompanionStorage.accessTokenKey), !token.isEmpty else {
-            throw NSError(
-                domain: "WatchSessionCoordinator",
-                code: 401,
-                userInfo: [
-                    NSLocalizedDescriptionKey: "missing_access_token",
-                    "appErrorCode": "missing_access_token",
-                ]
-            )
-        }
-
+        let refreshToken = defaults.string(forKey: WatchCompanionStorage.refreshTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let configuredBase = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
         let apiBase = (configuredBase?.isEmpty == false ? configuredBase! : "https://cacaradar.es/api").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(apiBase)/reports/quick") else {
@@ -117,30 +111,63 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             )
         }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "latitude": latitude,
-            "longitude": longitude,
-            "source": "apple_watch",
-        ])
+        var token = defaults.string(forKey: WatchCompanionStorage.accessTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        if token?.isEmpty != false {
+            guard let refreshToken, !refreshToken.isEmpty else {
+                throw NSError(
+                    domain: "WatchSessionCoordinator",
+                    code: 401,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "missing_access_token",
+                        "appErrorCode": "missing_access_token",
+                    ]
+                )
+            }
+            token = try await refreshAccessToken(apiBase: apiBase, refreshToken: refreshToken)
+        }
 
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(
-                domain: "WatchSessionCoordinator",
-                code: 500,
-                userInfo: [
-                    NSLocalizedDescriptionKey: "invalid_response",
-                    "appErrorCode": "invalid_response",
-                ]
-            )
+        func performRequest(with bearerToken: String) async throws -> (Data, HTTPURLResponse) {
+            var request = URLRequest(url: url)
+            request.httpMethod = "POST"
+            request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+            request.setValue("Bearer \(bearerToken)", forHTTPHeaderField: "Authorization")
+            request.httpBody = try JSONSerialization.data(withJSONObject: [
+                "latitude": latitude,
+                "longitude": longitude,
+                "source": "apple_watch",
+            ])
+
+            let (data, response) = try await URLSession.shared.data(for: request)
+            guard let http = response as? HTTPURLResponse else {
+                throw NSError(
+                    domain: "WatchSessionCoordinator",
+                    code: 500,
+                    userInfo: [
+                        NSLocalizedDescriptionKey: "invalid_response",
+                        "appErrorCode": "invalid_response",
+                    ]
+                )
+            }
+            return (data, http)
+        }
+
+        let initialToken = token ?? ""
+        var payloadData: Data
+        var http: HTTPURLResponse
+
+        do {
+            (payloadData, http) = try await performRequest(with: initialToken)
+        } catch {
+            throw error
+        }
+
+        if http.statusCode == 401, let refreshToken, !refreshToken.isEmpty {
+            let refreshedToken = try await refreshAccessToken(apiBase: apiBase, refreshToken: refreshToken)
+            (payloadData, http) = try await performRequest(with: refreshedToken)
         }
 
         guard (200...299).contains(http.statusCode) else {
-            let detail = (try? JSONSerialization.jsonObject(with: data) as? [String: Any])?["detail"] as? String
+            let detail = (try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any])?["detail"] as? String
             let appErrorCode: String
             switch http.statusCode {
             case 401:
@@ -162,13 +189,65 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             )
         }
 
-        let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
+        let payload = (try? JSONSerialization.jsonObject(with: payloadData) as? [String: Any]) ?? [:]
         return [
             "ok": true,
             "reportId": payload["id"] as? String ?? "",
             "municipality": payload["municipality"] as? String ?? "",
             "convertedToConfirmation": payload["converted_to_confirmation"] as? Bool ?? false,
         ]
+    }
+
+    private func refreshAccessToken(apiBase: String, refreshToken: String) async throws -> String {
+        guard let refreshUrl = URL(string: "\(apiBase)/auth/refresh") else {
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 400,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "invalid_api_url",
+                    "appErrorCode": "invalid_api_url",
+                ]
+            )
+        }
+
+        var request = URLRequest(url: refreshUrl)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "refresh_token": refreshToken,
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse else {
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: 500,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "invalid_response",
+                    "appErrorCode": "invalid_response",
+                ]
+            )
+        }
+        guard (200...299).contains(http.statusCode),
+              let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let accessToken = payload["access_token"] as? String,
+              !accessToken.isEmpty else {
+            throw NSError(
+                domain: "WatchSessionCoordinator",
+                code: http.statusCode,
+                userInfo: [
+                    NSLocalizedDescriptionKey: "missing_access_token",
+                    "appErrorCode": "missing_access_token",
+                ]
+            )
+        }
+
+        let defaults = UserDefaults.standard
+        defaults.set(accessToken, forKey: WatchCompanionStorage.accessTokenKey)
+        defaults.set(apiBase, forKey: WatchCompanionStorage.apiBaseUrlKey)
+        defaults.synchronize()
+        pushCompanionContext()
+        return accessToken
     }
 }
 
@@ -320,4 +399,3 @@ private final class PhoneQuickReportLocationProvider: NSObject, CLLocationManage
         )))
     }
 }
-    private let phoneLocationProvider = PhoneQuickReportLocationProvider()

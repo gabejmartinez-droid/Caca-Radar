@@ -179,6 +179,9 @@ struct ContentView: View {
                 statusText = bridge.copy.text(.tapToReport)
             }
         }
+        .task {
+            _ = await bridge.refreshCompanionContext()
+        }
     }
 
     @MainActor

@@ -13,6 +13,7 @@ import com.getcapacitor.annotation.CapacitorPlugin;
 public class CompanionBridgePlugin extends Plugin {
     public static final String PREFS_NAME = "caca_companion_bridge";
     public static final String ACCESS_TOKEN_KEY = "access_token";
+    public static final String REFRESH_TOKEN_KEY = "refresh_token";
     public static final String API_BASE_URL_KEY = "api_base_url";
     public static final String PREFERRED_LANGUAGE_KEY = "preferred_language";
 
@@ -24,11 +25,13 @@ public class CompanionBridgePlugin extends Plugin {
     @PluginMethod
     public void syncAuthState(PluginCall call) {
         String accessToken = call.getString("accessToken", "");
+        String refreshToken = call.getString("refreshToken", "");
         String apiBaseUrl = call.getString("apiBaseUrl", "");
 
         prefs()
             .edit()
             .putString(ACCESS_TOKEN_KEY, accessToken)
+            .putString(REFRESH_TOKEN_KEY, refreshToken)
             .putString(API_BASE_URL_KEY, apiBaseUrl)
             .apply();
 
@@ -52,6 +55,7 @@ public class CompanionBridgePlugin extends Plugin {
         prefs()
             .edit()
             .remove(ACCESS_TOKEN_KEY)
+            .remove(REFRESH_TOKEN_KEY)
             .remove(API_BASE_URL_KEY)
             .apply();
 

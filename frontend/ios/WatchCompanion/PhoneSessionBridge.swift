@@ -266,7 +266,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     var canSubmitReport: Bool {
-        reachable || hasSyncedAuthContext
+        hasSyncedAuthContext || (reachable && authenticated)
     }
 
     private var storedAccessToken: String? {
@@ -298,8 +298,23 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func sendQuickReport(latitude: Double, longitude: Double) async throws -> QuickReportReply {
-        if WCSession.default.isReachable && !hasSyncedAuthContext {
+        let phoneReachable = WCSession.default.isReachable
+
+        if phoneReachable {
             await refreshCompanionContext()
+        }
+
+        if phoneReachable {
+            do {
+                return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
+            } catch {
+                let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
+                if hasSyncedAuthContext,
+                   appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
+                    return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
+                }
+                throw error
+            }
         }
 
         if hasSyncedAuthContext {
@@ -307,21 +322,11 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
                 return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
             } catch {
                 let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
-                if WCSession.default.isReachable,
-                   appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
+                if appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
                     await refreshCompanionContext()
-                    if hasSyncedAuthContext {
-                        do {
-                            return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
-                        } catch {
-                            let refreshedErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
-                            if refreshedErrorCode == "missing_access_token" || refreshedErrorCode == "quick_report_failed" || refreshedErrorCode == "invalid_response" {
-                                return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
-                            }
-                            throw error
-                        }
+                    if WCSession.default.isReachable {
+                        return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
                     }
-                    return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
                 }
                 throw error
             }

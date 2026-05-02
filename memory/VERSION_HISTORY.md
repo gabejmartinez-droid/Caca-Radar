@@ -41,6 +41,21 @@ Production notes:
 
 ## Unreleased / Next Batch
 
+### 2026-05-02 — Pending
+
+Impacted environments:
+- Web `1.1.27-web.1`
+- iOS `1.1.41 (43)`
+- Android `1.1.44 (46)`
+- Backend `1.1.6-api.1`
+
+Changes:
+- Apple Watch quick reporting now prefers the paired iPhone relay whenever the phone is reachable, instead of eagerly using the watch-direct network path and failing on stale auth context.
+- The iPhone companion bridge can refresh an expired watch-side access token using the synced refresh token and retry the quick report automatically.
+- The watch refreshes companion auth context on launch so the report button is less likely to flash ready and then collapse into a re-login error.
+- Shared companion auth sync now includes refresh-token support on the phone-side native bridges, while still keeping the refresh token off the watch itself.
+- Wear OS parity was preserved by keeping the Android phone relay refresh-and-retry path in sync and rebuilding the Android phone and wear artifacts after the shared bridge changes.
+
 ### 2026-05-01 — Pending
 
 Impacted environments:
@@ -1301,6 +1316,44 @@ Versions:
 • Backend: `1.1.1-api.1`
 Notes:
 - Integrate watch companion targets
+```
+
+### 2026-05-02 — Pending
+
+Release metadata:
+- Commit SHA: `working-tree-dirty`
+- Deployment status: `pending`
+- Rollback target: `16c930f`
+
+Exact versions:
+- Web: `1.1.27-web.1`
+- iOS: `1.1.41 (43)`
+- Android: `1.1.44 (46)`
+- Backend: `1.1.6-api.1`
+
+User-facing release notes:
+- Make watch quick reports more resilient when phone auth context is stale or the access token needs a refresh.
+
+Internal release notes:
+- Sync refresh tokens into phone-only companion storage, refresh watch report auth on demand on iPhone and Android phone bridges, and tighten Apple Watch submit gating so the button only stays available when a real report path exists.
+
+Store submission notes:
+```text
+- Improve Apple Watch and Wear OS quick report reliability when paired-phone auth needs refresh.
+```
+
+Internal release notes block:
+```text
+Commit SHA: working-tree-dirty
+Deployment status: pending
+Rollback target: 16c930f
+Versions:
+• Web: `1.1.27-web.1`
+• iOS: `1.1.41 (43)`
+• Android: `1.1.44 (46)`
+• Backend: `1.1.6-api.1`
+Notes:
+- Sync refresh tokens into phone-only companion storage, refresh watch report auth on demand on iPhone and Android phone bridges, and tighten Apple Watch submit gating so the button only stays available when a real report path exists.
 ```
 
 ### 2026-05-02 — Pending
