@@ -44,6 +44,22 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.41-web.1`
+- iOS `1.1.55 (57)`
+- Android `1.1.58 (60)`
+- Backend `1.1.11-api.1`
+
+Changes:
+- Explicitly registered the iOS `CompanionBridge` Capacitor plugin in the app bridge controller so native companion auth sync can actually persist tokens and preferences for the Apple Watch flow.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt on the new version.
+- Local iOS CLI build still hits the existing watch target product-type limitation and is not a reliable signal for this change.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.40-web.1`
 - iOS `1.1.54 (56)`
 - Android `1.1.57 (59)`
