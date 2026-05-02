@@ -156,11 +156,13 @@ export function AuthProvider({ children }) {
     // Store tokens for native
     if (data.access_token) {
       await setTokens(data.access_token, data.refresh_token);
+    } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
     setUser(data);
     return data;
-  }, [syncUserLanguage]);
+  }, [ensureNativeSessionTokens, syncUserLanguage]);
 
   const register = useCallback(async (email, password, username) => {
     const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, {
@@ -168,11 +170,13 @@ export function AuthProvider({ children }) {
     });
     if (data.access_token) {
       await setTokens(data.access_token, data.refresh_token);
+    } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
     setUser(data);
     return data;
-  }, [syncUserLanguage]);
+  }, [ensureNativeSessionTokens, syncUserLanguage]);
 
   const googleLogin = useCallback(async (credential) => {
     const { data } = await axios.post(
@@ -182,11 +186,13 @@ export function AuthProvider({ children }) {
     );
     if (data.access_token) {
       await setTokens(data.access_token, data.refresh_token);
+    } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
     setUser(data);
     return data;
-  }, [syncUserLanguage]);
+  }, [ensureNativeSessionTokens, syncUserLanguage]);
 
   const appleLogin = useCallback(async (nextPath = "/") => {
     if (!isNativeAppleSupported()) {
@@ -209,11 +215,13 @@ export function AuthProvider({ children }) {
     );
     if (data.access_token) {
       await setTokens(data.access_token, data.refresh_token);
+    } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
     setUser(data);
     return data;
-  }, [syncUserLanguage]);
+  }, [ensureNativeSessionTokens, syncUserLanguage]);
 
   const linkGoogle = useCallback(async (credential) => {
     const { data } = await axios.post(

@@ -44,6 +44,23 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.38-web.1`
+- iOS `1.1.52 (54)`
+- Android `1.1.55 (57)`
+- Backend `1.1.10-api.1`
+
+Changes:
+- Fixed native-request classification for Capacitor `localhost` referers so native login and session bootstrap calls are treated as native app traffic instead of being misclassified as web.
+- Native login, registration, and social auth flows now immediately bootstrap native companion tokens when the response itself did not include body tokens, reducing the chance of a logged-in phone app leaving the watch unauthenticated.
+
+Verification:
+- Backend compile passed.
+- Mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt on the new version.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.37-web.1`
 - iOS `1.1.51 (53)`
 - Android `1.1.54 (56)`

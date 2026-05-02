@@ -544,10 +544,16 @@ def is_explicit_native_app_request(request: Request) -> bool:
     referer = (context.get("referer") or "").strip().lower()
     native_app = (context.get("native_app") or "").strip().lower()
     native_origin = origin.startswith("capacitor://") or origin.startswith("ionic://") or not origin
+    native_referer = (
+        referer.startswith("capacitor://")
+        or referer.startswith("ionic://")
+        or referer.startswith("http://localhost")
+        or referer.startswith("https://localhost")
+    )
     web_referer = (
         referer.startswith("http://") or referer.startswith("https://")
-    ) and ("cacaradar.es" in referer or "emergent.host" in referer or "localhost" in referer)
-    return platform in {"ios", "android", "native"} and native_origin and not web_referer and native_app == "1"
+    ) and ("cacaradar.es" in referer or "emergent.host" in referer) and not native_referer
+    return platform in {"ios", "android", "native"} and (native_origin or native_referer) and not web_referer and native_app == "1"
 
 
 def should_return_body_tokens(request: Request) -> bool:
