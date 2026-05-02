@@ -137,8 +137,12 @@ struct ContentView: View {
                 .foregroundStyle(.white)
 
             Text(statusText)
-                .font(.footnote)
+                .font(.system(.footnote, design: .rounded).weight(.medium))
                 .multilineTextAlignment(.center)
+                .lineLimit(5)
+                .minimumScaleFactor(0.72)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity)
                 .foregroundStyle(.white.opacity(0.85))
 
             Button {
@@ -147,7 +151,11 @@ struct ContentView: View {
                 HStack {
                     Image(systemName: "location.fill")
                     Text(isSubmitting ? copy.text(.sending) : copy.text(.reportNow))
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.78)
+                        .multilineTextAlignment(.center)
                 }
+                .font(.system(.body, design: .rounded).weight(.semibold))
                 .frame(maxWidth: .infinity)
             }
             .buttonStyle(.borderedProminent)
@@ -158,6 +166,9 @@ struct ContentView: View {
                 Text(copy.text(.phoneUnavailable))
                     .font(.caption2)
                     .multilineTextAlignment(.center)
+                    .lineLimit(4)
+                    .minimumScaleFactor(0.72)
+                    .fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(.yellow)
             }
         }

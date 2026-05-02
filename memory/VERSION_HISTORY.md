@@ -1302,3 +1302,42 @@ Versions:
 Notes:
 - Integrate watch companion targets
 ```
+
+### 2026-05-02 — Pending
+
+Release metadata:
+- Commit SHA: `eb56ba005ede0b61c7995608c23c0366f421947e-dirty`
+- Deployment status: `pending`
+- Rollback target: `fc1e28c4ac6f966a78a59ed3119970335f8948ac`
+
+Exact versions:
+- Web: `1.1.24-web.1`
+- iOS: `1.1.36 (38)`
+- Android: `1.1.38 (40)`
+- Backend: `1.1.3-api.1`
+
+User-facing release notes:
+- Refined Apple Watch text layout and button copy.
+
+Internal release notes:
+- Refined Apple Watch text layout and button copy
+
+Store submission notes:
+```text
+- Refined Apple Watch text layout and button copy.
+```
+
+Internal release notes block:
+```text
+Commit SHA: eb56ba005ede0b61c7995608c23c0366f421947e-dirty
+Deployment status: pending
+Rollback target: fc1e28c4ac6f966a78a59ed3119970335f8948ac
+Versions:
+• Web: `1.1.24-web.1`
+• iOS: `1.1.36 (38)`
+• Android: `1.1.38 (40)`
+• Backend: `1.1.3-api.1`
+Notes:
+- Refined Apple Watch text layout and button copy
+```
+
