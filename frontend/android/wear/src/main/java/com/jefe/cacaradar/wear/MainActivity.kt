@@ -259,12 +259,11 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
         setContent {
             var uiLanguage by remember { mutableStateOf(preferredLanguage) }
             var status by remember { mutableStateOf(idleStatus(uiLanguage, false, false)) }
-            var debugStatus by remember { mutableStateOf("idle") }
             var authenticated by remember { mutableStateOf(false) }
             var phoneAvailable by remember { mutableStateOf(false) }
             var isSubmitting by remember { mutableStateOf(false) }
             statusUpdater = { status = it }
-            debugUpdater = { debugStatus = it }
+            debugUpdater = { _ -> }
             languageUpdater = { nextLanguage ->
                 uiLanguage = nextLanguage
                 if (!isSubmitting) {
@@ -301,14 +300,6 @@ class MainActivity : ComponentActivity(), MessageClient.OnMessageReceivedListene
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(vertical = 8.dp),
-                    )
-                    Text(
-                        debugStatus,
-                        textAlign = TextAlign.Center,
-                        maxLines = 6,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 8.dp),
                     )
                     Button(
                         onClick = { submitQuickReport() },

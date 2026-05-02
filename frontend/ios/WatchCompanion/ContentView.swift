@@ -12,8 +12,8 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
     private var waitingForAuthorization = false
     private var timeoutTask: Task<Void, Never>?
-    private let staleLocationThreshold: TimeInterval = 90
-    private let requestTimeout: TimeInterval = 12
+    private let staleLocationThreshold: TimeInterval = 300
+    private let requestTimeout: TimeInterval = 5
 
     override init() {
         super.init()
@@ -148,16 +148,6 @@ struct ContentView: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity)
                 .foregroundStyle(.white.opacity(0.85))
-
-            Text(bridge.runtimeDebug)
-                .font(.system(size: 10, design: .monospaced))
-                .multilineTextAlignment(.center)
-                .lineLimit(6)
-                .minimumScaleFactor(0.65)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity)
-                .foregroundStyle(.yellow.opacity(0.9))
-
             Button {
                 Task { await submitQuickReport() }
             } label: {

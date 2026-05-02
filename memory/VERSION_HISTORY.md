@@ -44,6 +44,23 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.42-web.1`
+- iOS `1.1.56 (58)`
+- Android `1.1.59 (61)`
+- Backend `1.1.11-api.1`
+
+Changes:
+- Removed the on-screen watch debug text from Apple Watch and Wear OS now that watch reporting is functioning.
+- Tuned Apple Watch location selection to reuse a recent watch location for longer and fall back to the iPhone path sooner when the watch GPS drags, reducing the time spent on “Buscando tu ubicación…”.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Standalone watchOS CLI build still fails on the existing local duplicate-output Xcode project issue and is not a reliable signal for this change.
+- Android release bundle rebuild was attempted but blocked by repeated local Gradle cache corruption in `/tmp/cacaradar-gradle87`.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.41-web.1`
 - iOS `1.1.55 (57)`
 - Android `1.1.58 (60)`
