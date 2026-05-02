@@ -44,6 +44,27 @@ Production notes:
 ### 2026-05-02 — Pending
 
 Impacted environments:
+- Web `1.1.29-web.1`
+- iOS `1.1.43 (45)`
+- Android `1.1.46 (48)`
+- Backend `1.1.8-api.1`
+
+Changes:
+- Native auth tokens are no longer persisted in browser-style storage plus plaintext preference stores; the mobile app now hydrates them from secure companion storage, using Keychain on iOS and EncryptedSharedPreferences on Android.
+- Apple Watch no longer receives reusable auth tokens or server URLs through application context; it now relies on the paired iPhone as the authenticated reporting broker, while the phone keeps tokens in secure storage.
+- Wear OS token refresh now reads and writes its auth state through the encrypted Android companion bridge instead of the old plaintext preferences path.
+- Added backend security rate limiting for admin 2FA issuance/verification, password reset requests, and municipality verification/resend flows, including genericized municipality verification responses to reduce account enumeration.
+- Restricted operational diagnostics endpoints (`/api/webhooks/status`, `/api/health/auth`) to admin access only and tightened native token-body issuance behind an explicit `X-Native-App` signal.
+
+Verification:
+- Backend Python compile passed.
+- `yarn build:mobile:raw` passed and refreshed embedded mobile web assets.
+- Local iOS debug build still hits the pre-existing watch target product-type issue in CLI Xcode builds.
+- Android release bundle was rebuilt after the version bump.
+
+### 2026-05-02 — Pending
+
+Impacted environments:
 - Web `1.1.28-web.1`
 - iOS `1.1.42 (44)`
 - Android `1.1.45 (47)`

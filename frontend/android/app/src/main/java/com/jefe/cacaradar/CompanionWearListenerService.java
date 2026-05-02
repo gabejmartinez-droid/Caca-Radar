@@ -1,14 +1,11 @@
 package com.jefe.cacaradar;
 
 import android.content.Context;
-import android.content.Intent;
-import android.content.SharedPreferences;
 import android.util.Log;
 
 import com.google.android.gms.tasks.Tasks;
 import com.google.android.gms.wearable.MessageClient;
 import com.google.android.gms.wearable.MessageEvent;
-import com.google.android.gms.wearable.Node;
 import com.google.android.gms.wearable.Wearable;
 import com.google.android.gms.wearable.WearableListenerService;
 
@@ -21,7 +18,6 @@ import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 public class CompanionWearListenerService extends WearableListenerService {
@@ -126,16 +122,13 @@ public class CompanionWearListenerService extends WearableListenerService {
     }
 
     private AuthState readAuthState() {
-        SharedPreferences prefs = getSharedPreferences(CompanionBridgePlugin.PREFS_NAME, Context.MODE_PRIVATE);
-        String configuredBaseUrl = prefs.getString(CompanionBridgePlugin.API_BASE_URL_KEY, "https://cacaradar.es/api");
-        String apiBaseUrl = configuredBaseUrl == null || configuredBaseUrl.trim().isEmpty()
-            ? "https://cacaradar.es/api"
-            : configuredBaseUrl.replaceAll("/+$", "");
-        return new AuthState(
-            prefs.getString(CompanionBridgePlugin.ACCESS_TOKEN_KEY, ""),
-            prefs.getString(CompanionBridgePlugin.REFRESH_TOKEN_KEY, ""),
-            apiBaseUrl
-        );
+        try {
+            CompanionBridgePlugin.AuthStateSnapshot snapshot = CompanionBridgePlugin.readAuthState(this);
+            return new AuthState(snapshot.accessToken, snapshot.refreshToken, snapshot.apiBaseUrl);
+        } catch (Exception exception) {
+            Log.e(TAG, "Failed to read secure auth state", exception);
+            return new AuthState("", "", "https://cacaradar.es/api");
+        }
     }
 
     private HttpURLConnection createQuickReportConnection(String apiBaseUrl, String accessToken, double latitude, double longitude) throws Exception {
@@ -187,10 +180,7 @@ public class CompanionWearListenerService extends WearableListenerService {
             throw new IllegalStateException("missing_access_token");
         }
 
-        getSharedPreferences(CompanionBridgePlugin.PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString(CompanionBridgePlugin.ACCESS_TOKEN_KEY, newAccessToken)
-            .apply();
+        CompanionBridgePlugin.persistAuthState(this, newAccessToken, authState.refreshToken);
 
         return newAccessToken;
     }

@@ -242,12 +242,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     @Published var authenticated = PhoneSessionBridge.defaultAuthenticated()
 
     private static let preferredLanguageKey = "watch_preferred_language"
-    private static let accessTokenKey = "watch_access_token"
-    private static let apiBaseUrlKey = "watch_api_base_url"
     private static let authenticatedKey = "watch_authenticated"
+    private static let legacyAccessTokenKey = "watch_access_token"
+    private static let legacyApiBaseUrlKey = "watch_api_base_url"
 
     override init() {
         super.init()
+        Self.clearLegacyAuthCache()
         activate()
     }
 
@@ -258,7 +259,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     static func defaultAuthenticated() -> Bool {
-        UserDefaults.standard.bool(forKey: authenticatedKey) || !(UserDefaults.standard.string(forKey: accessTokenKey) ?? "").isEmpty
+        UserDefaults.standard.bool(forKey: authenticatedKey)
+    }
+
+    private static func clearLegacyAuthCache() {
+        let defaults = UserDefaults.standard
+        defaults.removeObject(forKey: legacyAccessTokenKey)
+        defaults.removeObject(forKey: legacyApiBaseUrlKey)
     }
 
     var copy: WatchCopy {
@@ -266,21 +273,7 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     var canSubmitReport: Bool {
-        hasSyncedAuthContext || (reachable && authenticated)
-    }
-
-    private var storedAccessToken: String? {
-        let token = UserDefaults.standard.string(forKey: Self.accessTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return token?.isEmpty == false ? token : nil
-    }
-
-    private var storedApiBaseUrl: String? {
-        let value = UserDefaults.standard.string(forKey: Self.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        return value?.isEmpty == false ? value : nil
-    }
-
-    private var hasSyncedAuthContext: Bool {
-        storedAccessToken != nil && storedApiBaseUrl != nil
+        reachable && authenticated
     }
 
     func activate() {
@@ -298,40 +291,6 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
     }
 
     func sendQuickReport(latitude: Double, longitude: Double) async throws -> QuickReportReply {
-        let phoneReachable = WCSession.default.isReachable
-
-        if phoneReachable {
-            await refreshCompanionContext()
-        }
-
-        if phoneReachable {
-            do {
-                return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
-            } catch {
-                let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
-                if hasSyncedAuthContext,
-                   appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
-                    return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
-                }
-                throw error
-            }
-        }
-
-        if hasSyncedAuthContext {
-            do {
-                return try await sendQuickReportDirectly(latitude: latitude, longitude: longitude)
-            } catch {
-                let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
-                if appErrorCode == "missing_access_token" || appErrorCode == "quick_report_failed" || appErrorCode == "invalid_response" {
-                    await refreshCompanionContext()
-                    if WCSession.default.isReachable {
-                        return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
-                    }
-                }
-                throw error
-            }
-        }
-
         guard WCSession.default.isReachable else {
             throw NSError(
                 domain: "PhoneSessionBridge",
@@ -343,12 +302,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             )
         }
 
+        await refreshCompanionContext()
         return try await sendQuickReportViaPhone(latitude: latitude, longitude: longitude)
     }
 
     @discardableResult
     func refreshCompanionContext() async -> Bool {
-        guard WCSession.default.isReachable else { return hasSyncedAuthContext }
+        guard WCSession.default.isReachable else { return authenticated }
 
         do {
             let response = try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[String: Any], Error>) in
@@ -365,9 +325,9 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
             await MainActor.run {
                 self.apply(applicationContext: response)
             }
-            return hasSyncedAuthContext
+            return authenticated
         } catch {
-            return hasSyncedAuthContext
+            return authenticated
         }
     }
 
@@ -457,85 +417,6 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         return reply
     }
 
-    private func sendQuickReportDirectly(latitude: Double, longitude: Double) async throws -> QuickReportReply {
-        guard let accessToken = storedAccessToken else {
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: 401,
-                userInfo: [
-                    NSLocalizedDescriptionKey: copy.text(.missingAccessToken),
-                    "appErrorCode": "missing_access_token",
-                ]
-            )
-        }
-        let configuredBase = storedApiBaseUrl ?? "https://cacaradar.es/api"
-        let apiBase = configuredBase.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard let url = URL(string: "\(apiBase)/reports/quick") else {
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: 400,
-                userInfo: [
-                    NSLocalizedDescriptionKey: copy.text(.invalidApiUrl),
-                    "appErrorCode": "invalid_api_url",
-                ]
-            )
-        }
-
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.setValue("Bearer \(accessToken)", forHTTPHeaderField: "Authorization")
-        request.httpBody = try JSONSerialization.data(withJSONObject: [
-            "latitude": latitude,
-            "longitude": longitude,
-            "source": "apple_watch",
-        ])
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        guard let http = response as? HTTPURLResponse else {
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: 500,
-                userInfo: [
-                    NSLocalizedDescriptionKey: copy.text(.invalidResponse),
-                    "appErrorCode": "invalid_response",
-                ]
-            )
-        }
-
-        guard (200...299).contains(http.statusCode) else {
-            let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-            let detail = payload["detail"] as? String
-            let appErrorCode: String
-            switch http.statusCode {
-            case 401:
-                appErrorCode = "missing_access_token"
-            case 403:
-                appErrorCode = "restricted_account"
-            case 429:
-                appErrorCode = "report_cooldown"
-            default:
-                appErrorCode = "quick_report_failed"
-            }
-            throw NSError(
-                domain: "PhoneSessionBridge",
-                code: http.statusCode,
-                userInfo: [
-                    NSLocalizedDescriptionKey: detail ?? appErrorCode,
-                    "appErrorCode": appErrorCode,
-                ]
-            )
-        }
-
-        let payload = (try? JSONSerialization.jsonObject(with: data) as? [String: Any]) ?? [:]
-        return QuickReportReply(
-            ok: true,
-            reportId: payload["id"] as? String ?? "",
-            municipality: payload["municipality"] as? String ?? "",
-            convertedToConfirmation: payload["converted_to_confirmation"] as? Bool ?? false
-        )
-    }
-
     func localizedMessage(for error: Error) -> String {
         let appErrorCode = (error as NSError).userInfo["appErrorCode"] as? String
         switch appErrorCode {
@@ -591,22 +472,13 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         if let preferredLanguage = applicationContext["preferredLanguage"] as? String {
             updatePreferredLanguage(preferredLanguage)
         }
-        if let accessToken = applicationContext["accessToken"] as? String, !accessToken.isEmpty {
-            UserDefaults.standard.set(accessToken, forKey: Self.accessTokenKey)
-        }
-        if let apiBaseUrl = applicationContext["apiBaseUrl"] as? String, !apiBaseUrl.isEmpty {
-            UserDefaults.standard.set(apiBaseUrl, forKey: Self.apiBaseUrlKey)
-        }
         if let authenticated = applicationContext["authenticated"] as? Bool {
             self.authenticated = authenticated
             UserDefaults.standard.set(authenticated, forKey: Self.authenticatedKey)
-            if !authenticated {
-                UserDefaults.standard.removeObject(forKey: Self.accessTokenKey)
-                UserDefaults.standard.removeObject(forKey: Self.apiBaseUrlKey)
-            }
         } else {
-            self.authenticated = hasSyncedAuthContext
+            self.authenticated = UserDefaults.standard.bool(forKey: Self.authenticatedKey)
         }
+        Self.clearLegacyAuthCache()
     }
 }
 

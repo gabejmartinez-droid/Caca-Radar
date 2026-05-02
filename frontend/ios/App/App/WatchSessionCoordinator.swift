@@ -1,13 +1,7 @@
 import CoreLocation
 import Foundation
 import WatchConnectivity
-
-private enum WatchCompanionStorage {
-    static let accessTokenKey = "companion.accessToken"
-    static let refreshTokenKey = "companion.refreshToken"
-    static let apiBaseUrlKey = "companion.apiBaseUrl"
-    static let preferredLanguageKey = "companion.preferredLanguage"
-}
+import CapApp_SPM
 
 final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     static let shared = WatchSessionCoordinator()
@@ -79,30 +73,18 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
     }
 
     private func currentCompanionContext() -> [String: Any] {
-        let defaults = UserDefaults.standard
-        let preferredLanguage = defaults.string(forKey: WatchCompanionStorage.preferredLanguageKey) ?? "es"
-        let accessToken = defaults.string(forKey: WatchCompanionStorage.accessTokenKey) ?? ""
-        let refreshToken = defaults.string(forKey: WatchCompanionStorage.refreshTokenKey) ?? ""
-        let apiBaseUrl = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey) ?? ""
-        let hasAccessToken = !accessToken.isEmpty
-        let hasRefreshToken = !refreshToken.isEmpty
-        var context: [String: Any] = [
+        let preferredLanguage = CompanionBridgeStorage.readPreferredLanguage() ?? "es"
+        let hasAccessToken = !(CompanionBridgeStorage.readAccessToken() ?? "").isEmpty
+        let hasRefreshToken = !(CompanionBridgeStorage.readRefreshToken() ?? "").isEmpty
+        return [
             "preferredLanguage": preferredLanguage,
             "authenticated": hasAccessToken || hasRefreshToken,
         ]
-        if hasAccessToken {
-            context["accessToken"] = accessToken
-        }
-        if !apiBaseUrl.isEmpty {
-            context["apiBaseUrl"] = apiBaseUrl
-        }
-        return context
     }
 
     private func sendQuickReport(latitude: Double, longitude: Double) async throws -> [String: Any] {
-        let defaults = UserDefaults.standard
-        let refreshToken = defaults.string(forKey: WatchCompanionStorage.refreshTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
-        let configuredBase = defaults.string(forKey: WatchCompanionStorage.apiBaseUrlKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let refreshToken = CompanionBridgeStorage.readRefreshToken()?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let configuredBase = CompanionBridgeStorage.readApiBaseUrl()?.trimmingCharacters(in: .whitespacesAndNewlines)
         let apiBase = (configuredBase?.isEmpty == false ? configuredBase! : "https://cacaradar.es/api").trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         guard let url = URL(string: "\(apiBase)/reports/quick") else {
             throw NSError(
@@ -115,7 +97,7 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             )
         }
 
-        var token = defaults.string(forKey: WatchCompanionStorage.accessTokenKey)?.trimmingCharacters(in: .whitespacesAndNewlines)
+        var token = CompanionBridgeStorage.readAccessToken()?.trimmingCharacters(in: .whitespacesAndNewlines)
         if token?.isEmpty != false {
             guard let refreshToken, !refreshToken.isEmpty else {
                 throw NSError(
@@ -246,10 +228,11 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
             )
         }
 
-        let defaults = UserDefaults.standard
-        defaults.set(accessToken, forKey: WatchCompanionStorage.accessTokenKey)
-        defaults.set(apiBase, forKey: WatchCompanionStorage.apiBaseUrlKey)
-        defaults.synchronize()
+        try CompanionBridgeStorage.persistAuthState(
+            accessToken: accessToken,
+            refreshToken: refreshToken,
+            apiBaseUrl: apiBase
+        )
         pushCompanionContext()
         return accessToken
     }

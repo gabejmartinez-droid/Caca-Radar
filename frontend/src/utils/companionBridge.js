@@ -25,6 +25,16 @@ export async function syncCompanionAuthState({ accessToken, refreshToken, apiBas
   }
 }
 
+export async function getCompanionAuthState() {
+  const plugin = getCompanionPlugin();
+  if (!plugin?.getAuthState) return { accessToken: "", refreshToken: "", apiBaseUrl: "" };
+  try {
+    return await plugin.getAuthState();
+  } catch {
+    return { accessToken: "", refreshToken: "", apiBaseUrl: "" };
+  }
+}
+
 export async function syncCompanionPreferences({ preferredLanguage }) {
   const plugin = getCompanionPlugin();
   if (!plugin?.syncPreferences) return;

@@ -542,9 +542,10 @@ def should_return_body_tokens(request: Request) -> bool:
     platform = normalize_login_platform(request)
     origin = (context.get("origin") or "").strip().lower()
     referer = (context.get("referer") or "").strip().lower()
+    native_app = (context.get("native_app") or "").strip().lower()
     native_origin = origin.startswith("capacitor://") or origin.startswith("ionic://") or not origin
     web_referer = "cacaradar.es" in referer or "emergent.host" in referer or "localhost" in referer
-    return platform in {"ios", "android", "native"} and native_origin and not web_referer
+    return platform in {"ios", "android", "native"} and native_origin and not web_referer and native_app == "1"
 
 
 def issue_auth_session(user: dict, request: Request, response: Response) -> tuple[str, str]:
@@ -1263,6 +1264,21 @@ async def forgot_password(request: Request):
     if not email:
         raise HTTPException(status_code=400, detail="Email requerido")
 
+    context = get_request_context(request)
+    client_ip = context.get("client_ip") or "unknown"
+    await enforce_rate_limit(
+        key=f"forgot_password:ip:{client_ip}",
+        max_attempts=10,
+        window_seconds=3600,
+        detail="Demasiadas solicitudes. Inténtalo más tarde.",
+    )
+    await enforce_rate_limit(
+        key=f"forgot_password:email:{email}",
+        max_attempts=3,
+        window_seconds=3600,
+        detail="Demasiadas solicitudes. Inténtalo más tarde.",
+    )
+
     user = await db.users.find_one({"email": email})
     # Always return success to prevent email enumeration
     if not user:
@@ -1857,8 +1873,65 @@ def get_request_context(request: Request) -> dict:
         "app_version": request.headers.get("x-app-version") or request.headers.get("x-caca-radar-version"),
         "app_environment": request.headers.get("x-app-environment"),
         "platform": request.headers.get("x-platform") or request.headers.get("sec-ch-ua-platform"),
+        "native_app": request.headers.get("x-native-app"),
         "api_base_url": str(request.base_url).rstrip("/"),
     }
+
+
+def _parse_iso_datetime(value: Optional[str]) -> Optional[datetime]:
+    if not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=timezone.utc)
+        return parsed
+    except Exception:
+        return None
+
+
+async def enforce_rate_limit(
+    *,
+    key: str,
+    max_attempts: int,
+    window_seconds: int,
+    detail: str,
+    status_code: int = 429,
+) -> None:
+    now = datetime.now(timezone.utc)
+    expires_at = (now + timedelta(seconds=window_seconds)).isoformat()
+    record = await db.security_rate_limits.find_one({"key": key})
+
+    if record:
+        started_at = _parse_iso_datetime(record.get("window_started_at"))
+        count = int(record.get("count", 0))
+        if started_at and (now - started_at) < timedelta(seconds=window_seconds):
+            if count >= max_attempts:
+                raise HTTPException(status_code=status_code, detail=detail)
+            await db.security_rate_limits.update_one(
+                {"key": key},
+                {"$set": {"last_attempt_at": now.isoformat(), "expires_at": expires_at}, "$inc": {"count": 1}},
+            )
+            return
+
+    await db.security_rate_limits.update_one(
+        {"key": key},
+        {
+            "$set": {
+                "window_started_at": now.isoformat(),
+                "last_attempt_at": now.isoformat(),
+                "expires_at": expires_at,
+                "count": 1,
+            }
+        },
+        upsert=True,
+    )
+
+
+async def clear_rate_limits(keys: list[str]) -> None:
+    if not keys:
+        return
+    await db.security_rate_limits.delete_many({"key": {"$in": keys}})
 
 
 async def audit_report_event(
@@ -2991,43 +3064,79 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     }
 
 @api_router.post("/municipality/verify")
-async def verify_municipality_email(data: MunicipalityVerify):
+async def verify_municipality_email(data: MunicipalityVerify, request: Request):
     email = data.email.lower()
+    context = get_request_context(request)
+    client_ip = context.get("client_ip") or "unknown"
+    generic_response = {"message": "Si los datos son correctos, el email quedará verificado.", "verified": False}
+
+    await enforce_rate_limit(
+        key=f"municipality_verify:ip:{client_ip}",
+        max_attempts=15,
+        window_seconds=3600,
+        detail="Demasiados intentos. Inténtalo más tarde.",
+    )
+    await enforce_rate_limit(
+        key=f"municipality_verify:email:{email}",
+        max_attempts=8,
+        window_seconds=3600,
+        detail="Demasiados intentos. Inténtalo más tarde.",
+    )
+
     user = await db.users.find_one({"email": email, "role": "municipality"})
-    
     if not user:
-        raise HTTPException(status_code=404, detail="Municipio no encontrado")
-    
+        return generic_response
+
     if user.get("email_verified"):
-        return {"message": "Email ya verificado"}
-    
+        return generic_response
+
     # Check code
     if user.get("verification_code") != data.code:
-        raise HTTPException(status_code=400, detail="Código de verificación incorrecto")
-    
+        return generic_response
+
     # Check expiry
     expires = user.get("verification_code_expires", "")
     if expires and datetime.fromisoformat(expires) < datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="El código ha expirado. Solicita uno nuevo.")
-    
+        return generic_response
+
     await db.users.update_one(
         {"email": email},
         {"$set": {"email_verified": True}, "$unset": {"verification_code": "", "verification_code_expires": ""}}
     )
-    
+    await clear_rate_limits([
+        f"municipality_verify:ip:{client_ip}",
+        f"municipality_verify:email:{email}",
+        f"municipality_resend:email:{email}",
+    ])
     return {"message": "Email verificado correctamente", "verified": True}
 
 @api_router.post("/municipality/resend-verification")
-async def resend_municipality_verification(data: MunicipalityResendVerification):
+async def resend_municipality_verification(data: MunicipalityResendVerification, request: Request):
     email = data.email.lower()
+    context = get_request_context(request)
+    client_ip = context.get("client_ip") or "unknown"
+    generic_response = {"message": "Si el email puede recibir verificación, enviaremos un nuevo código."}
+
+    await enforce_rate_limit(
+        key=f"municipality_resend:ip:{client_ip}",
+        max_attempts=10,
+        window_seconds=3600,
+        detail="Demasiadas solicitudes. Inténtalo más tarde.",
+    )
+    await enforce_rate_limit(
+        key=f"municipality_resend:email:{email}",
+        max_attempts=3,
+        window_seconds=3600,
+        detail="Demasiadas solicitudes. Inténtalo más tarde.",
+    )
+
     user = await db.users.find_one({"email": email, "role": "municipality"})
-    
     if not user:
-        raise HTTPException(status_code=404, detail="Municipio no encontrado")
-    
+        return generic_response
+
     if user.get("email_verified"):
-        return {"message": "Email ya verificado"}
-    
+        return generic_response
+
     # Generate new code
     new_code = generate_verification_code()
     await db.users.update_one(
@@ -3043,8 +3152,8 @@ async def resend_municipality_verification(data: MunicipalityResendVerification)
     muni_name = user_doc.get("municipality_name", "Municipio") if user_doc else "Municipio"
     result = await send_verification_email(email, new_code, muni_name)
     logger.info("Municipality verification email re-sent for %s with status=%s", email, result.get("status"))
-    
-    return {"message": "Código de verificación reenviado"}
+
+    return generic_response
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
@@ -3614,6 +3723,21 @@ async def admin_login_step1(request: Request):
     body = await request.json()
     email = body.get("email", "").lower()
     password = body.get("password", "")
+    context = get_request_context(request)
+    client_ip = context.get("client_ip") or "unknown"
+
+    await enforce_rate_limit(
+        key=f"admin_login_send:ip:{client_ip}",
+        max_attempts=10,
+        window_seconds=900,
+        detail="Demasiados intentos. Espera unos minutos antes de solicitar otro código.",
+    )
+    await enforce_rate_limit(
+        key=f"admin_login_send:email:{email}",
+        max_attempts=5,
+        window_seconds=900,
+        detail="Demasiados intentos. Espera unos minutos antes de solicitar otro código.",
+    )
 
     user = await db.users.find_one({"email": email, "role": "admin"})
     if not user or not verify_password(password, user["password_hash"]):
@@ -3631,7 +3755,7 @@ async def admin_login_step1(request: Request):
     expires = (datetime.now(timezone.utc) + timedelta(minutes=10)).isoformat()
     await db.admin_codes.update_one(
         {"email": email},
-        {"$set": {"code": code, "expires": expires}},
+        {"$set": {"code": code, "expires": expires, "attempt_count": 0}},
         upsert=True
     )
 
@@ -3655,12 +3779,36 @@ async def admin_login_step2(request: Request, response: Response):
     body = await request.json()
     email = body.get("email", "").lower()
     code = body.get("code", "")
+    context = get_request_context(request)
+    client_ip = context.get("client_ip") or "unknown"
+
+    await enforce_rate_limit(
+        key=f"admin_verify:ip:{client_ip}",
+        max_attempts=10,
+        window_seconds=900,
+        detail="Demasiados intentos. Inicia sesión de nuevo en unos minutos.",
+    )
+    await enforce_rate_limit(
+        key=f"admin_verify:email:{email}",
+        max_attempts=5,
+        window_seconds=900,
+        detail="Demasiados intentos. Inicia sesión de nuevo en unos minutos.",
+    )
 
     record = await db.admin_codes.find_one({"email": email})
     if not record:
         raise HTTPException(status_code=400, detail="No hay código pendiente. Inicia sesión de nuevo.")
 
+    if int(record.get("attempt_count", 0)) >= 5:
+        await db.admin_codes.delete_one({"email": email})
+        raise HTTPException(status_code=400, detail="Demasiados intentos. Inicia sesión de nuevo.")
+
     if record["code"] != code:
+        next_attempt_count = int(record.get("attempt_count", 0)) + 1
+        if next_attempt_count >= 5:
+            await db.admin_codes.delete_one({"email": email})
+        else:
+            await db.admin_codes.update_one({"email": email}, {"$set": {"attempt_count": next_attempt_count}})
         raise HTTPException(status_code=400, detail="Código incorrecto")
 
     if datetime.fromisoformat(record["expires"]) < datetime.now(timezone.utc):
@@ -3668,6 +3816,12 @@ async def admin_login_step2(request: Request, response: Response):
 
     # Code valid — clean up and issue session
     await db.admin_codes.delete_one({"email": email})
+    await clear_rate_limits([
+        f"admin_login_send:ip:{client_ip}",
+        f"admin_login_send:email:{email}",
+        f"admin_verify:ip:{client_ip}",
+        f"admin_verify:email:{email}",
+    ])
     user = await db.users.find_one({"email": email, "role": "admin"})
     if not user:
         raise HTTPException(status_code=401, detail="Usuario no encontrado")
@@ -4274,8 +4428,9 @@ async def google_webhook(request: Request):
         return {"status": "error"}
 
 @api_router.get("/webhooks/status")
-async def webhook_status():
+async def webhook_status(request: Request):
     """Check webhook configuration status."""
+    await _require_admin(request)
     apple_count = await db.webhook_notifications.count_documents({"store": "apple"})
     google_count = await db.webhook_notifications.count_documents({"store": "google"})
 
@@ -4406,8 +4561,9 @@ async def health_deep():
 
 
 @api_router.get("/health/auth")
-async def health_auth():
+async def health_auth(request: Request):
     """Diagnose GIS-based Google sign-in configuration."""
+    await _require_admin(request)
     client_ids = get_google_client_ids()
     checks = {
         "google_client_id_configured": bool(GOOGLE_WEB_CLIENT_ID),
@@ -4605,6 +4761,8 @@ async def init_database():
     await db.admin_codes.create_index("email", unique=True)
     await db.password_resets.create_index("token_hash", unique=True, sparse=True)
     await db.password_resets.create_index("email")
+    await db.security_rate_limits.create_index("key", unique=True)
+    await db.security_rate_limits.create_index("expires_at", expireAfterSeconds=0)
     await db.report_audit_log.create_index("event")
     await db.report_audit_log.create_index("report_id")
     await db.report_audit_log.create_index("user_id")
