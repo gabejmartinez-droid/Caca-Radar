@@ -11,13 +11,12 @@ function getCompanionPlugin() {
   return window.Capacitor?.Plugins?.CompanionBridge || null;
 }
 
-export async function syncCompanionAuthState({ accessToken, refreshToken, apiBaseUrl }) {
+export async function syncCompanionAuthState({ accessToken, apiBaseUrl }) {
   const plugin = getCompanionPlugin();
   if (!plugin?.syncAuthState) return;
   try {
     await plugin.syncAuthState({
       accessToken: accessToken || "",
-      refreshToken: refreshToken || "",
       apiBaseUrl: apiBaseUrl || "",
     });
   } catch {

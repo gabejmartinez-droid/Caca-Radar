@@ -1306,6 +1306,49 @@ Notes:
 ### 2026-05-02 — Pending
 
 Release metadata:
+- Commit SHA: `working-tree-dirty`
+- Deployment status: `pending`
+- Rollback target: `daaec6e`
+
+Exact versions:
+- Web: `1.1.25-web.1`
+- iOS: `1.1.39 (41)`
+- Android: `1.1.42 (44)`
+- Backend: `1.1.5-api.1`
+
+User-facing release notes:
+- Harden auth, account recovery, and premium activation security paths.
+
+Internal release notes:
+- Require verified municipality accounts for dashboard access, stop auto-auth on municipality registration, hash password reset tokens, fail mock billing closed in production, trim public diagnostics, and stop syncing refresh tokens into watch companion storage.
+
+Store submission notes:
+```text
+- Harden auth, account recovery, and premium activation security paths.
+```
+
+Internal release notes block:
+```text
+Commit SHA: working-tree-dirty
+Deployment status: pending
+Rollback target: daaec6e
+Versions:
+• Web: `1.1.25-web.1`
+• iOS: `1.1.39 (41)`
+• Android: `1.1.42 (44)`
+• Backend: `1.1.5-api.1`
+Notes:
+- Require verified municipality accounts for dashboard access.
+- Stop auto-auth on municipality registration.
+- Hash password reset tokens and stop logging them.
+- Fail mock premium activation closed in production.
+- Trim public runtime diagnostics.
+- Stop syncing refresh tokens into watch companion storage.
+```
+
+### 2026-05-02 — Pending
+
+Release metadata:
 - Commit SHA: `eb56ba005ede0b61c7995608c23c0366f421947e-dirty`
 - Deployment status: `pending`
 - Rollback target: `fc1e28c4ac6f966a78a59ed3119970335f8948ac`

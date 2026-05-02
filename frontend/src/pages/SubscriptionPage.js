@@ -8,6 +8,7 @@ import axios from "axios";
 import { toast } from "sonner";
 
 import { API } from "../config";
+import { isCapacitorNative } from "../tokenManager";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
@@ -17,11 +18,22 @@ export default function SubscriptionPage() {
   const handleSubscribe = async (plan) => {
     if (!user) { navigate("/login"); return; }
     try {
-      const { data } = await axios.post(`${API}/users/subscribe`, { plan }, { withCredentials: true });
+      const { data } = await axios.post(
+        `${API}/users/subscribe`,
+        { plan },
+        { withCredentials: !isCapacitorNative() },
+      );
       toast.success(data.trial ? t("subscriptionUi.trialActivated") : t("subscriptionUi.subscriptionActivated"));
       await checkAuth();
       navigate("/");
-    } catch (err) { toast.error(err.response?.data?.detail || "Error"); }
+    } catch (err) {
+      const detail = err.response?.data?.detail;
+      if (err.response?.status === 403) {
+        toast.error("Las compras premium deben completarse con la integración oficial de la tienda.");
+        return;
+      }
+      toast.error(detail || "Error");
+    }
   };
 
   const freeFeatures = [

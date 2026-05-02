@@ -8,6 +8,8 @@ load_dotenv()
 import os
 import logging
 import uuid
+import secrets
+import hashlib
 import bcrypt
 import jwt
 import httpx
@@ -326,6 +328,8 @@ async def require_municipality(request: Request) -> dict:
     user = await get_current_user(request)
     if not user or user.get("role") not in ["municipality", "admin"]:
         raise HTTPException(status_code=403, detail="Acceso de municipio requerido")
+    if user.get("role") == "municipality" and not user.get("email_verified"):
+        raise HTTPException(status_code=403, detail="Debes verificar el email oficial antes de acceder al panel municipal")
     return user
 
 async def require_registered(request: Request) -> dict:
@@ -403,17 +407,54 @@ class GoogleReceiptVerify(BaseModel):
     plan: Literal["monthly", "annual"] = "monthly"
 
 # ── Municipality domain verification ─────────────────
-ALLOWED_MUNICIPALITY_DOMAINS = [
-    r".*\.es$", r".*\.gob\.es$", r".*\.org\.es$", r".*@ayto-.*", r".*@ajuntament.*",
-    r".*@concello.*", r".*@udal.*", r".*@diputacion.*", r".*@cacaradar\.es$",
+BASE_MUNICIPALITY_DOMAIN_PATTERNS = [
+    r"(?:^|\.)gob\.es$",
+    r"(?:^|\.)gov\.es$",
+    r"(?:^|\.)ayto-[a-z0-9-]+\.[a-z.]+$",
+    r"(?:^|\.)ajuntament[a-z0-9-]*\.[a-z.]+$",
+    r"(?:^|\.)concello[a-z0-9-]*\.[a-z.]+$",
+    r"(?:^|\.)udal[a-z0-9-]*\.[a-z.]+$",
+    r"(?:^|\.)diputacion[a-z0-9-]*\.[a-z.]+$",
+    r"(?:^|\.)cacaradar\.es$",
 ]
 
+
+def _load_municipality_domain_patterns() -> list[str]:
+    patterns = list(BASE_MUNICIPALITY_DOMAIN_PATTERNS)
+    extra_domains = [
+        value.strip().lower()
+        for value in os.environ.get("MUNICIPALITY_ALLOWED_EMAIL_DOMAINS", "").split(",")
+        if value.strip()
+    ]
+    for domain in extra_domains:
+        patterns.append(rf"(?:^|\.){re.escape(domain)}$")
+    extra_regexes = [
+        value.strip()
+        for value in os.environ.get("MUNICIPALITY_ALLOWED_EMAIL_REGEXES", "").split(",")
+        if value.strip()
+    ]
+    patterns.extend(extra_regexes)
+    return patterns
+
+
+ALLOWED_MUNICIPALITY_DOMAINS = _load_municipality_domain_patterns()
+
 def is_valid_municipality_email(email: str) -> bool:
-    domain = email.split("@")[1] if "@" in email else ""
+    domain = email.split("@")[1].strip().lower() if "@" in email else ""
+    if not domain:
+        return False
     for pattern in ALLOWED_MUNICIPALITY_DOMAINS:
-        if re.match(pattern, email) or re.match(pattern, domain):
+        if re.fullmatch(pattern, domain):
             return True
     return False
 
 def generate_verification_code() -> str:
     return ''.join(random.choices(string.digits, k=6))
+
+
+def generate_password_reset_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def hash_password_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode("utf-8")).hexdigest()

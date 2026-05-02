@@ -28,11 +28,11 @@ from deps import (
     UserRegister, UserLogin, ReportCreate, VoteCreate, ReportVote, ValidationCreate, FlagCreate,
     UsernameUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
     REPORT_CATEGORIES, FLAG_REASONS,
-    is_valid_municipality_email, generate_verification_code,
+    is_valid_municipality_email, generate_verification_code, generate_password_reset_token, hash_password_reset_token,
     APP_STORE_URL, PLAY_STORE_URL,
     is_vip_email,
     GOOGLE_WEB_CLIENT_ID, GOOGLE_ALLOWED_CLIENT_IDS,
-    APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url,
+    APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url, is_production_env,
 )
 import jwt
 import re
@@ -94,6 +94,9 @@ async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) ->
     """Verify Apple App Store receipt using App Store Server API v2.
     Falls back to mock if credentials not configured."""
     if not all([APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH]):
+        if is_production_env():
+            logger.error("Apple credentials not configured in production")
+            return {"valid": False, "error": "Apple subscription verification is not configured"}
         logger.warning("Apple credentials not configured — using mock verification")
         return {"valid": True, "mock": True, "product_id": "premium_monthly", "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
 
@@ -162,6 +165,9 @@ async def verify_google_receipt(purchase_token: str, subscription_id: str) -> di
     """Verify Google Play subscription using Google Play Developer API v3/v2.
     Falls back to mock if credentials not configured."""
     if not all([GOOGLE_SERVICE_ACCOUNT_PATH, GOOGLE_PACKAGE_NAME]):
+        if is_production_env():
+            logger.error("Google credentials not configured in production")
+            return {"valid": False, "error": "Google subscription verification is not configured"}
         logger.warning("Google credentials not configured — using mock verification")
         return {"valid": True, "mock": True, "product_id": subscription_id, "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
 
@@ -530,10 +536,30 @@ def set_auth_cookies(response: Response, access_token: str, refresh_token: str) 
     response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
 
 
-def build_auth_payload(user: dict, access_token: str, refresh_token: str) -> dict:
+def should_return_body_tokens(request: Request) -> bool:
+    context = get_request_context(request)
+    platform = normalize_login_platform(request)
+    origin = (context.get("origin") or "").strip().lower()
+    referer = (context.get("referer") or "").strip().lower()
+    native_origin = origin.startswith("capacitor://") or origin.startswith("ionic://") or not origin
+    web_referer = "cacaradar.es" in referer or "emergent.host" in referer or "localhost" in referer
+    return platform in {"ios", "android", "native"} and native_origin and not web_referer
+
+
+def issue_auth_session(user: dict, request: Request, response: Response) -> tuple[str, str]:
     user_id = str(user["_id"])
     role = user.get("role", "user")
-    return {
+    access_token = create_access_token(user_id, user.get("email", ""), role)
+    refresh_token = create_refresh_token(user_id)
+    if not should_return_body_tokens(request):
+        set_auth_cookies(response, access_token, refresh_token)
+    return access_token, refresh_token
+
+
+def build_auth_payload(user: dict, access_token: str, refresh_token: str, request: Request) -> dict:
+    user_id = str(user["_id"])
+    role = user.get("role", "user")
+    payload = {
         "id": user_id,
         "email": user.get("email", ""),
         "name": user.get("name", ""),
@@ -553,11 +579,13 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str) -> dic
         "preferred_language": user.get("preferred_language"),
         "geo_review_exempt": user.get("geo_review_exempt", False),
         "needs_username": not bool(user.get("username")),
-        "access_token": access_token,
-        "refresh_token": refresh_token,
         "auth_provider": user.get("auth_provider"),
         "auth_methods": normalize_auth_methods(user),
     }
+    if should_return_body_tokens(request):
+        payload["access_token"] = access_token
+        payload["refresh_token"] = refresh_token
+    return payload
 
 
 def normalize_login_platform(request: Request) -> str:
@@ -605,20 +633,14 @@ async def update_login_metadata(user_id: ObjectId, request: Request, existing_us
 
 async def complete_google_login_for_user(user: dict, request: Request, response: Response) -> dict:
     user = await update_login_metadata(user["_id"], request, user)
-    user_id = str(user["_id"])
-    access_token = create_access_token(user_id, user["email"], user.get("role", "user"))
-    refresh_token = create_refresh_token(user_id)
-    set_auth_cookies(response, access_token, refresh_token)
-    return build_auth_payload(user, access_token, refresh_token)
+    access_token, refresh_token = issue_auth_session(user, request, response)
+    return build_auth_payload(user, access_token, refresh_token, request)
 
 
 async def complete_social_login_for_user(user: dict, request: Request, response: Response) -> dict:
     user = await update_login_metadata(user["_id"], request, user)
-    user_id = str(user["_id"])
-    access_token = create_access_token(user_id, user["email"], user.get("role", "user"))
-    refresh_token = create_refresh_token(user_id)
-    set_auth_cookies(response, access_token, refresh_token)
-    return build_auth_payload(user, access_token, refresh_token)
+    access_token, refresh_token = issue_auth_session(user, request, response)
+    return build_auth_payload(user, access_token, refresh_token, request)
 
 
 def get_google_client_ids() -> list[str]:
@@ -1185,11 +1207,8 @@ async def register(data: UserRegister, request: Request, response: Response):
     user_doc["_id"] = result.inserted_id
     user_doc = await update_login_metadata(result.inserted_id, request, user_doc)
     
-    access_token = create_access_token(user_id, email)
-    refresh_token = create_refresh_token(user_id)
-    
-    set_auth_cookies(response, access_token, refresh_token)
-    return build_auth_payload(user_doc, access_token, refresh_token)
+    access_token, refresh_token = issue_auth_session(user_doc, request, response)
+    return build_auth_payload(user_doc, access_token, refresh_token, request)
 
 @api_router.post("/auth/login")
 async def login(data: UserLogin, request: Request, response: Response):
@@ -1213,6 +1232,9 @@ async def login(data: UserLogin, request: Request, response: Response):
             upsert=True
         )
         raise HTTPException(status_code=401, detail="Credenciales inválidas")
+
+    if user.get("role") == "municipality" and not user.get("email_verified"):
+        raise HTTPException(status_code=403, detail="Debes verificar el email oficial antes de iniciar sesión en el panel municipal")
     
     await db.login_attempts.delete_one({"identifier": identifier})
     
@@ -1229,13 +1251,8 @@ async def login(data: UserLogin, request: Request, response: Response):
             user.update(updates)
     user = await update_login_metadata(user["_id"], request, user)
     
-    user_id = str(user["_id"])
-    role = user.get("role", "user")
-    access_token = create_access_token(user_id, email, role)
-    refresh_token = create_refresh_token(user_id)
-    
-    set_auth_cookies(response, access_token, refresh_token)
-    return build_auth_payload(user, access_token, refresh_token)
+    access_token, refresh_token = issue_auth_session(user, request, response)
+    return build_auth_payload(user, access_token, refresh_token, request)
 
 @api_router.post("/auth/forgot-password")
 async def forgot_password(request: Request):
@@ -1251,12 +1268,13 @@ async def forgot_password(request: Request):
         return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
 
     # Generate a time-limited reset token (1 hour)
-    reset_token = str(uuid.uuid4())
+    reset_token = generate_password_reset_token()
+    token_hash = hash_password_reset_token(reset_token)
     await db.password_resets.update_one(
         {"email": email},
         {"$set": {
             "email": email,
-            "token": reset_token,
+            "token_hash": token_hash,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "expires_at": (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat(),
             "used": False,
@@ -1279,7 +1297,7 @@ async def forgot_password(request: Request):
 
     from email_service import send_email
     result = await send_email(email, "Caca Radar — Restablecer contraseña", html)
-    logger.info(f"Password reset for {email}: token={reset_token}, email_result={result.get('status')}")
+    logger.info("Password reset requested for %s: email_result=%s", email, result.get("status"))
 
     return {"message": "Si el email existe, recibirás un enlace para restablecer tu contraseña."}
 
@@ -1296,7 +1314,8 @@ async def reset_password(request: Request):
     if len(new_password) < 6:
         raise HTTPException(status_code=400, detail="La contraseña debe tener al menos 6 caracteres")
 
-    reset_doc = await db.password_resets.find_one({"token": token, "used": False})
+    token_hash = hash_password_reset_token(token)
+    reset_doc = await db.password_resets.find_one({"token_hash": token_hash, "used": False})
     if not reset_doc:
         raise HTTPException(status_code=400, detail="Enlace inválido o ya utilizado")
 
@@ -1316,7 +1335,7 @@ async def reset_password(request: Request):
     await db.users.update_one({"email": email}, {"$set": password_updates})
 
     # Mark token as used
-    await db.password_resets.update_one({"token": token}, {"$set": {"used": True}})
+    await db.password_resets.update_one({"token_hash": token_hash}, {"$set": {"used": True}})
 
     logger.info(f"Password reset completed for {email}")
     return {"message": "Contraseña actualizada correctamente. Ya puedes iniciar sesión."}
@@ -1340,9 +1359,9 @@ async def get_me(request: Request):
 
 @api_router.post("/auth/refresh")
 async def refresh_token_endpoint(request: Request, response: Response):
-    # Accept refresh token from cookie OR request body
+    # Accept refresh token from cookie for web, or request body for native.
     token = request.cookies.get("refresh_token")
-    if not token:
+    if not token and should_return_body_tokens(request):
         try:
             body = await request.json()
             token = body.get("refresh_token")
@@ -1358,7 +1377,8 @@ async def refresh_token_endpoint(request: Request, response: Response):
         if not user:
             raise HTTPException(status_code=401, detail="User not found")
         new_access = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
-        response.set_cookie(key="access_token", value=new_access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
+        if not should_return_body_tokens(request):
+            response.set_cookie(key="access_token", value=new_access, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
         return {"message": "Token refreshed", "access_token": new_access}
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expired")
@@ -1451,6 +1471,8 @@ async def delete_current_user_account(request: Request, response: Response):
 @api_router.post("/users/subscribe")
 async def subscribe_user(request: Request):
     """Subscription: €3.99/month or €29.99/year with 7-day free trial."""
+    if is_production_env():
+        raise HTTPException(status_code=403, detail="Las suscripciones directas de prueba no están disponibles en producción")
     user = await require_auth(request)
     body = await request.json()
     plan = body.get("plan", "monthly")
@@ -1812,16 +1834,10 @@ def resolve_runtime_commit() -> str:
     return "unknown"
 
 def get_runtime_metadata() -> dict:
-    from urllib.parse import urlparse
     app_versions = load_app_versions()
-    parsed = urlparse(mongo_url.replace("mongodb+srv://", "https://").split("@")[-1].split("/")[0])
-    mongo_host = parsed.hostname or parsed.path or "unknown"
     return {
         "environment": APP_ENV,
-        "db_name": db_name,
-        "mongo_url": redacted_mongo_url(),
         "mongo_is_local": is_mongo_local(),
-        "mongo_host": mongo_host,
         "commit": resolve_runtime_commit(),
         "started_at": app.state.started_at,
         "backend_version": os.environ.get("BACKEND_VERSION") or app_versions.get("backend", "unknown"),
@@ -2962,25 +2978,15 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
     
-    # Log the verification code (in production, send via email)
-    logger.info(f"Municipality verification code for {email}: {verification_code}")
-    
     # Send verification email
     email_result = await send_verification_email(email, verification_code, data.municipality_name)
-    logger.info(f"Verification email result: {email_result}")
-    
-    access_token = create_access_token(user_id, email, "municipality")
-    refresh_token = create_refresh_token(user_id)
-    
-    response.set_cookie(key="access_token", value=access_token, httponly=True, secure=True, samesite="none", max_age=3600, path="/")
-    response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True, samesite="none", max_age=604800, path="/")
+    logger.info("Municipality verification email dispatched for %s with status=%s", email, email_result.get("status"))
     
     return {
         "id": user_id, "email": email, "name": data.name,
         "role": "municipality", "municipality_name": data.municipality_name,
         "municipality_subscription_active": False,
         "verification_required": True,
-        "verification_code_hint": verification_code  # Only in dev — remove in production
     }
 
 @api_router.post("/municipality/verify")
@@ -3031,18 +3037,19 @@ async def resend_municipality_verification(data: MunicipalityResendVerification)
         }}
     )
     
-    logger.info(f"New municipality verification code for {email}: {new_code}")
-    
     # Send verification email
     user_doc = await db.users.find_one({"email": email})
     muni_name = user_doc.get("municipality_name", "Municipio") if user_doc else "Municipio"
-    await send_verification_email(email, new_code, muni_name)
+    result = await send_verification_email(email, new_code, muni_name)
+    logger.info("Municipality verification email re-sent for %s with status=%s", email, result.get("status"))
     
     return {"message": "Código de verificación reenviado"}
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
     """Municipality subscription at €50/month."""
+    if is_production_env():
+        raise HTTPException(status_code=403, detail="La activación municipal manual no está disponible en producción sin validación interna")
     user = await require_municipality(request)
     await request.json()  # Accept body for future plan options
     
@@ -4247,13 +4254,10 @@ async def ready():
 
 @api_router.get("/version")
 async def version():
-    """Return environment and database configuration (no secrets)."""
+    """Return release/runtime metadata without infrastructure internals."""
     metadata = get_runtime_metadata()
     return {
         "environment": metadata["environment"],
-        "db_name": metadata["db_name"],
-        "mongo_is_local": metadata["mongo_is_local"],
-        "mongo_host": metadata["mongo_host"],
         "commit": metadata["commit"],
         "started_at": metadata["started_at"],
         "backend_version": metadata["backend_version"],
@@ -4274,7 +4278,6 @@ async def health_auth():
     client_ids = get_google_client_ids()
     checks = {
         "google_client_id_configured": bool(GOOGLE_WEB_CLIENT_ID),
-        "allowed_client_ids": client_ids,
         "allowed_client_ids_count": len(client_ids),
         "status": "ok" if client_ids else "degraded",
     }
@@ -4339,7 +4342,7 @@ async def report_diagnostics(
         "runtime": {
             "db_name": db_name,
             "mongo_is_local": is_mongo_local(),
-            "mongo_host": runtime["mongo_host"],
+            "mongo_url": redacted_mongo_url(),
             "environment": APP_ENV,
             "commit": runtime["commit"],
             "started_at": runtime["started_at"],
@@ -4467,7 +4470,7 @@ async def init_database():
     await db.barrio_cache.create_index([("lat", 1), ("lng", 1)], unique=True)
     await db.notifications.create_index([("user_id", 1), ("read", 1)])
     await db.admin_codes.create_index("email", unique=True)
-    await db.password_resets.create_index("token", unique=True)
+    await db.password_resets.create_index("token_hash", unique=True, sparse=True)
     await db.password_resets.create_index("email")
     await db.report_audit_log.create_index("event")
     await db.report_audit_log.create_index("report_id")
@@ -4476,10 +4479,49 @@ async def init_database():
     await db.report_audit_log.create_index("created_at")
     await db.report_audit_log.create_index([("latitude", 1), ("longitude", 1)])
 
+def env_flag(name: str) -> bool:
+    return os.environ.get(name, "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+def startup_seeding_enabled() -> bool:
+    return not is_production_env() or env_flag("ENABLE_STARTUP_SEED_USERS")
+
+
+def credentials_report_enabled() -> bool:
+    return not is_production_env() and env_flag("WRITE_STARTUP_CREDENTIAL_REPORT")
+
+
+def using_fallback_credential(env_name: str, fallback_value: str) -> bool:
+    return os.environ.get(env_name) in (None, "", fallback_value)
+
+
 async def seed_users():
-    """Create admin, review, and demo municipality accounts if missing."""
+    """Create admin, review, and demo municipality accounts if explicitly enabled."""
+    if not startup_seeding_enabled():
+        logger.info("Startup user seeding skipped for this environment")
+        return None
+
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
     admin_password = os.environ.get("ADMIN_PASSWORD", "Cacaradar123$")
+    demo_muni_email = os.environ.get("DEMO_MUNI_EMAIL", "madrid@cacaradar.es")
+    demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD", "madrid123")
+    review_email = os.environ.get("APP_REVIEW_EMAIL", "appletest@cacaradar.es").lower()
+    review_password = os.environ.get("APP_REVIEW_PASSWORD", "appletest123")
+
+    if is_production_env():
+        insecure_defaults = []
+        if using_fallback_credential("ADMIN_PASSWORD", "Cacaradar123$"):
+            insecure_defaults.append("ADMIN_PASSWORD")
+        if using_fallback_credential("DEMO_MUNI_PASSWORD", "madrid123"):
+            insecure_defaults.append("DEMO_MUNI_PASSWORD")
+        if using_fallback_credential("APP_REVIEW_PASSWORD", "appletest123"):
+            insecure_defaults.append("APP_REVIEW_PASSWORD")
+        if insecure_defaults:
+            raise RuntimeError(
+                "FATAL: startup seeding is enabled in production but secure credentials were not provided for: "
+                + ", ".join(insecure_defaults)
+            )
+
     existing = await db.users.find_one({"email": admin_email})
     if existing is None:
         await db.users.insert_one({
@@ -4494,20 +4536,17 @@ async def seed_users():
     elif not verify_password(admin_password, existing["password_hash"]):
         await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
 
-    demo_muni_email = os.environ.get("DEMO_MUNI_EMAIL", "madrid@cacaradar.es")
-    demo_muni_password = os.environ.get("DEMO_MUNI_PASSWORD", "madrid123")
     if not await db.users.find_one({"email": demo_muni_email}):
         await db.users.insert_one({
             "email": demo_muni_email, "password_hash": hash_password(demo_muni_password),
             "name": "Ayuntamiento de Madrid", "role": "municipality",
             "municipality_name": "Madrid", "municipality_province": "Madrid",
             "municipality_subscription_active": True, "municipality_subscription_type": "annual",
+            "email_verified": True,
             "created_at": datetime.now(timezone.utc)
         })
         logger.info("Demo municipality user created")
 
-    review_email = os.environ.get("APP_REVIEW_EMAIL", "appletest@cacaradar.es").lower()
-    review_password = os.environ.get("APP_REVIEW_PASSWORD", "appletest123")
     review_username = os.environ.get("APP_REVIEW_USERNAME", "appletest").lower()
     review_user = await db.users.find_one({"email": review_email})
     review_updates = {
@@ -4546,7 +4585,15 @@ async def seed_users():
             review_mutations["password_hash"] = hash_password(review_password)
         await db.users.update_one({"_id": review_user["_id"]}, {"$set": review_mutations})
 
-    return admin_email, admin_password, demo_muni_email, demo_muni_password, review_email, review_password, review_username
+    return {
+        "admin_email": admin_email,
+        "admin_password": admin_password,
+        "demo_muni_email": demo_muni_email,
+        "demo_muni_password": demo_muni_password,
+        "review_email": review_email,
+        "review_password": review_password,
+        "review_username": review_username,
+    }
 
 async def run_maintenance():
     """Archive old reports, deactivate expired subscriptions, recalculate ranks."""
@@ -4583,30 +4630,30 @@ async def run_maintenance():
 async def startup():
     await init_storage_async()
     await init_database()
-    admin_email, admin_password, demo_muni_email, demo_muni_password, review_email, review_password, review_username = await seed_users()
+    seeded_credentials = await seed_users()
     await run_maintenance()
 
-    # Write test credentials (non-critical)
-    try:
-        os.makedirs("/app/memory", exist_ok=True)
-        with open("/app/memory/test_credentials.md", "w") as f:
-            f.write("# Test Credentials\n\n")
-            f.write(f"## Admin\n- Email: {admin_email}\n- Password: {admin_password}\n- Role: admin\n\n")
-            f.write(f"## Demo Municipality\n- Email: {demo_muni_email}\n- Password: {demo_muni_password}\n- Role: municipality\n- Municipality: Madrid\n\n")
-            f.write(f"## App Review\n- Email: {review_email}\n- Username: {review_username}\n- Password: {review_password}\n- Role: user\n- VIP Access: true\n- Geo Review Exempt: true\n\n")
-            f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/google/login\n- POST /api/auth/google/link\n- POST /api/auth/logout\n- GET /api/auth/me\n")
-            f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
-            f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
-            f.write("\n## Webhook Endpoints\n")
-            f.write("- POST /api/webhooks/apple (App Store Server Notifications V2)\n")
-            f.write("- POST /api/webhooks/google (Google Play RTDN via Pub/Sub)\n")
-            f.write("- GET /api/webhooks/status (check configuration)\n")
-            f.write("\n## Email Service\n")
-            f.write(f"- Configured: {email_configured()}\n")
-            f.write(f"- Sender: {os.environ.get('SENDER_EMAIL', 'no-reply@cacaradar.es')}\n")
-            f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
-    except Exception:
-        logger.warning("Could not write test_credentials.md (non-critical)")
+    if seeded_credentials and credentials_report_enabled():
+        try:
+            os.makedirs("/app/memory", exist_ok=True)
+            with open("/app/memory/test_credentials.md", "w") as f:
+                f.write("# Test Credentials\n\n")
+                f.write(f"## Admin\n- Email: {seeded_credentials['admin_email']}\n- Password: {seeded_credentials['admin_password']}\n- Role: admin\n\n")
+                f.write(f"## Demo Municipality\n- Email: {seeded_credentials['demo_muni_email']}\n- Password: {seeded_credentials['demo_muni_password']}\n- Role: municipality\n- Municipality: Madrid\n\n")
+                f.write(f"## App Review\n- Email: {seeded_credentials['review_email']}\n- Username: {seeded_credentials['review_username']}\n- Password: {seeded_credentials['review_password']}\n- Role: user\n- VIP Access: true\n- Geo Review Exempt: true\n\n")
+                f.write("## Auth Endpoints\n- POST /api/auth/register\n- POST /api/auth/login\n- POST /api/auth/google/login\n- POST /api/auth/google/link\n- POST /api/auth/logout\n- GET /api/auth/me\n")
+                f.write("## Municipality Endpoints\n- POST /api/municipality/register (with domain verification)\n- POST /api/municipality/verify\n- POST /api/municipality/resend-verification\n- GET /api/municipality/stats\n- GET /api/municipality/reports\n- GET /api/municipality/flags\n- POST /api/municipality/moderate/{report_id}\n")
+                f.write("## Subscription Endpoints\n- POST /api/users/subscribe (mock)\n- POST /api/users/subscribe/apple (receipt verification)\n- POST /api/users/subscribe/google (receipt verification)\n- GET /api/users/subscription-status\n")
+                f.write("\n## Webhook Endpoints\n")
+                f.write("- POST /api/webhooks/apple (App Store Server Notifications V2)\n")
+                f.write("- POST /api/webhooks/google (Google Play RTDN via Pub/Sub)\n")
+                f.write("- GET /api/webhooks/status (check configuration)\n")
+                f.write("\n## Email Service\n")
+                f.write(f"- Configured: {email_configured()}\n")
+                f.write(f"- Sender: {os.environ.get('SENDER_EMAIL', 'no-reply@cacaradar.es')}\n")
+                f.write("- Set RESEND_API_KEY in .env for real emails (get key from resend.com)\n")
+        except Exception:
+            logger.warning("Could not write test_credentials.md (non-critical)")
 
     logger.info("Startup complete")
 

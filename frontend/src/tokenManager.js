@@ -51,7 +51,6 @@ function syncCompanionBridge() {
       if (accessToken) {
         return syncCompanionAuthState({
           accessToken,
-          refreshToken,
           apiBaseUrl: API,
         });
       }

@@ -194,8 +194,6 @@ export default function StatusPage() {
                     <Database className="w-5 h-5 text-[#66BB6A]" />
                     <h2 className="text-lg font-bold text-[#2B2D42]">{t("statusUi.databaseTitle")}</h2>
                   </div>
-                  <StatRow label={t("statusUi.host")} value={runtime.mongo_host || t("statusUi.notAvailable")} />
-                  <StatRow label={t("statusUi.logicalName")} value={runtime.db_name || t("statusUi.notAvailable")} />
                   <StatRow label={t("statusUi.localMongo")} value={runtime.mongo_is_local ? t("statusUi.yes") : t("statusUi.no")} />
                   <StatRow label={t("statusUi.productionSafe")} value={health?.production_db_safe ? t("statusUi.yes") : t("statusUi.no")} />
                 </div>
