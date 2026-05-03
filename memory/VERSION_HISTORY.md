@@ -44,14 +44,13 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
-- Web `1.1.47-web.1`
-- iOS `1.1.61 (63)`
-- Android `1.1.64 (66)`
+- Web `1.1.48-web.1`
+- iOS `1.1.62 (64)`
+- Android `1.1.65 (67)`
 - Backend `1.1.13-api.1`
 
 Changes:
-- Added a municipal-access showcase card to the download/share landing page so the web experience also advertises Ayuntamiento subscriptions instead of only consumer app installs.
-- Linked that download-page municipal CTA into the subscription page where the three municipality pricing tiers now live.
+- Simplified the municipal pricing cards so they now show annual pricing only, removing the approximate monthly equivalents from the UI.
 
 Verification:
 - Frontend mobile bundle rebuilt and re-synced.
@@ -67,7 +66,7 @@ Impacted environments:
 
 Changes:
 - Reworked the municipal portion of the pricing page into three explicit Ayuntamiento tiers based on population: Small, Medium, and Large Municipality.
-- Added annual pricing, approximate monthly equivalents, and per-tier feature lists while making it clear that municipal tools are activated during onboarding and can be configured progressively.
+- Added annual pricing and per-tier feature lists while making it clear that municipal tools are activated during onboarding and can be configured progressively.
 - Highlighted the medium municipality tier as the most common option for towns and small cities.
 - Routed every municipal CTA to the manual email contact flow at `jefe@cacaradar.es` for subscriptions, payment questions, and invoice handling.
 

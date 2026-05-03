@@ -70,7 +70,6 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalSmallTitle"),
       population: t("subscriptionUi.municipalSmallPopulation"),
       price: t("subscriptionUi.municipalSmallPrice"),
-      monthlyEquivalent: t("subscriptionUi.municipalMonthlyEquivalent").replace("{amount}", "€65"),
       description: t("subscriptionUi.municipalSmallDescription"),
       features: [
         t("subscriptionUi.municipalFeatureVerifiedProfile"),
@@ -92,7 +91,6 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalMediumTitle"),
       population: t("subscriptionUi.municipalMediumPopulation"),
       price: t("subscriptionUi.municipalMediumPrice"),
-      monthlyEquivalent: t("subscriptionUi.municipalMonthlyEquivalent").replace("{amount}", "€165"),
       description: t("subscriptionUi.municipalMediumDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingSmall"),
@@ -115,7 +113,6 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalLargeTitle"),
       population: t("subscriptionUi.municipalLargePopulation"),
       price: t("subscriptionUi.municipalLargePrice"),
-      monthlyEquivalent: t("subscriptionUi.municipalMonthlyEquivalent").replace("{amount}", "€415"),
       description: t("subscriptionUi.municipalLargeDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingMedium"),
@@ -277,7 +274,6 @@ export default function SubscriptionPage() {
 
                   <div className="mb-4">
                     <div className="text-3xl font-black text-[#2B2D42]">{plan.price}</div>
-                    <div className="text-sm text-[#8D99AE] mt-1">{plan.monthlyEquivalent}</div>
                   </div>
 
                   <p className="text-sm text-[#5C677D] leading-6 mb-4">{plan.description}</p>
