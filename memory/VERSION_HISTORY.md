@@ -44,6 +44,24 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
+- Web `1.1.46-web.1`
+- iOS `1.1.60 (62)`
+- Android `1.1.63 (65)`
+- Backend `1.1.13-api.1`
+
+Changes:
+- Reworked the municipal portion of the pricing page into three explicit Ayuntamiento tiers based on population: Small, Medium, and Large Municipality.
+- Added annual pricing, approximate monthly equivalents, and per-tier feature lists while making it clear that municipal tools are activated during onboarding and can be configured progressively.
+- Highlighted the medium municipality tier as the most common option for towns and small cities.
+- Routed every municipal CTA to the manual email contact flow at `jefe@cacaradar.es` for subscriptions, payment questions, and invoice handling.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-03 — Pending
+
+Impacted environments:
 - Web `1.1.45-web.1`
 - iOS `1.1.59 (61)`
 - Android `1.1.62 (64)`
