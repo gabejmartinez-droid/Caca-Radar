@@ -205,6 +205,7 @@ export default function MapPage() {
   const currentPlatform = getCurrentPlatform();
   const versionSummary = getVersionSummary();
   const shouldHideMapControls = showMainMenu || showReportDrawer || showFlagDrawer;
+  const canBypassClearingProximity = user?.role === "admin" || user?.account_type === "municipal_worker";
 
   useEffect(() => {
     if (!isNativeApp) return undefined;
@@ -500,7 +501,16 @@ export default function MapPage() {
     if (!selectedReport) return;
     setLoading(true);
     try {
-      const location = await getActionLocation();
+      let location;
+      if (canBypassClearingProximity && typeof selectedReport.latitude === "number" && typeof selectedReport.longitude === "number") {
+        try {
+          location = await getActionLocation();
+        } catch {
+          location = { lat: selectedReport.latitude, lng: selectedReport.longitude };
+        }
+      } else {
+        location = await getActionLocation();
+      }
       await axios.post(
         `${API}/reports/${selectedReport.id}/vote`,
         { vote_type: voteType, latitude: location.lat, longitude: location.lng },
@@ -511,7 +521,7 @@ export default function MapPage() {
       fetchReports();
       await loadSelectedReportContext(selectedReport.id);
     } catch (error) {
-      if (!error?.response && !userLocation) {
+      if (!error?.response && !userLocation && !canBypassClearingProximity) {
         toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
       } else {
         toast.error(getActionErrorMessage(error, "mapUi.voteError"));
@@ -687,6 +697,15 @@ export default function MapPage() {
         ownReportInfo: "No puedes votar tu propio reporte.",
         alreadyVotedInfo: `Ya votaste este reporte: ${reportVoteStatusLabel}.`,
       };
+  const clearActionInfo = user?.role === "admin"
+    ? (language === "en"
+        ? "Admins can clear reports without the normal proximity limit."
+        : "Los administradores pueden retirar reportes sin el límite normal de proximidad.")
+    : canBypassClearingProximity
+      ? (language === "en"
+          ? "Municipal operators can mark reports from anywhere inside their assigned municipality."
+          : "Los operarios municipales pueden marcar reportes desde cualquier punto de su municipio asignado.")
+      : tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS });
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -1190,7 +1209,7 @@ export default function MapPage() {
               </div>
 
               <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
-                {tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS })}
+                {clearActionInfo}
               </div>
 
               {isOwnSelectedReport ? (

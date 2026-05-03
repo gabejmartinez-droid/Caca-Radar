@@ -79,9 +79,11 @@ export default function AdminDashboardPage() {
   const [tab, setTab] = useState("overview");
   const [dashboard, setDashboard] = useState(null);
   const [users, setUsers] = useState([]);
+  const [userDrafts, setUserDrafts] = useState({});
   const [userTotal, setUserTotal] = useState(0);
   const [userPage, setUserPage] = useState(0);
   const [userSearch, setUserSearch] = useState("");
+  const [savingUserId, setSavingUserId] = useState(null);
   const [violations, setViolations] = useState([]);
   const [violationTotal, setViolationTotal] = useState(0);
   const [recentReports, setRecentReports] = useState([]);
@@ -116,8 +118,76 @@ export default function AdminDashboardPage() {
       const { data } = await axios.get(`${API}/admin/users?skip=${userPage * 20}&limit=20&search=${encodeURIComponent(userSearch)}`, { withCredentials: true });
       setUsers(data.users);
       setUserTotal(data.total);
+      setUserDrafts((prev) => {
+        const next = { ...prev };
+        for (const user of data.users || []) {
+          const draftKey = user.id || user.email;
+          if (!draftKey) continue;
+          next[draftKey] = {
+            accountType: user.account_type || "standard",
+            municipalityName: user.municipality_name || "",
+            municipalityProvince: user.municipality_province || "",
+          };
+        }
+        return next;
+      });
     } catch { toast.error("Error cargando usuarios"); }
   }, [userPage, userSearch]);
+
+  const updateUserDraft = useCallback((userId, patch) => {
+    setUserDrafts((prev) => ({
+      ...prev,
+      [userId]: {
+        ...(prev[userId] || {}),
+        ...patch,
+      },
+    }));
+  }, []);
+
+  const handleSaveUserAccountType = useCallback(async (user) => {
+    const draftKey = user.id || user.email;
+    const draft = userDrafts[draftKey];
+    if (!draft || !draftKey) return;
+    if (draft.accountType === "municipal_worker" && !draft.municipalityName.trim()) {
+      toast.error("Asigna un municipio antes de guardar.");
+      return;
+    }
+    setSavingUserId(draftKey);
+    try {
+      const { data } = await axios.put(
+        `${API}/admin/users/${draftKey}/account-type`,
+        {
+          account_type: draft.accountType,
+          municipality_name: draft.accountType === "municipal_worker" ? draft.municipalityName.trim() : null,
+          municipality_province: draft.accountType === "municipal_worker" ? (draft.municipalityProvince || "").trim() : null,
+        },
+        { withCredentials: true }
+      );
+      setUsers((prev) => prev.map((entry) => (
+        (entry.id || entry.email) === draftKey
+          ? {
+              ...entry,
+              account_type: data.user?.account_type || draft.accountType,
+              municipality_name: data.user?.municipality_name ?? (draft.accountType === "municipal_worker" ? draft.municipalityName.trim() : null),
+              municipality_province: data.user?.municipality_province ?? (draft.accountType === "municipal_worker" ? (draft.municipalityProvince || "").trim() : null),
+            }
+          : entry
+      )));
+      setUserDrafts((prev) => ({
+        ...prev,
+        [draftKey]: {
+          accountType: data.user?.account_type || draft.accountType,
+          municipalityName: data.user?.municipality_name || "",
+          municipalityProvince: data.user?.municipality_province || "",
+        },
+      }));
+      toast.success("Tipo de cuenta actualizado");
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "No pudimos actualizar el tipo de cuenta");
+    } finally {
+      setSavingUserId(null);
+    }
+  }, [userDrafts]);
 
   const fetchViolations = useCallback(async () => {
     try {
@@ -654,12 +724,25 @@ export default function AdminDashboardPage() {
                     <TableHead className="min-w-[90px]">Reportes</TableHead>
                     <TableHead className="min-w-[80px]">Votos</TableHead>
                     <TableHead className="min-w-[90px]">Puntos</TableHead>
+                    <TableHead className="min-w-[220px]">Tipo de cuenta</TableHead>
                     <TableHead className="min-w-[110px]">Acceso</TableHead>
                     <TableHead className="min-w-[120px]">Auth</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {users.map((u, i) => (
+                  {users.map((u, i) => {
+                    const draftKey = u.id || u.email;
+                    const draft = userDrafts[draftKey] || {
+                      accountType: u.account_type || "standard",
+                      municipalityName: u.municipality_name || "",
+                      municipalityProvince: u.municipality_province || "",
+                    };
+                    const isMunicipalWorker = draft.accountType === "municipal_worker";
+                    const hasDraftChanges =
+                      draft.accountType !== (u.account_type || "standard")
+                      || draft.municipalityName !== (u.municipality_name || "")
+                      || draft.municipalityProvince !== (u.municipality_province || "");
+                    return (
                     <TableRow key={u.email} data-testid={`user-row-${i}`}>
                       <TableCell>
                         <div className="min-w-0">
@@ -682,6 +765,53 @@ export default function AdminDashboardPage() {
                         <div className="text-[10px] text-[#8D99AE]">trust {u.trust_score || 0}</div>
                       </TableCell>
                       <TableCell>
+                        <div className="space-y-2 min-w-[220px]">
+                          <Select
+                            value={draft.accountType}
+                            onValueChange={(value) => updateUserDraft(draftKey, {
+                              accountType: value,
+                              ...(value === "standard" ? { municipalityName: "", municipalityProvince: "" } : {}),
+                            })}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Selecciona tipo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="standard">Usuario estándar</SelectItem>
+                              <SelectItem value="municipal_worker">Operario municipal</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {isMunicipalWorker ? (
+                            <div className="grid gap-2">
+                              <Input
+                                value={draft.municipalityName}
+                                onChange={(event) => updateUserDraft(draftKey, { municipalityName: event.target.value })}
+                                placeholder="Municipio asignado"
+                                className="h-8 text-xs"
+                              />
+                              <Input
+                                value={draft.municipalityProvince}
+                                onChange={(event) => updateUserDraft(draftKey, { municipalityProvince: event.target.value })}
+                                placeholder="Provincia (opcional)"
+                                className="h-8 text-xs"
+                              />
+                            </div>
+                          ) : (
+                            <p className="text-[10px] text-[#8D99AE]">Sin permisos especiales de limpieza.</p>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            disabled={savingUserId === draftKey || !hasDraftChanges || (isMunicipalWorker && !draft.municipalityName.trim())}
+                            onClick={() => handleSaveUserAccountType(u)}
+                          >
+                            {savingUserId === draftKey ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
+                            Guardar
+                          </Button>
+                        </div>
+                      </TableCell>
+                      <TableCell>
                         <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                           u.subscription_active ? "bg-[#66BB6A]/10 text-[#66BB6A]" : "bg-gray-100 text-[#8D99AE]"
                         }`}>
@@ -696,7 +826,7 @@ export default function AdminDashboardPage() {
                         <div className="text-[10px] text-[#8D99AE]">{u.rank || "—"}</div>
                       </TableCell>
                     </TableRow>
-                  ))}
+                  )})}
                 </TableBody>
               </Table>
             </div>

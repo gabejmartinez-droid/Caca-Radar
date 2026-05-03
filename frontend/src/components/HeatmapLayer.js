@@ -7,8 +7,8 @@ const HEAT_OPTIONS = {
   radius: 26,
   blur: 18,
   maxZoom: 17,
-  max: 0.5,
-  minOpacity: 0.18,
+  max: 1,
+  minOpacity: 0.09,
   gradient: {
     0.0: "rgba(66, 165, 245, 0)",
     0.2: "#42A5F5",
@@ -17,6 +17,7 @@ const HEAT_OPTIONS = {
     1.0: "#FF5252"
   }
 };
+const HEAT_INTENSITY_SCALE = 0.5;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -53,7 +54,8 @@ function buildHeatData(reports) {
 
   return Array.from(buckets.values(), ({ lat, lng, weight, count }) => {
     const aggregateWeight = clamp((weight / count) + (Math.log2(count + 1) * 0.2), 0.2, 1);
-    return [lat, lng, aggregateWeight];
+    const scaledWeight = clamp(aggregateWeight * HEAT_INTENSITY_SCALE, 0.1, 0.5);
+    return [lat, lng, scaledWeight];
   });
 }
 

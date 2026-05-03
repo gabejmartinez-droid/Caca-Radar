@@ -384,6 +384,11 @@ class FlagCreate(BaseModel):
 class UsernameUpdate(BaseModel):
     username: str
 
+class AdminUserAccountTypeUpdate(BaseModel):
+    account_type: Literal["standard", "municipal_worker"]
+    municipality_name: Optional[str] = None
+    municipality_province: Optional[str] = None
+
 class MunicipalityLogin(BaseModel):
     email: EmailStr
     password: str

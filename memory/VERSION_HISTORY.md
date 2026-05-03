@@ -44,6 +44,25 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
+- Web `1.1.44-web.1`
+- iOS `1.1.58 (60)`
+- Android `1.1.61 (63)`
+- Backend `1.1.13-api.1`
+
+Changes:
+- Added a dedicated `municipal_worker` account type for standard users so municipal cleaners can clear reports without the 5 m proximity rule inside their assigned municipality.
+- Added admin controls in the users tab to toggle a user between standard and municipal-worker status and assign the municipality/province scope for that account.
+- Reduced the anti-spam report cooldown from 30 seconds to 15 seconds.
+- Reduced heatmap intensity by 50%, reversing the earlier density increase.
+
+Verification:
+- Backend compile passed.
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-03 — Pending
+
+Impacted environments:
 - Web `1.1.43-web.1`
 - iOS `1.1.57 (59)`
 - Android `1.1.60 (62)`

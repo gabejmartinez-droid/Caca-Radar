@@ -27,7 +27,7 @@ from deps import (
     reverse_geocode_async, close_http_client, get_mongo_runtime_config,
     get_current_user, require_auth, require_subscriber, require_municipality, require_registered, get_anonymous_id,
     UserRegister, UserLogin, ReportCreate, VoteCreate, ReportVote, ValidationCreate, FlagCreate,
-    UsernameUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
+    UsernameUpdate, AdminUserAccountTypeUpdate, MunicipalityLogin, MunicipalityRegister, AppleReceiptVerify, GoogleReceiptVerify,
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code, generate_password_reset_token, hash_password_reset_token,
     APP_STORE_URL, PLAY_STORE_URL,
@@ -560,6 +560,37 @@ def should_return_body_tokens(request: Request) -> bool:
     return is_explicit_native_app_request(request)
 
 
+def get_account_type(user: Optional[dict]) -> str:
+    if not user:
+        return "standard"
+    account_type = (user.get("account_type") or "standard").strip().lower()
+    return account_type if account_type in {"standard", "municipal_worker"} else "standard"
+
+
+def is_municipal_worker_account(user: Optional[dict]) -> bool:
+    return get_account_type(user) == "municipal_worker"
+
+
+def report_within_municipal_scope(user: Optional[dict], report: Optional[dict]) -> bool:
+    if not user or not report:
+        return False
+    user_municipality = slugify_location_segment(user.get("municipality_name", "") or "")
+    report_municipality = slugify_location_segment(report.get("municipality", "") or "")
+    if not user_municipality or not report_municipality or user_municipality != report_municipality:
+        return False
+    user_province = (user.get("municipality_province") or "").strip().lower()
+    report_province = (report.get("province") or "").strip().lower()
+    return not user_province or not report_province or user_province == report_province
+
+
+def can_clear_report_without_proximity(user: Optional[dict], report: Optional[dict]) -> bool:
+    if not user:
+        return False
+    if user.get("role") == "admin":
+        return True
+    return is_municipal_worker_account(user) and report_within_municipal_scope(user, report)
+
+
 def issue_auth_session(user: dict, request: Request, response: Response) -> tuple[str, str]:
     user_id = str(user["_id"])
     role = user.get("role", "user")
@@ -579,11 +610,13 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str, reques
         "name": user.get("name", ""),
         "username": user.get("username"),
         "role": role,
+        "account_type": get_account_type(user),
         "subscription_active": user.get("subscription_active", False),
         "subscription_type": user.get("subscription_type"),
         "report_count": user.get("report_count", 0),
         "vote_count": user.get("vote_count", 0),
         "municipality_name": user.get("municipality_name"),
+        "municipality_province": user.get("municipality_province"),
         "total_score": user.get("total_score", 0),
         "trust_score": user.get("trust_score", 50),
         "rank": user.get("rank", DEFAULT_RANK_NAME),
@@ -1384,6 +1417,7 @@ async def get_me(request: Request):
     user["auth_methods"] = normalize_auth_methods(user)
     user["needs_username"] = not bool(user.get("username"))
     user["geo_review_exempt"] = user.get("geo_review_exempt", False)
+    user["account_type"] = get_account_type(user)
     return user
 
 @api_router.post("/auth/native/session-tokens")
@@ -2010,7 +2044,7 @@ async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str
     if not await check_gps_plausible(data.latitude, data.longitude):
         raise HTTPException(status_code=400, detail="Ubicación fuera de España")
     if user is not None and await check_cooldown(db, user_id):
-        raise HTTPException(status_code=429, detail="Espera al menos 30 segundos entre reportes")
+        raise HTTPException(status_code=429, detail="Espera al menos 15 segundos entre reportes")
     # VIP users bypass trust restrictions
     if user is not None and not is_vip_email(user.get("email", "")):
         tier = get_trust_tier(user.get("trust_score", 50))
@@ -2200,14 +2234,16 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
-    if data.vote_type != "cleaned":
-        raise HTTPException(status_code=400, detail={"code": "still_there_removed"})
-
-    distance_meters = require_report_proximity(report, data.latitude, data.longitude)
-    
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
+
+    if data.vote_type != "cleaned":
+        raise HTTPException(status_code=400, detail={"code": "still_there_removed"})
+
+    distance_meters = None
+    if not can_clear_report_without_proximity(user, report):
+        distance_meters = require_report_proximity(report, data.latitude, data.longitude)
 
     if report.get("user_id") == user_id:
         raise HTTPException(status_code=400, detail="No puedes votar tu propio reporte")
@@ -2242,7 +2278,12 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     if not user:
         response.set_cookie(key="anon_id", value=anon_id, httponly=True, secure=True, samesite="none", max_age=86400*365, path="/")
     
-    return {"message": "Voto registrado", "vote_type": data.vote_type, "distance_meters": round(distance_meters, 1)}
+    response_payload = {"message": "Voto registrado", "vote_type": data.vote_type}
+    if distance_meters is not None:
+        response_payload["distance_meters"] = round(distance_meters, 1)
+    if user and can_clear_report_without_proximity(user, report):
+        response_payload["municipal_override"] = True
+    return response_payload
 
 @api_router.get("/reports/{report_id}/my-vote")
 async def get_my_vote(report_id: str, request: Request):
@@ -4092,7 +4133,6 @@ async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: 
     users = await db.users.find(
         query,
         {
-            "_id": 0,
             "password_hash": 0,
             "linked_providers": 0,
         }
@@ -4101,9 +4141,13 @@ async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: 
     total = await db.users.count_documents(query)
     serialized = []
     for user in users:
+        user_doc = {**user}
+        user_doc.pop("_id", None)
         auth_methods = normalize_auth_methods(user)
         serialized.append({
-            **user,
+            **user_doc,
+            "id": str(user.get("_id")) if user.get("_id") is not None else None,
+            "account_type": get_account_type(user),
             "auth_methods": auth_methods,
             "display_name": user.get("username") or user.get("name") or user.get("email"),
             "reports_count": user.get("report_count", 0),
@@ -4113,6 +4157,52 @@ async def admin_users(request: Request, skip: int = 0, limit: int = 50, search: 
             "last_platform": user.get("last_login_platform") or "unknown",
         })
     return {"users": serialized, "total": total, "skip": skip, "limit": limit}
+
+
+@api_router.put("/admin/users/{user_id}/account-type")
+async def admin_update_user_account_type(user_id: str, data: AdminUserAccountTypeUpdate, request: Request):
+    await _require_admin(request)
+    try:
+        target_id = ObjectId(user_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Usuario inválido")
+
+    user = await db.users.find_one({"_id": target_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+    if user.get("role") not in ("user", None):
+        raise HTTPException(status_code=400, detail="Solo se puede actualizar el tipo de cuentas de usuario estándar")
+
+    account_type = get_account_type({"account_type": data.account_type})
+    update_fields = {"account_type": account_type}
+
+    if account_type == "municipal_worker":
+        municipality_name = (data.municipality_name or "").strip()
+        municipality_province = (data.municipality_province or "").strip()
+        if not municipality_name:
+            raise HTTPException(status_code=400, detail="Debes asignar un municipio para habilitar el operario municipal")
+        update_fields["municipality_name"] = municipality_name
+        update_fields["municipality_province"] = municipality_province
+        update_fields["municipal_worker_enabled_at"] = datetime.now(timezone.utc).isoformat()
+    else:
+        update_fields["municipality_name"] = None
+        update_fields["municipality_province"] = None
+
+    await db.users.update_one({"_id": target_id}, {"$set": update_fields})
+    updated_user = await db.users.find_one({"_id": target_id}, {"password_hash": 0, "linked_providers": 0})
+    if not updated_user:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    return {
+        "message": "Tipo de cuenta actualizado",
+        "user": {
+            "id": str(updated_user["_id"]),
+            "email": updated_user.get("email"),
+            "account_type": get_account_type(updated_user),
+            "municipality_name": updated_user.get("municipality_name"),
+            "municipality_province": updated_user.get("municipality_province"),
+        },
+    }
 
 @api_router.get("/admin/photo-violations")
 async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 50):
