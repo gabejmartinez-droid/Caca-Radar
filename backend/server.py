@@ -54,7 +54,7 @@ from ranking_service import recalculate_all_ranks, get_user_rank_info
 from rank_metadata import DEFAULT_RANK_NAME, get_rank_key
 from email_service import send_verification_code as send_verification_email, is_configured as email_configured, send_admin_verification_code
 from webhook_handlers import process_apple_notification, process_google_notification
-from push_service import notify_nearby_users, VAPID_PUBLIC_KEY
+from push_service import notify_nearby_users, VAPID_PUBLIC_KEY, SAVED_LOCATION_ALERT_RADIUS_METERS
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
 from clean_route_service import analyze_clean_route
 from digest_service import send_weekly_digests, generate_municipality_digest
@@ -4440,11 +4440,14 @@ async def get_push_status(request: Request):
     )
     if not sub:
         return {"subscribed": False}
+    saved_location_count = await db.saved_locations.count_documents({"user_id": user["_id"]})
     return {
         "subscribed": True,
         "latitude": sub.get("latitude"),
         "longitude": sub.get("longitude"),
         "radius_meters": sub.get("radius_meters", 500),
+        "saved_location_alert_radius_meters": SAVED_LOCATION_ALERT_RADIUS_METERS,
+        "saved_location_count": saved_location_count,
         "updated_at": sub.get("updated_at"),
         "platform": (sub.get("subscription") or {}).get("platform"),
     }
@@ -4467,11 +4470,14 @@ async def update_push_preferences(data: PushPreferencesUpdate, request: Request)
 
     await db.push_subscriptions.update_one({"_id": existing["_id"]}, {"$set": updates})
     sub = await db.push_subscriptions.find_one({"_id": existing["_id"]}, {"_id": 0})
+    saved_location_count = await db.saved_locations.count_documents({"user_id": user["_id"]})
     return {
         "subscribed": True,
         "latitude": sub.get("latitude"),
         "longitude": sub.get("longitude"),
         "radius_meters": sub.get("radius_meters", 500),
+        "saved_location_alert_radius_meters": SAVED_LOCATION_ALERT_RADIUS_METERS,
+        "saved_location_count": saved_location_count,
         "updated_at": sub.get("updated_at"),
         "platform": (sub.get("subscription") or {}).get("platform"),
     }

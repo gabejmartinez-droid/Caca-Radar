@@ -26,7 +26,7 @@ APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID", "")
 APPLE_KEY_PATH = os.environ.get("APPLE_KEY_PATH", "")
 APPLE_PUSH_ENVIRONMENT = os.environ.get("APPLE_PUSH_ENVIRONMENT", "production").lower()
 
-NEARBY_RADIUS_METERS = 500  # Notify users within 500m
+SAVED_LOCATION_ALERT_RADIUS_METERS = 50  # Notify only within 50m of saved alert places
 
 
 def is_configured() -> bool:
@@ -183,24 +183,42 @@ async def send_push(subscription_info: dict, title: str, body: str, url: str = "
 
 
 async def notify_nearby_users(db, report_lat: float, report_lon: float, report_id: str, municipality: str):
-    """Send push notifications to users subscribed to alerts near a new report."""
+    """Send push notifications only for reports close to a user's saved alert places."""
     subs = await db.push_subscriptions.find(
-        {"active": True, "latitude": {"$exists": True}},
+        {"active": True, "subscription": {"$exists": True}},
         {"_id": 0}
     ).to_list(1000)
+
+    user_ids = [sub.get("user_id") for sub in subs if sub.get("user_id") is not None]
+    saved_locations = await db.saved_locations.find(
+        {"user_id": {"$in": user_ids}},
+        {"_id": 0, "user_id": 1, "latitude": 1, "longitude": 1}
+    ).to_list(5000)
+    saved_locations_by_user = {}
+    for loc in saved_locations:
+        saved_locations_by_user.setdefault(loc.get("user_id"), []).append(loc)
 
     sent_count = 0
     expired = []
 
     for sub in subs:
-        sub_lat = sub.get("latitude", 0)
-        sub_lon = sub.get("longitude", 0)
-        dist = haversine_meters(report_lat, report_lon, sub_lat, sub_lon)
+        target_locations = list(saved_locations_by_user.get(sub.get("user_id")) or [])
+        if not target_locations:
+            sub_lat = sub.get("latitude")
+            sub_lon = sub.get("longitude")
+            if sub_lat is not None and sub_lon is not None:
+                target_locations = [{"latitude": sub_lat, "longitude": sub_lon}]
 
-        radius_meters = max(100, min(int(sub.get("radius_meters") or NEARBY_RADIUS_METERS), 5000))
+        if not target_locations:
+            continue
 
-        if dist <= radius_meters:
-            dist_text = f"{int(dist)}m" if dist < 1000 else f"{dist/1000:.1f}km"
+        nearest_dist = min(
+            haversine_meters(report_lat, report_lon, loc.get("latitude", 0), loc.get("longitude", 0))
+            for loc in target_locations
+        )
+
+        if nearest_dist <= SAVED_LOCATION_ALERT_RADIUS_METERS:
+            dist_text = f"{int(nearest_dist)}m" if nearest_dist < 1000 else f"{nearest_dist/1000:.1f}km"
             success = await send_push(
                 subscription_info=sub.get("subscription"),
                 title=f"Nuevo reporte a {dist_text}",

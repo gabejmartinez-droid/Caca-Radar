@@ -7,20 +7,12 @@ import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../components/ui/select";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { API } from "../config";
 import { getPushPermissionState, getPushUnavailableReasonKey, isPushSupported, subscribeToPush, unsubscribeFromPush } from "../utils/pushManager";
 import { isCapacitorNative } from "../tokenManager";
-
-const RADIUS_OPTIONS = [
-  { value: "250", labelEs: "250 m", labelEn: "250 m" },
-  { value: "500", labelEs: "500 m", labelEn: "500 m" },
-  { value: "1000", labelEs: "1 km", labelEn: "1 km" },
-  { value: "2000", labelEs: "2 km", labelEn: "2 km" },
-];
 
 const SAVED_LOCATION_BASES = ["/users/saved-locations", "/push/saved-locations"];
 
@@ -31,7 +23,6 @@ export default function NotificationSettingsPage() {
   const [loading, setLoading] = useState(true);
   const [notificationsOn, setNotificationsOn] = useState(false);
   const [permissionState, setPermissionState] = useState("prompt");
-  const [radiusMeters, setRadiusMeters] = useState("500");
   const [alertLocation, setAlertLocation] = useState(null);
   const [savedLocations, setSavedLocations] = useState([]);
   const [locationLabel, setLocationLabel] = useState("");
@@ -41,18 +32,20 @@ export default function NotificationSettingsPage() {
     if (language === "en") {
       return {
         title: "Notification settings",
-        subtitle: "Control nearby poop alerts on this device.",
+        subtitle: "Only new reports within 50 m of your saved alert places will trigger notifications on this device.",
         statusOn: "Alerts enabled",
         statusOff: "Alerts disabled",
         permissionGranted: "System permission granted",
         permissionPrompt: "System permission not decided yet",
         permissionDenied: "Notifications are blocked in system settings",
-        currentLocation: "Current alert location",
-        noLocation: "No alert location saved yet",
+        currentLocation: "Current place to save",
+        currentLocationHint: "You can refresh your current position here before saving it as an alert place. If you have no saved places yet, this selected place is used for nearby alerts.",
+        noLocation: "No current place selected yet",
         refreshLocation: "Use my current location",
-        radius: "Alert radius",
+        fixedRange: "Fixed alert range",
+        fixedRangeValue: "50 m around each saved place",
         manageSaved: "Saved alert places",
-        manageSavedDesc: "Premium users can save favorite places and switch alerts between them.",
+        manageSavedDesc: "Only reports within 50 m of your saved places trigger alerts. Premium users can save favorite places and switch alerts between them.",
         saveCurrent: "Save current location",
         savePlaceholder: "Label this place",
         useForAlerts: "Use for alerts",
@@ -66,18 +59,20 @@ export default function NotificationSettingsPage() {
     }
     return {
       title: "Ajustes de notificaciones",
-      subtitle: "Controla las alertas de caca cercanas en este dispositivo.",
+      subtitle: "Solo recibirás avisos de nuevos reportes si están a 50 m o menos de tus lugares guardados para alertas en este dispositivo.",
       statusOn: "Alertas activadas",
       statusOff: "Alertas desactivadas",
       permissionGranted: "Permiso del sistema concedido",
       permissionPrompt: "El sistema aún no ha decidido el permiso",
       permissionDenied: "Las notificaciones están bloqueadas en los ajustes del sistema",
-      currentLocation: "Ubicación actual de alertas",
-      noLocation: "Todavía no hay una ubicación de alertas guardada",
+      currentLocation: "Ubicación actual para guardar",
+        currentLocationHint: "Puedes refrescar tu posición aquí antes de guardarla como lugar de alertas. Si todavía no tienes lugares guardados, este lugar seleccionado se usa para los avisos cercanos.",
+      noLocation: "Todavía no hay una ubicación actual seleccionada",
       refreshLocation: "Usar mi ubicación actual",
-      radius: "Radio de alertas",
+      fixedRange: "Radio fijo de alertas",
+      fixedRangeValue: "50 m alrededor de cada lugar guardado",
       manageSaved: "Lugares guardados para alertas",
-      manageSavedDesc: "Los usuarios premium pueden guardar sitios favoritos y mover las alertas entre ellos.",
+      manageSavedDesc: "Solo se enviarán avisos si un nuevo reporte cae a 50 m o menos de tus lugares guardados. Los usuarios premium pueden guardar sitios favoritos y mover las alertas entre ellos.",
       saveCurrent: "Guardar ubicación actual",
       savePlaceholder: "Ponle un nombre a este sitio",
       useForAlerts: "Usar para alertas",
@@ -127,14 +122,13 @@ export default function NotificationSettingsPage() {
     throw lastError || new Error("saved_locations_unavailable");
   }, []);
 
-  const syncPushPreferences = useCallback(async ({ latitude, longitude, radius }) => {
+  const syncPushPreferences = useCallback(async ({ latitude, longitude }) => {
     try {
       return await axios.put(
         `${API}/push/preferences`,
         {
           latitude,
           longitude,
-          radius_meters: radius,
         },
         { withCredentials: true }
       );
@@ -146,10 +140,9 @@ export default function NotificationSettingsPage() {
       return subscribeToPush({
         lat: latitude ?? alertLocation?.lat ?? null,
         lng: longitude ?? alertLocation?.lng ?? null,
-        radiusMeters: radius ?? Number(radiusMeters || 500),
       });
     }
-  }, [alertLocation?.lat, alertLocation?.lng, radiusMeters]);
+  }, [alertLocation?.lat, alertLocation?.lng]);
 
   const refreshState = useCallback(async () => {
     if (!user) {
@@ -165,7 +158,6 @@ export default function NotificationSettingsPage() {
       ]);
 
       setNotificationsOn(Boolean(pushStatus.subscribed));
-      setRadiusMeters(String(pushStatus.radius_meters || 500));
       setAlertLocation(
         pushStatus.latitude != null && pushStatus.longitude != null
           ? { lat: pushStatus.latitude, lng: pushStatus.longitude }
@@ -231,22 +223,6 @@ export default function NotificationSettingsPage() {
     }
   };
 
-  const handleUpdateRadius = async (nextRadius) => {
-    setRadiusMeters(nextRadius);
-    if (!notificationsOn) return;
-    setBusyAction("radius");
-    try {
-      await syncPushPreferences({ radius: Number(nextRadius) });
-      toast.success(copy.statusOn);
-      await refreshState();
-    } catch (err) {
-      toast.error(err.response?.data?.detail || t("mapUi.pushError"));
-      await refreshState();
-    } finally {
-      setBusyAction("");
-    }
-  };
-
   const handleUseCurrentLocation = async () => {
     setBusyAction("current-location");
     try {
@@ -254,7 +230,7 @@ export default function NotificationSettingsPage() {
       if (notificationsOn) {
         await syncPushPreferences({ latitude: loc.lat, longitude: loc.lng });
       } else {
-        await subscribeToPush({ ...loc, radiusMeters: Number(radiusMeters || 500) });
+        await subscribeToPush(loc);
         setNotificationsOn(true);
       }
       setAlertLocation(loc);
@@ -305,7 +281,7 @@ export default function NotificationSettingsPage() {
       if (notificationsOn) {
         await syncPushPreferences({ latitude: loc.latitude, longitude: loc.longitude });
       } else {
-        await subscribeToPush({ lat: loc.latitude, lng: loc.longitude, radiusMeters: Number(radiusMeters || 500) });
+        await subscribeToPush({ lat: loc.latitude, lng: loc.longitude });
         setNotificationsOn(true);
       }
       toast.success(copy.currentLocation);
@@ -393,32 +369,21 @@ export default function NotificationSettingsPage() {
             <Navigation className="w-5 h-5 text-[#FF6B6B]" />
             <h2 className="font-bold text-[#2B2D42]">{copy.currentLocation}</h2>
           </div>
+          <p className="text-xs text-[#8D99AE] mb-3">{copy.currentLocationHint}</p>
           <div className="rounded-xl bg-[#F8F9FA] px-4 py-3 mb-4">
             {alertLocation ? (
               <div className="text-sm text-[#2B2D42]">
                 <div className="font-semibold">{alertLocation.lat.toFixed(5)}, {alertLocation.lng.toFixed(5)}</div>
-                <div className="text-xs text-[#8D99AE] mt-1">{copy.radius}: {Number(radiusMeters) >= 1000 ? `${Number(radiusMeters) / 1000} km` : `${radiusMeters} m`}</div>
               </div>
             ) : (
               <div className="text-sm text-[#8D99AE]">{copy.noLocation}</div>
             )}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-[1fr_auto] items-end">
-            <div>
-              <label className="block text-sm font-medium text-[#2B2D42] mb-2">{copy.radius}</label>
-              <Select value={radiusMeters} onValueChange={handleUpdateRadius}>
-                <SelectTrigger className="bg-[#F8F9FA] border-0 h-11 rounded-xl">
-                  <SelectValue placeholder={copy.radius} />
-                </SelectTrigger>
-                <SelectContent>
-                  {RADIUS_OPTIONS.map((option) => (
-                    <SelectItem key={option.value} value={option.value}>
-                      {language === "en" ? option.labelEn : option.labelEs}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="flex flex-wrap items-center gap-3 justify-between">
+            <div className="min-w-0">
+              <div className="text-sm font-medium text-[#2B2D42]">{copy.fixedRange}</div>
+              <div className="text-xs text-[#8D99AE] mt-1">{copy.fixedRangeValue}</div>
             </div>
             <Button
               onClick={handleUseCurrentLocation}

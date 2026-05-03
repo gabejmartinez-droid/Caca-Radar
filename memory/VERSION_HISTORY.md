@@ -44,6 +44,23 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
+- Web `1.1.49-web.1`
+- iOS `1.1.63 (65)`
+- Android `1.1.66 (68)`
+- Backend `1.1.14-api.1`
+
+Changes:
+- Changed new-report push notifications so they only fire within 50 m of a user's saved alert places, with the currently selected alert place kept as a fallback when no saved locations exist yet.
+- Removed the old user-adjustable alert-radius UI and updated notification settings copy to explain the fixed 50 m saved-place behavior more clearly.
+
+Verification:
+- Backend compile passed.
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-03 — Pending
+
+Impacted environments:
 - Web `1.1.48-web.1`
 - iOS `1.1.62 (64)`
 - Android `1.1.65 (67)`
