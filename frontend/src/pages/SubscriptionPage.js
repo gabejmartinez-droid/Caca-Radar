@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Check, Star, Lock, MapPin, Filter, Camera, Bell, Crown, Zap } from "lucide-react";
+import { ArrowLeft, Check, Star, MapPin, Filter, Bell, Crown, Zap, Building2, ClipboardCheck, Sparkles, Wrench } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -162,21 +162,52 @@ export default function SubscriptionPage() {
 
         {/* Municipality */}
         <div className="bg-[#2B2D42] rounded-2xl p-5 text-white mt-6">
-          <h2 className="font-bold mb-1" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("subscriptionUi.municipalities")}</h2>
-          <p className="text-white/60 text-xs mb-3">{t("subscriptionUi.municipalitySubtitle")}</p>
+          <div className="flex items-center gap-2 mb-2">
+            <Building2 className="w-5 h-5 text-[#FF6B6B]" />
+            <h2 className="font-bold" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("subscriptionUi.municipalities")}</h2>
+          </div>
+          <p className="text-white/70 text-sm leading-6 mb-4">{t("subscriptionUi.municipalitySubtitle")}</p>
+
+          <div className="grid gap-3 sm:grid-cols-2 mb-4">
+            {[
+              { icon: Building2, text: t("subscriptionUi.municipalityFeatureDashboards") },
+              { icon: ClipboardCheck, text: t("subscriptionUi.municipalityFeatureCleaning") },
+              { icon: Sparkles, text: t("subscriptionUi.municipalityFeatureCustom") },
+              { icon: Wrench, text: t("subscriptionUi.municipalityFeatureSupport") },
+            ].map(({ icon: Icon, text }) => (
+              <div key={text} className="rounded-xl bg-white/8 border border-white/10 px-3 py-3 text-sm text-white/85 flex items-start gap-3">
+                <Icon className="w-4 h-4 mt-0.5 text-[#FF6B6B] shrink-0" />
+                <span className="leading-5">{text}</span>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            <div className="rounded-xl bg-white/8 border border-white/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/55 mb-1">{t("subscriptionUi.monthly")}</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-black">75</span>
+                <span className="text-white/70">{t("subscriptionUi.perMonth")}</span>
+              </div>
+            </div>
+            <div className="rounded-xl bg-white/8 border border-white/10 p-4">
+              <p className="text-xs uppercase tracking-wide text-white/55 mb-1">{t("subscriptionUi.annual")}</p>
+              <div className="flex items-baseline gap-1">
+                <span className="text-2xl font-black">1000</span>
+                <span className="text-white/70">{t("subscriptionUi.perYear")}</span>
+              </div>
+            </div>
+          </div>
+
           <div className="rounded-xl bg-white/8 border border-white/10 p-3 mb-3 text-xs text-white/80 space-y-2">
             <p>{t("subscriptionUi.municipalityAppStoreNote")}</p>
             <p>{t("subscriptionUi.municipalityBillingWarning")}</p>
             <p>{t("subscriptionUi.municipalityManualSetup")}</p>
           </div>
-          <div className="flex justify-between items-center">
-            <div className="flex items-baseline gap-1">
-              <span className="text-2xl font-black">50</span><span className="text-white/60">€/mes</span>
-            </div>
-            <Button onClick={() => navigate("/dashboard/register")} variant="outline" className="border-white/30 text-white hover:bg-white/10 rounded-xl font-bold" data-testid="municipality-subscribe-btn">
+
+          <Button onClick={() => navigate("/dashboard/register")} variant="outline" className="w-full border-white/30 text-white hover:bg-white/10 rounded-xl font-bold" data-testid="municipality-subscribe-btn">
               {t("subscriptionUi.createMunicipalityDashboard")}
-            </Button>
-          </div>
+          </Button>
         </div>
 
         <p className="text-center text-xs text-[#8D99AE] mt-6">

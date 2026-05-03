@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate, Link, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
-import { MapPin, Mail, Lock, Loader2, ArrowLeft } from "lucide-react";
+import { Mail, Lock, Loader2, ArrowLeft, AlertTriangle } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
@@ -132,6 +132,15 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold text-[#2B2D42] text-center mb-6" style={{ fontFamily: 'Nunito, sans-serif' }}>
             {t("login")}
           </h1>
+
+          <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4">
+            <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
+            <div>
+              <p className="text-xs text-amber-800 font-medium">{t("photoPolicy")}</p>
+              <p className="text-xs text-amber-600 mt-1">{t("policyAgreement")}</p>
+              <p className="text-xs text-amber-700 mt-2 leading-5">{t("loginUi.contentAdvisoryExtra")}</p>
+            </div>
+          </div>
 
           {error && (
             <div className="bg-red-50 text-red-600 p-3 rounded-xl text-sm mb-4" data-testid="error-message">

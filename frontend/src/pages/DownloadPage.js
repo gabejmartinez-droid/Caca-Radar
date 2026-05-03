@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, ExternalLink, Image as ImageIcon, Smartphone } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Image as ImageIcon, Smartphone, Watch } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
@@ -214,6 +214,19 @@ export default function DownloadPage() {
                 <li>{t("downloadUi.whyOne")}</li>
                 <li>{t("downloadUi.whyTwo")}</li>
                 <li>{t("downloadUi.whyThree")}</li>
+              </ul>
+            </section>
+
+            <section className="bg-[#2B2D42] rounded-2xl shadow-sm p-6 text-white">
+              <div className="flex items-center gap-2 mb-4">
+                <Watch className="w-5 h-5 text-[#FF6B6B]" />
+                <h2 className="text-lg font-bold">{t("downloadUi.watchTitle")}</h2>
+              </div>
+              <p className="text-sm text-white/75 leading-6 mb-4">{t("downloadUi.watchIntro")}</p>
+              <ul className="space-y-3 text-sm text-white/85">
+                <li>{t("downloadUi.watchOne")}</li>
+                <li>{t("downloadUi.watchTwo")}</li>
+                <li>{t("downloadUi.watchThree")}</li>
               </ul>
             </section>
           </aside>

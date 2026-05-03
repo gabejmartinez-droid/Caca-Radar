@@ -1079,18 +1079,6 @@ export default function MapPage() {
               {userLocation ? <span className="text-sm text-[#2B2D42]">{userLocation.lat.toFixed(6)}, {userLocation.lng.toFixed(6)}</span> : <span className="text-sm text-[#8D99AE]">{t("gettingLocation")}</span>}
             </div>
 
-            {/* Content Policy Warning */}
-            <div className="flex items-start gap-3 p-3 bg-amber-50 border border-amber-200 rounded-xl mb-4">
-              <Shield className="w-5 h-5 text-amber-600 mt-0.5 shrink-0" />
-              <div>
-                <p className="text-xs text-amber-800 font-medium">{t("photoPolicy")}</p>
-                <p className="text-xs text-amber-600 mt-1">{t("policyAgreement")}</p>
-                <p className="text-xs text-amber-700 mt-2">
-                  No subas datos personales innecesarios de terceros. Evita rostros identificables, menores, matrículas u otra información personal salvo que sea estrictamente necesario y lícito.
-                </p>
-              </div>
-            </div>
-
             <input type="file" accept="image/*" capture="environment" ref={fileInputRef} onChange={handlePhotoSelect} className="hidden" data-testid="photo-input" />
 
             {/* Description (optional) */}

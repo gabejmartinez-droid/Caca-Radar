@@ -44,6 +44,25 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
+- Web `1.1.45-web.1`
+- iOS `1.1.59 (61)`
+- Android `1.1.62 (64)`
+- Backend `1.1.13-api.1`
+
+Changes:
+- Updated the download page to showcase the companion watch app as the fastest way to report from your current location on Apple Watch and Android watches.
+- Expanded the municipal subscription offer to highlight custom municipality dashboards, cleaner/management workflows for marking cleaned areas, and support for custom features.
+- Removed the content advisory from the report drawer so the floating report window is smaller and easier to use.
+- Moved the reporting/photo content advisory to the login screen where it is visible before users start submitting reports.
+- Updated municipal pricing display to `75 €/mes` or `1000 €/año`.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-03 — Pending
+
+Impacted environments:
 - Web `1.1.44-web.1`
 - iOS `1.1.58 (60)`
 - Android `1.1.61 (63)`
