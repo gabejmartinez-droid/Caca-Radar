@@ -44,6 +44,22 @@ Production notes:
 ### 2026-05-03 — Pending
 
 Impacted environments:
+- Web `1.1.47-web.1`
+- iOS `1.1.61 (63)`
+- Android `1.1.64 (66)`
+- Backend `1.1.13-api.1`
+
+Changes:
+- Added a municipal-access showcase card to the download/share landing page so the web experience also advertises Ayuntamiento subscriptions instead of only consumer app installs.
+- Linked that download-page municipal CTA into the subscription page where the three municipality pricing tiers now live.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-03 — Pending
+
+Impacted environments:
 - Web `1.1.46-web.1`
 - iOS `1.1.60 (62)`
 - Android `1.1.63 (65)`

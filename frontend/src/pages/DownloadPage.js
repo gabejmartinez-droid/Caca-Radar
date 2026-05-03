@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Download, ExternalLink, Image as ImageIcon, Smartphone, Watch } from "lucide-react";
+import { ArrowLeft, Download, ExternalLink, Image as ImageIcon, Smartphone, Watch, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
@@ -228,6 +228,26 @@ export default function DownloadPage() {
                 <li>{t("downloadUi.watchTwo")}</li>
                 <li>{t("downloadUi.watchThree")}</li>
               </ul>
+            </section>
+
+            <section className="bg-white rounded-2xl shadow-sm p-6 border border-[#2B2D42]/10">
+              <div className="flex items-center gap-2 mb-4">
+                <Building2 className="w-5 h-5 text-[#2B2D42]" />
+                <h2 className="text-lg font-bold text-[#2B2D42]">{t("downloadUi.municipalTitle")}</h2>
+              </div>
+              <p className="text-sm text-[#5C677D] leading-6 mb-4">{t("downloadUi.municipalIntro")}</p>
+              <ul className="space-y-3 text-sm text-[#5C677D] mb-5">
+                <li>{t("downloadUi.municipalOne")}</li>
+                <li>{t("downloadUi.municipalTwo")}</li>
+                <li>{t("downloadUi.municipalThree")}</li>
+              </ul>
+              <Button
+                onClick={() => navigate("/subscribe")}
+                className="w-full rounded-xl bg-[#2B2D42] hover:bg-[#23253A] text-white font-bold"
+                data-testid="download-municipal-cta"
+              >
+                {t("downloadUi.municipalCta")}
+              </Button>
             </section>
           </aside>
         </div>
