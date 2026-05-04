@@ -206,7 +206,7 @@ public class CompanionWearListenerService extends WearableListenerService {
         String message = exception.getMessage() != null ? exception.getMessage() : "";
         if ("missing_access_token".equals(message)) return "missing_access_token";
         if ("invalid_api_url".equals(message)) return "invalid_api_url";
-        if (message.contains("30 segundos")) return "report_cooldown";
+        if (message.contains("15 segundos") || message.contains("15 seconds")) return "report_cooldown";
         if (message.contains("restringida")) return "restricted_account";
         return "quick_report_failed";
     }

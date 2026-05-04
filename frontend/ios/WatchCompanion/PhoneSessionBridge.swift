@@ -50,7 +50,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Open Caca Radar on the iPhone and sign in again.",
                 .invalidApiUrl: "The phone app has an invalid server URL.",
                 .invalidResponse: "The phone sent an invalid response.",
-                .reportCooldown: "Please wait 30 seconds between reports.",
+                .reportCooldown: "Please wait 15 seconds between reports.",
                 .restrictedAccount: "Your account is temporarily restricted.",
                 .quickReportFailed: "The report couldn't be sent.",
             ])
@@ -70,7 +70,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Öffne Caca Radar auf dem iPhone und melde dich erneut an.",
                 .invalidApiUrl: "Die iPhone-App hat eine ungültige Server-URL.",
                 .invalidResponse: "Die Antwort des iPhones war ungültig.",
-                .reportCooldown: "Bitte warte 30 Sekunden zwischen Meldungen.",
+                .reportCooldown: "Bitte warte 15 Sekunden zwischen Meldungen.",
                 .restrictedAccount: "Dein Konto ist vorübergehend eingeschränkt.",
                 .quickReportFailed: "Die Meldung konnte nicht gesendet werden.",
             ])
@@ -90,7 +90,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Open Caca Radar op de iPhone en log opnieuw in.",
                 .invalidApiUrl: "De iPhone-app heeft een ongeldige server-URL.",
                 .invalidResponse: "De iPhone stuurde een ongeldige reactie.",
-                .reportCooldown: "Wacht 30 seconden tussen meldingen.",
+                .reportCooldown: "Wacht 15 seconden tussen meldingen.",
                 .restrictedAccount: "Je account is tijdelijk beperkt.",
                 .quickReportFailed: "De melding kon niet worden verzonden.",
             ])
@@ -110,7 +110,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Otwórz Caca Radar na iPhonie i zaloguj się ponownie.",
                 .invalidApiUrl: "Aplikacja na iPhonie ma nieprawidłowy adres serwera.",
                 .invalidResponse: "iPhone zwrócił nieprawidłową odpowiedź.",
-                .reportCooldown: "Odczekaj 30 sekund między zgłoszeniami.",
+                .reportCooldown: "Odczekaj 15 sekund między zgłoszeniami.",
                 .restrictedAccount: "Twoje konto jest tymczasowo ograniczone.",
                 .quickReportFailed: "Nie udało się wysłać zgłoszenia.",
             ])
@@ -130,7 +130,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Відкрийте Caca Radar на iPhone та увійдіть ще раз.",
                 .invalidApiUrl: "У застосунку iPhone неправильна адреса сервера.",
                 .invalidResponse: "iPhone надіслав некоректну відповідь.",
-                .reportCooldown: "Зачекайте 30 секунд між звітами.",
+                .reportCooldown: "Зачекайте 15 секунд між звітами.",
                 .restrictedAccount: "Ваш акаунт тимчасово обмежено.",
                 .quickReportFailed: "Не вдалося надіслати звіт.",
             ])
@@ -150,7 +150,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Откройте Caca Radar на iPhone и войдите снова.",
                 .invalidApiUrl: "В приложении iPhone неверный адрес сервера.",
                 .invalidResponse: "iPhone прислал неверный ответ.",
-                .reportCooldown: "Подождите 30 секунд между сообщениями.",
+                .reportCooldown: "Подождите 15 секунд между сообщениями.",
                 .restrictedAccount: "Ваш аккаунт временно ограничен.",
                 .quickReportFailed: "Не удалось отправить сообщение.",
             ])
@@ -170,7 +170,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Obre Caca Radar a l'iPhone i torna a iniciar sessió.",
                 .invalidApiUrl: "L'app de l'iPhone té una URL del servidor no vàlida.",
                 .invalidResponse: "L'iPhone ha enviat una resposta no vàlida.",
-                .reportCooldown: "Espera 30 segons entre avisos.",
+                .reportCooldown: "Espera 15 segons entre avisos.",
                 .restrictedAccount: "El teu compte està restringit temporalment.",
                 .quickReportFailed: "No s'ha pogut enviar l'avís.",
             ])
@@ -190,7 +190,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Obri Caca Radar a l'iPhone i torna a iniciar sessió.",
                 .invalidApiUrl: "L'app de l'iPhone té una URL del servidor no vàlida.",
                 .invalidResponse: "L'iPhone ha enviat una resposta no vàlida.",
-                .reportCooldown: "Espera 30 segons entre avisos.",
+                .reportCooldown: "Espera 15 segons entre avisos.",
                 .restrictedAccount: "El teu compte està restringit temporalment.",
                 .quickReportFailed: "No s'ha pogut enviar l'avís.",
             ])
@@ -210,7 +210,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Ireki Caca Radar iPhonean eta hasi saioa berriro.",
                 .invalidApiUrl: "iPhone aplikazioak zerbitzariaren URL baliogabea dauka.",
                 .invalidResponse: "iPhoneak erantzun baliogabea bidali du.",
-                .reportCooldown: "Itxaron 30 segundo abisuen artean.",
+                .reportCooldown: "Itxaron 15 segundo abisuen artean.",
                 .restrictedAccount: "Zure kontua aldi baterako mugatuta dago.",
                 .quickReportFailed: "Ezin izan da abisua bidali.",
             ])
@@ -230,7 +230,7 @@ enum WatchCopyCatalog {
                 .missingAccessToken: "Abre Caca Radar en el iPhone e inicia sesión de nuevo.",
                 .invalidApiUrl: "La app del iPhone tiene una URL de servidor no válida.",
                 .invalidResponse: "El iPhone devolvió una respuesta no válida.",
-                .reportCooldown: "Espera 30 segundos entre reportes.",
+                .reportCooldown: "Espera 15 segundos entre reportes.",
                 .restrictedAccount: "Tu cuenta está restringida temporalmente.",
                 .quickReportFailed: "No se pudo enviar el aviso.",
             ])

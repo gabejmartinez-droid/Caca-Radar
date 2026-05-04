@@ -304,18 +304,29 @@ export default function MapPage() {
   }, []);
 
   const loadSelectedReportContext = useCallback(async (reportId) => {
-    const myReportVoteRequest = axios
-      .get(`${API}/reports/${reportId}/my-report-vote`, { withCredentials: true })
-      .catch((error) => {
-        if (error?.response?.status === 404) {
-          return { data: { vote: null } };
-        }
-        throw error;
-      });
+    const emptyVoteResponse = { data: { vote: null } };
+    const myVoteRequest = user
+      ? axios.get(`${API}/reports/${reportId}/my-vote`, { withCredentials: true }).catch((error) => {
+          if (error?.response?.status === 401 || error?.response?.status === 404) {
+            return emptyVoteResponse;
+          }
+          throw error;
+        })
+      : Promise.resolve(emptyVoteResponse);
+    const myReportVoteRequest = user
+      ? axios
+          .get(`${API}/reports/${reportId}/my-report-vote`, { withCredentials: true })
+          .catch((error) => {
+            if (error?.response?.status === 401 || error?.response?.status === 404) {
+              return emptyVoteResponse;
+            }
+            throw error;
+          })
+      : Promise.resolve(emptyVoteResponse);
 
     const [detailRes, voteRes, reportVoteRes] = await Promise.all([
       axios.get(`${API}/reports/${reportId}`, { withCredentials: true }),
-      axios.get(`${API}/reports/${reportId}/my-vote`, { withCredentials: true }),
+      myVoteRequest,
       myReportVoteRequest,
     ]);
 
@@ -323,7 +334,7 @@ export default function MapPage() {
     setMyVote(voteRes.data.vote?.vote_type || null);
     setMyReportVote(reportVoteRes.data.vote?.vote_type || null);
     return detailRes.data;
-  }, []);
+  }, [user]);
 
   // Check push notification status from backend
   useEffect(() => {
@@ -675,12 +686,15 @@ export default function MapPage() {
     viewportHeight - (viewportWidth < 640 ? 240 : 180)
   );
   const detailsCardBottomPx = viewportWidth < 768 ? 18 : user?.subscription_active ? 226 : 158;
+  const detailsCardWidthClass = viewportWidth < 768
+    ? "w-[min(calc(100vw-1rem),21rem)]"
+    : "w-[min(calc(100vw-2rem),24rem)]";
   const detailsCardMaxHeightPx = (() => {
-    const availableHeight = Math.max(viewportHeight - detailsCardBottomPx - 72, 320);
+    const availableHeight = Math.max(viewportHeight - detailsCardBottomPx - 28, 360);
     if (viewportWidth < 768) {
       return Math.min(Math.max(Math.round(viewportHeight * 0.62), 420), availableHeight);
     }
-    return Math.min(Math.max(Math.round(viewportHeight * 0.56), 420), availableHeight);
+    return Math.min(Math.max(Math.round(viewportHeight * 0.74), 540), availableHeight);
   })();
   const currentUserId = user?._id || user?.id || null;
   const isOwnSelectedReport = Boolean(selectedReport?.user_id && currentUserId && selectedReport.user_id === currentUserId);
@@ -1143,7 +1157,7 @@ export default function MapPage() {
             aria-hidden="true"
           />
           <div
-            className="fixed left-1/2 -translate-x-1/2 z-[1601] w-[min(calc(100vw-1rem),21rem)] rounded-3xl bg-white border border-black/5 shadow-2xl overflow-hidden pointer-events-auto"
+            className={`fixed left-1/2 -translate-x-1/2 z-[1601] ${detailsCardWidthClass} rounded-3xl bg-white border border-black/5 shadow-2xl overflow-hidden pointer-events-auto flex flex-col`}
             style={{
               bottom: `calc(env(safe-area-inset-bottom, 0px) + ${detailsCardBottomPx}px)`,
               maxHeight: `${detailsCardMaxHeightPx}px`,
@@ -1152,7 +1166,7 @@ export default function MapPage() {
             data-testid="details-drawer"
           >
             <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-[#E9ECF2]" />
-            <div className="px-3 pt-2 pb-4 overflow-y-auto max-h-full">
+            <div className="px-3 pt-2 pb-3 overflow-y-auto flex-1 min-h-0">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <h2 className="text-lg font-bold text-[#2B2D42] truncate" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</h2>
                 <Button variant="ghost" className="text-[#8D99AE] h-7 px-2 shrink-0" onClick={closeDetailsDrawer}>
@@ -1209,7 +1223,9 @@ export default function MapPage() {
                   </div>
                 </div>
               </div>
+            </div>
 
+            <div className="border-t border-black/5 bg-white px-3 pt-3 pb-4 shrink-0">
               <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
                 {clearActionInfo}
               </div>

@@ -6,13 +6,15 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.61-web.1`
-- iOS: `1.1.78 (80)`
-- Android: `1.1.78 (80)`
+- Web: `1.1.62-web.1`
+- iOS: `1.1.79 (81)`
+- Android: `1.1.79 (81)`
 - Backend: `1.1.18-api.1`
 
 Changes:
-- Simplify the login content-policy warning so it states the upload rule once without repetitive copy.
+- Fix the web report-details card so vote controls stay visible and clickable instead of being clipped below the fold.
+- Let anonymous report browsing load cleanly without tripping on authenticated-only vote-state requests.
+- Bring Apple Watch and Wear OS cooldown messaging back in sync with the real 15-second report limit.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

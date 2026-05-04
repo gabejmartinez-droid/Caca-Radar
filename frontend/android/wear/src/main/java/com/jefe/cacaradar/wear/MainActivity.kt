@@ -77,7 +77,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Getting your location…",
         WatchStringKey.WAITING_FOR_PHONE to "Waiting for the phone…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Open Caca Radar on the phone and sign in again.",
-        WatchStringKey.REPORT_COOLDOWN to "Please wait 30 seconds between reports.",
+        WatchStringKey.REPORT_COOLDOWN to "Please wait 15 seconds between reports.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Your account is temporarily restricted.",
         WatchStringKey.QUICK_REPORT_FAILED to "The report couldn't be sent.",
     ))
@@ -94,7 +94,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Standort wird ermittelt…",
         WatchStringKey.WAITING_FOR_PHONE to "Warte auf das Handy…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Öffne Caca Radar auf dem Handy und melde dich erneut an.",
-        WatchStringKey.REPORT_COOLDOWN to "Bitte warte 30 Sekunden zwischen Meldungen.",
+        WatchStringKey.REPORT_COOLDOWN to "Bitte warte 15 Sekunden zwischen Meldungen.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Dein Konto ist vorübergehend eingeschränkt.",
         WatchStringKey.QUICK_REPORT_FAILED to "Die Meldung konnte nicht gesendet werden.",
     ))
@@ -111,7 +111,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Locatie ophalen…",
         WatchStringKey.WAITING_FOR_PHONE to "Wachten op de telefoon…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Open Caca Radar op de telefoon en log opnieuw in.",
-        WatchStringKey.REPORT_COOLDOWN to "Wacht 30 seconden tussen meldingen.",
+        WatchStringKey.REPORT_COOLDOWN to "Wacht 15 seconden tussen meldingen.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Je account is tijdelijk beperkt.",
         WatchStringKey.QUICK_REPORT_FAILED to "De melding kon niet worden verzonden.",
     ))
@@ -128,7 +128,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Pobieranie lokalizacji…",
         WatchStringKey.WAITING_FOR_PHONE to "Oczekiwanie na telefon…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Otwórz Caca Radar w telefonie i zaloguj się ponownie.",
-        WatchStringKey.REPORT_COOLDOWN to "Odczekaj 30 sekund między zgłoszeniami.",
+        WatchStringKey.REPORT_COOLDOWN to "Odczekaj 15 sekund między zgłoszeniami.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Twoje konto jest tymczasowo ograniczone.",
         WatchStringKey.QUICK_REPORT_FAILED to "Nie udało się wysłać zgłoszenia.",
     ))
@@ -145,7 +145,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Отримуємо геопозицію…",
         WatchStringKey.WAITING_FOR_PHONE to "Чекаємо на телефон…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Відкрийте Caca Radar на телефоні та увійдіть ще раз.",
-        WatchStringKey.REPORT_COOLDOWN to "Зачекайте 30 секунд між звітами.",
+        WatchStringKey.REPORT_COOLDOWN to "Зачекайте 15 секунд між звітами.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Ваш акаунт тимчасово обмежено.",
         WatchStringKey.QUICK_REPORT_FAILED to "Не вдалося надіслати звіт.",
     ))
@@ -162,7 +162,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Получаем геопозицию…",
         WatchStringKey.WAITING_FOR_PHONE to "Ожидание телефона…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Откройте Caca Radar на телефоне и войдите снова.",
-        WatchStringKey.REPORT_COOLDOWN to "Подождите 30 секунд между сообщениями.",
+        WatchStringKey.REPORT_COOLDOWN to "Подождите 15 секунд между сообщениями.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Ваш аккаунт временно ограничен.",
         WatchStringKey.QUICK_REPORT_FAILED to "Не удалось отправить сообщение.",
     ))
@@ -179,7 +179,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Obtenint la ubicació…",
         WatchStringKey.WAITING_FOR_PHONE to "Esperant el telèfon…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Obre Caca Radar al telèfon i torna a iniciar sessió.",
-        WatchStringKey.REPORT_COOLDOWN to "Espera 30 segons entre avisos.",
+        WatchStringKey.REPORT_COOLDOWN to "Espera 15 segons entre avisos.",
         WatchStringKey.RESTRICTED_ACCOUNT to "El teu compte està restringit temporalment.",
         WatchStringKey.QUICK_REPORT_FAILED to "No s'ha pogut enviar l'avís.",
     ))
@@ -196,7 +196,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Obtenint la ubicació…",
         WatchStringKey.WAITING_FOR_PHONE to "Esperant el telèfon…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Obri Caca Radar al telèfon i torna a iniciar sessió.",
-        WatchStringKey.REPORT_COOLDOWN to "Espera 30 segons entre avisos.",
+        WatchStringKey.REPORT_COOLDOWN to "Espera 15 segons entre avisos.",
         WatchStringKey.RESTRICTED_ACCOUNT to "El teu compte està restringit temporalment.",
         WatchStringKey.QUICK_REPORT_FAILED to "No s'ha pogut enviar l'avís.",
     ))
@@ -213,7 +213,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Kokapena lortzen…",
         WatchStringKey.WAITING_FOR_PHONE to "Telefonoaren zain…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Ireki Caca Radar telefonoan eta hasi saioa berriro.",
-        WatchStringKey.REPORT_COOLDOWN to "Itxaron 30 segundo abisuen artean.",
+        WatchStringKey.REPORT_COOLDOWN to "Itxaron 15 segundo abisuen artean.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Zure kontua aldi baterako mugatuta dago.",
         WatchStringKey.QUICK_REPORT_FAILED to "Ezin izan da abisua bidali.",
     ))
@@ -230,7 +230,7 @@ private fun wearStrings(code: String): WearStrings = when (code) {
         WatchStringKey.WAITING_FOR_LOCATION to "Buscando tu ubicación…",
         WatchStringKey.WAITING_FOR_PHONE to "Esperando el teléfono…",
         WatchStringKey.MISSING_ACCESS_TOKEN to "Abre Caca Radar en el teléfono e inicia sesión de nuevo.",
-        WatchStringKey.REPORT_COOLDOWN to "Espera 30 segundos entre reportes.",
+        WatchStringKey.REPORT_COOLDOWN to "Espera 15 segundos entre reportes.",
         WatchStringKey.RESTRICTED_ACCOUNT to "Tu cuenta está restringida temporalmente.",
         WatchStringKey.QUICK_REPORT_FAILED to "No se pudo enviar el aviso.",
     ))
