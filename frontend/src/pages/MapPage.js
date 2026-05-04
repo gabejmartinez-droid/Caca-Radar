@@ -717,9 +717,7 @@ export default function MapPage() {
           ? "Municipal dashboards can clear reports anywhere inside their municipality."
           : "Las cuentas municipales pueden retirar reportes desde cualquier punto de su municipio.")
     : canBypassClearingProximity
-      ? (language === "en"
-          ? "Municipal operators can mark reports from anywhere inside their assigned municipality."
-          : "Los operarios municipales pueden marcar reportes desde cualquier punto de su municipio asignado.")
+      ? null
       : (language === "en"
           ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
           : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
@@ -1226,9 +1224,11 @@ export default function MapPage() {
             </div>
 
             <div className="border-t border-black/5 bg-white px-3 pt-3 pb-4 shrink-0">
-              <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
-                {clearActionInfo}
-              </div>
+              {clearActionInfo && (
+                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
+                  {clearActionInfo}
+                </div>
+              )}
 
               {isOwnSelectedReport && myReportVote !== "downvote" ? (
                 <div className="bg-[#FFF4E5] border border-[#FFD59E] rounded-xl p-2.5 mb-2 text-center text-xs text-[#9A6700]">

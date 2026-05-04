@@ -1,12 +1,12 @@
 {
-  "web": "1.1.63-web.1",
+  "web": "1.1.64-web.1",
   "ios": {
-    "version": "1.1.80",
-    "build": "82"
+    "version": "1.1.81",
+    "build": "83"
   },
   "android": {
-    "version": "1.1.80",
-    "build": "82"
+    "version": "1.1.81",
+    "build": "83"
   },
   "backend": "1.1.19-api.1"
 }
