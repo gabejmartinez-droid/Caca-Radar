@@ -6,15 +6,13 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.60-web.1`
-- iOS: `1.1.77 (79)`
-- Android: `1.1.77 (79)`
+- Web: `1.1.61-web.1`
+- iOS: `1.1.78 (80)`
+- Android: `1.1.78 (80)`
 - Backend: `1.1.18-api.1`
 
 Changes:
-- Reopen public report browsing on the map without requiring login.
-- Keep exact report coordinates reserved for municipal/admin-style access while anonymous and standard views use reduced location precision on the API.
-- Leave map report positions visible and update legal copy to reflect the public-map / reduced-precision model.
+- Simplify the login content-policy warning so it states the upload rule once without repetitive copy.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

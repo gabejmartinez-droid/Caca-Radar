@@ -59,7 +59,7 @@ export const translations = {
     close: "Cerrar",
     
     // Content Policy
-    photoPolicy: "No subas fotos con matrículas, nombres, caras u otra información personal identificable.",
+    photoPolicy: "Si subes una foto, evita matrículas, caras, nombres u otros datos personales identificables.",
     policyAgreement: "Al subir, confirmas que tu foto cumple con estas normas.",
     
     // Flag reasons
@@ -181,6 +181,7 @@ export const translations = {
     flagSuccess: "Report flagged as inappropriate",
     flagError: "Error flagging report",
     close: "Close",
+    photoPolicy: "If you upload a photo, avoid license plates, faces, names, or other personally identifiable information.",
     lessThanHour: "Less than 1 hour ago",
     hoursAgo: "{n} hour ago",
     hoursAgoPlural: "{n} hours ago",
