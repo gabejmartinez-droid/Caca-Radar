@@ -114,7 +114,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="9. Visibilidad pública del contenido">
-            <p>En el diseño actual del servicio los reportes no se ofrecen como un directorio público abierto a visitantes no autenticados.</p>
+            <p>En el diseño actual del servicio los reportes pueden visualizarse en el mapa general también por visitantes no autenticados, aunque con limitaciones sobre la precisión de ubicación y otros datos sensibles.</p>
             <p>Su visualización queda reservada a personas usuarias con sesión iniciada y a cuentas municipales o administrativas autorizadas. En ese contexto pueden mostrarse dentro de la app o de la web:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>fotografía del reporte, si existe, cuando la vista concreta permita mostrarla y la política de visibilidad aplicable lo autorice;</li>

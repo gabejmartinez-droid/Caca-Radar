@@ -344,10 +344,6 @@ export default function MapPage() {
   }, [user]);
 
   const fetchReports = useCallback(async () => {
-    if (!user) {
-      setReports([]);
-      return;
-    }
     try {
       let url = `${API}/reports`;
       const params = [];
@@ -365,7 +361,7 @@ export default function MapPage() {
       console.error(e);
       setReports([]);
     }
-  }, [activeFilter, user]);
+  }, [activeFilter]);
 
   useEffect(() => {
     if (!showMapSurface) return undefined;
@@ -720,24 +716,6 @@ export default function MapPage() {
     { key: "android", label: "Android", value: versionSummary.android },
     { key: "backend", label: "Backend", value: backendVersion || versionSummary.backend },
   ];
-  const privateReportsTitle = (() => {
-    const value = t("mapUi.privateReportsTitle");
-    return value === "mapUi.privateReportsTitle"
-      ? "Reports are private"
-      : value;
-  })();
-  const privateReportsBody = (() => {
-    const value = t("mapUi.privateReportsBody");
-    return value === "mapUi.privateReportsBody"
-      ? "Sign in to view community reports and use the full map."
-      : value;
-  })();
-  const privateReportsMunicipalityNote = (() => {
-    const value = t("mapUi.privateReportsMunicipalityNote");
-    return value === "mapUi.privateReportsMunicipalityNote"
-      ? "Municipal and other authorized accounts still access reports through authenticated flows."
-      : value;
-  })();
   const loadingReportsLabel = (() => {
     const value = t("mapUi.loadingReports");
     return value === "mapUi.loadingReports"
@@ -754,35 +732,6 @@ export default function MapPage() {
             Caca Radar
           </h1>
           <p className="text-[#8D99AE] mt-3">{loadingReportsLabel}</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!user) {
-    return (
-      <div className={`min-h-screen bg-[#F8F9FA] flex items-center justify-center px-6 ${isRtl ? "rtl" : "ltr"}`} data-testid="map-login-required">
-        <div className="bg-white rounded-2xl shadow-sm px-6 py-8 text-center max-w-md w-full">
-          <div className="w-14 h-14 rounded-2xl bg-[#FF6B6B]/10 flex items-center justify-center mx-auto mb-4">
-            <Lock className="w-7 h-7 text-[#FF6B6B]" />
-          </div>
-          <h1 className="text-2xl font-black text-[#2B2D42]" style={{ fontFamily: "Nunito, sans-serif" }}>
-            {privateReportsTitle}
-          </h1>
-          <p className="text-[#5C677D] leading-7 mt-3">
-            {privateReportsBody}
-          </p>
-          <p className="text-sm text-[#8D99AE] mt-3">
-            {privateReportsMunicipalityNote}
-          </p>
-          <div className="mt-6 flex flex-col sm:flex-row gap-3 justify-center">
-            <Button onClick={() => navigate("/login")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6">
-              {t("login")}
-            </Button>
-            <Button onClick={() => navigate("/register")} variant="outline" className="rounded-xl font-bold px-6">
-              {t("register")}
-            </Button>
-          </div>
         </div>
       </div>
     );

@@ -91,7 +91,7 @@ export default function PrivacyPage() {
                   Si activas la localización o seleccionas un punto en el mapa, tratamos coordenadas para crear reportes, validar cercanía y mostrar avisos en el mapa.
                 </p>
                 <p className="font-medium text-[#2B2D42]">
-                  Los reportes no se muestran de forma pública y abierta a personas no autenticadas. Su visualización queda limitada a cuentas autenticadas, flujos internos del servicio y accesos municipales o administrativos autorizados.
+                  Los reportes pueden visualizarse en el mapa público del servicio, también por visitantes no autenticados, pero con limitaciones de visibilidad sobre datos sensibles como la precisión de coordenadas o ciertos recursos según el nivel de acceso.
                 </p>
               </div>
               <div>
@@ -176,16 +176,16 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="9. Contenido visible públicamente">
-            <p>Los reportes de Caca Radar son aportaciones de la comunidad, pero no están pensados como un tablón público abierto a cualquier visitante.</p>
-            <p>En el estado actual del servicio, el acceso a reportes queda limitado a personas usuarias autenticadas y, cuando proceda, a cuentas municipales o administrativas autorizadas.</p>
+            <p>Los reportes de Caca Radar son aportaciones de la comunidad y pueden visualizarse en el mapa general del servicio, incluso sin iniciar sesión.</p>
+            <p>El nivel de detalle visible depende del tipo de acceso. Las cuentas municipales o administrativas autorizadas pueden disponer de mayor precisión o herramientas adicionales cuando el flujo lo requiera.</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>la fotografía del reporte, si existe, según permisos y contexto de acceso;</li>
               <li>el texto descriptivo, si existe;</li>
               <li>la fecha y el estado del aviso;</li>
-              <li>la ubicación del aviso según el nivel de acceso aplicable al usuario autenticado;</li>
+              <li>la ubicación del aviso con el nivel de precisión aplicable a cada tipo de acceso;</li>
               <li>una identificación reducida del contribuyente, con anonimización o etiquetado genérico cuando corresponda.</li>
             </ul>
-            <p>Las vistas públicas anónimas no muestran listados abiertos de reportes. Algunos detalles, imágenes o enlaces compartibles pueden requerir autenticación, revisión o una acción expresa de la persona usuaria antes de mostrarse.</p>
+            <p>Las vistas anónimas pueden mostrar el reporte en el mapa con localización aproximada y datos reducidos. Algunos detalles, imágenes o enlaces compartibles pueden seguir requiriendo autenticación, revisión o un nivel de acceso superior antes de mostrarse.</p>
           </Section>
 
           <Section title="10. Transferencias internacionales">
@@ -199,7 +199,7 @@ export default function PrivacyPage() {
           <Section title="11. Conservación de los datos">
             <ul className="list-disc pl-6 space-y-2">
               <li>datos de cuenta: mientras la cuenta esté activa; tras su eliminación, la cuenta se borra y los reportes publicados se anonimizan;</li>
-              <li>reportes: pueden permanecer accesibles para personas usuarias autenticadas, equipos municipales autorizados o flujos internos hasta archivo automático, moderación o eliminación; el código actual archiva reportes antiguos a partir de 30 días;</li>
+              <li>reportes: pueden permanecer accesibles en el mapa público con visibilidad reducida y, cuando proceda, con mayor detalle para cuentas municipales, administrativas o autenticadas según el flujo aplicable, hasta archivo automático, moderación o eliminación; el código actual archiva reportes antiguos a partir de 30 días;</li>
               <li>cookie `access_token`: 1 hora;</li>
               <li>cookie `refresh_token`: 7 días;</li>
               <li>cookie `anon_id`: hasta 12 meses;</li>

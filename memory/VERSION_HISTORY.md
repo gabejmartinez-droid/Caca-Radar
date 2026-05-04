@@ -6,16 +6,15 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.59-web.1`
-- iOS: `1.1.76 (78)`
-- Android: `1.1.76 (78)`
-- Backend: `1.1.17-api.1`
+- Web: `1.1.60-web.1`
+- iOS: `1.1.77 (79)`
+- Android: `1.1.77 (79)`
+- Backend: `1.1.18-api.1`
 
 Changes:
-- Remove the visible verified report category from the map experience and treat live reports as active by default.
-- Require real nearby location for standard user downvotes so two users within 5 meters can clear a report, while municipal/admin cleanup keeps the bypass path.
-- Update municipal analytics to emphasize active, flagged, and archived reports instead of verified-state reporting.
-- Clean up barrio rankings and report detail copy so they no longer imply a separate verified phase.
+- Reopen public report browsing on the map without requiring login.
+- Keep exact report coordinates reserved for municipal/admin-style access while anonymous and standard views use reduced location precision on the API.
+- Leave map report positions visible and update legal copy to reflect the public-map / reduced-precision model.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

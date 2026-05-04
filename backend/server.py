@@ -1718,18 +1718,29 @@ def sanitize_public_report_identity(report: dict) -> dict:
     return sanitized
 
 
-def apply_public_report_privacy(report: dict, viewer_is_authenticated: bool) -> dict:
+def can_view_exact_report_coordinates(user: Optional[dict]) -> bool:
+    if not user:
+        return False
+    if user.get("role") in {"admin", "municipality"}:
+        return True
+    return get_account_type(user) == "municipal_worker"
+
+
+def apply_public_report_privacy(report: dict, viewer: Optional[dict]) -> dict:
     sanitized = sanitize_public_report_identity(report)
-    if viewer_is_authenticated:
-        return sanitized
+    viewer_is_authenticated = bool(viewer)
+    if not can_view_exact_report_coordinates(viewer):
+        if sanitized.get("latitude") is not None:
+            sanitized["latitude"] = round(float(sanitized["latitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
+        if sanitized.get("longitude") is not None:
+            sanitized["longitude"] = round(float(sanitized["longitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
+        sanitized["coordinates_hidden"] = True
+    else:
+        sanitized["coordinates_hidden"] = False
 
-    if sanitized.get("latitude") is not None:
-        sanitized["latitude"] = round(float(sanitized["latitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
-    if sanitized.get("longitude") is not None:
-        sanitized["longitude"] = round(float(sanitized["longitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
-
-    sanitized["photo_url"] = None
-    sanitized.pop("user_id", None)
+    if not viewer_is_authenticated:
+        sanitized["photo_url"] = None
+        sanitized.pop("user_id", None)
     return sanitized
 
 
@@ -1767,7 +1778,7 @@ async def get_reports(
     status: Optional[str] = None,
     confirmed_only: Optional[bool] = None
 ):
-    viewer = await require_auth(request)
+    viewer = await get_current_user(request)
     query = {"archived": {"$ne": True}, "flagged": {"$ne": True}}
     if municipality:
         query["municipality"] = municipality
@@ -1789,7 +1800,7 @@ async def get_reports(
 
     # Add freshness labels and confidence scores
     for index, report in enumerate(reports):
-        r = apply_public_report_privacy(report, bool(viewer))
+        r = apply_public_report_privacy(report, viewer)
         r["freshness"] = get_freshness_label(r.get("created_at", ""), r.get("refreshed_at"))
         r["confidence"] = calc_confidence_score(r)
         r["is_premium_report"] = r.get("contributor_rank") is not None
@@ -1803,12 +1814,12 @@ async def get_reports(
 
 @api_router.get("/reports/{report_id}")
 async def get_report(report_id: str, request: Request):
-    await require_auth(request)
+    viewer = await get_current_user(request)
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     [report] = await apply_current_public_report_ranks([report])
-    report = apply_public_report_privacy(report, True)
+    report = apply_public_report_privacy(report, viewer)
     report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)
     report["is_premium_report"] = report.get("contributor_rank") is not None
@@ -4542,10 +4553,12 @@ async def update_push_preferences(data: PushPreferencesUpdate, request: Request)
 @api_router.get("/reports/{report_id}/share")
 async def get_share_data(report_id: str, request: Request):
     """Get shareable data for a report."""
-    await require_auth(request)
+    viewer = await get_current_user(request)
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
+
+    report = apply_public_report_privacy(report, viewer)
 
     municipality = report.get("municipality", "España")
     share_url = build_share_page_url("report", report_id=report_id, city=municipality)
