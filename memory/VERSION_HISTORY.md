@@ -6,17 +6,16 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.50-web.1`
-- iOS: `1.1.64 (66)`
-- Android: `1.1.67 (69)`
-- Backend: `1.1.15-api.1`
+- Web: `1.1.59-web.1`
+- iOS: `1.1.76 (78)`
+- Android: `1.1.76 (78)`
+- Backend: `1.1.17-api.1`
 
 Changes:
-- Tighten browser auth origins and cookie-backed request protections.
-- Keep native refresh tokens out of normal JS-visible runtime state.
-- Record registration assent timestamps and age/authorization confirmation.
-- Reduce anonymous public report exposure and remove unresolved legal TODO placeholders.
-- Move privileged account provisioning out of automatic production startup.
+- Remove the visible verified report category from the map experience and treat live reports as active by default.
+- Require real nearby location for standard user downvotes so two users within 5 meters can clear a report, while municipal/admin cleanup keeps the bypass path.
+- Update municipal analytics to emphasize active, flagged, and archived reports instead of verified-state reporting.
+- Clean up barrio rankings and report detail copy so they no longer imply a separate verified phase.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

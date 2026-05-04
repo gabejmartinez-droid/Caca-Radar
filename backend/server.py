@@ -588,6 +588,8 @@ def can_clear_report_without_proximity(user: Optional[dict], report: Optional[di
         return False
     if user.get("role") == "admin":
         return True
+    if user.get("role") == "municipality":
+        return report_within_municipal_scope(user, report)
     return is_municipal_worker_account(user) and report_within_municipal_scope(user, report)
 
 
@@ -2141,7 +2143,7 @@ async def calc_analytics_summary(db, muni_name: str, now, thirty_days_ago: str, 
     reports_30d = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": thirty_days_ago}})
     reports_prev = await db.reports.count_documents({"municipality": muni_name, "created_at": {"$gte": sixty_days_ago, "$lt": thirty_days_ago}})
     trend = round(((reports_30d - reports_prev) / max(reports_prev, 1)) * 100) if reports_prev > 0 else 0
-    verified = await db.reports.count_documents({"municipality": muni_name, "status": "verified"})
+    active = await db.reports.count_documents({"municipality": muni_name, "archived": {"$ne": True}, "flagged": {"$ne": True}})
     total = await db.reports.count_documents({"municipality": muni_name})
     flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
     flag_rate = round((flagged / max(total, 1)) * 100, 1)
@@ -2159,7 +2161,7 @@ async def calc_analytics_summary(db, muni_name: str, now, thirty_days_ago: str, 
             except Exception:
                 pass
     avg_res = round(sum(hours) / len(hours), 1) if hours else None
-    return {"reports_30d": reports_30d, "reports_trend": trend, "verified": verified, "avg_resolution_hours": avg_res, "flag_rate": flag_rate}
+    return {"reports_30d": reports_30d, "reports_trend": trend, "active": active, "avg_resolution_hours": avg_res, "flag_rate": flag_rate}
 
 async def calc_daily_reports(db, muni_name: str, now) -> list:
     result = []
@@ -2184,12 +2186,14 @@ async def calc_hourly_distribution(db, muni_name: str, thirty_days_ago: str) -> 
     return [{"hour": f"{h:02d}:00", "count": hourly[h]} for h in range(24)]
 
 async def calc_status_distribution(db, muni_name: str) -> list:
-    labels = {"pending": "Pendiente", "verified": "Verificado", "rejected": "Rechazado", "archived": "Archivado"}
+    labels = {"active": "Activo", "flagged": "Marcado", "archived": "Archivado"}
     result = []
-    for status in ["pending", "verified", "rejected"]:
-        c = await db.reports.count_documents({"municipality": muni_name, "status": status})
-        if c > 0:
-            result.append({"status": labels[status], "count": c})
+    active = await db.reports.count_documents({"municipality": muni_name, "archived": {"$ne": True}, "flagged": {"$ne": True}})
+    if active > 0:
+        result.append({"status": labels["active"], "count": active})
+    flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
+    if flagged > 0:
+        result.append({"status": labels["flagged"], "count": flagged})
     archived = await db.reports.count_documents({"municipality": muni_name, "archived": True})
     if archived > 0:
         result.append({"status": labels["archived"], "count": archived})
@@ -2400,6 +2404,13 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
 
+    try:
+        body = await request.json()
+        if not isinstance(body, dict):
+            body = {}
+    except Exception:
+        body = {}
+
     user = await get_current_user(request)
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
@@ -2412,16 +2423,52 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     if existing:
         raise HTTPException(status_code=400, detail="Ya has votado en este reporte")
 
-    await db.report_votes.insert_one({
+    latitude = body.get("latitude")
+    longitude = body.get("longitude")
+    distance_meters = None
+    bypass_proximity = can_clear_report_without_proximity(user, report)
+
+    if vote_type == "downvote":
+        if not bypass_proximity:
+            if latitude is None or longitude is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "code": "location_required",
+                        "max_meters": ACTION_PROXIMITY_METERS,
+                    },
+                )
+            try:
+                latitude = float(latitude)
+                longitude = float(longitude)
+            except (TypeError, ValueError):
+                raise HTTPException(status_code=400, detail="Coordenadas inválidas")
+            distance_meters = require_report_proximity(report, latitude, longitude)
+        else:
+            if latitude is not None and longitude is not None:
+                try:
+                    latitude = float(latitude)
+                    longitude = float(longitude)
+                except (TypeError, ValueError):
+                    latitude = None
+                    longitude = None
+
+    report_vote_doc = {
         "id": str(uuid.uuid4()), "report_id": report_id, "user_id": user_id,
         "vote_type": vote_type, "created_at": datetime.now(timezone.utc).isoformat()
-    })
+    }
+    if latitude is not None and longitude is not None:
+        report_vote_doc["latitude"] = latitude
+        report_vote_doc["longitude"] = longitude
+    if distance_meters is not None:
+        report_vote_doc["distance_meters"] = distance_meters
+    await db.report_votes.insert_one(report_vote_doc)
 
     # Update report vote counts and treat downvotes as "no longer there" signals.
     report_updates = {"upvotes": 1} if vote_type == "upvote" else {"downvotes": 1, "cleaned_count": 1, "status_score": -1}
     update_doc = {"$inc": report_updates}
     if vote_type == "upvote":
-        update_doc["$set"] = {"refreshed_at": datetime.now(timezone.utc).isoformat(), "status": "verified"}
+        update_doc["$set"] = {"refreshed_at": datetime.now(timezone.utc).isoformat()}
     await db.reports.update_one({"id": report_id}, update_doc)
 
     # Award points to the reporter when the report receives an upvote.
@@ -2459,6 +2506,8 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
         "consensus": None,
         "cleared": cleared,
         "cleaned_count": updated_report.get("cleaned_count", 0) if updated_report else report.get("cleaned_count", 0),
+        **({"distance_meters": round(distance_meters, 1)} if distance_meters is not None else {}),
+        **({"municipal_override": True} if bypass_proximity and vote_type == "downvote" else {}),
     }
 
 # ==================== USER GAMIFICATION ====================

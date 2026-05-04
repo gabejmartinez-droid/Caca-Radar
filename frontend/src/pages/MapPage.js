@@ -95,7 +95,6 @@ const FRESHNESS_FILTERS = [
   { value: "Fresca", labelKey: "mapUi.filters.fresh" },
   { value: "En proceso", labelKey: "mapUi.filters.moderate" },
   { value: "Fósil", labelKey: "mapUi.filters.old" },
-  { value: "verified", labelKey: "mapUi.filters.verified" },
 ];
 const FRESHNESS_LABEL_KEYS = {
   "Fresca": "mapUi.filters.fresh",
@@ -155,11 +154,10 @@ export default function MapPage() {
   const [myVote, setMyVote] = useState(null);
   const [myReportVote, setMyReportVote] = useState(null);
   const [selectedFlagReason, setSelectedFlagReason] = useState(null);
-  const [myValidation, setMyValidation] = useState(null);
   const [description, setDescription] = useState("");
   const [mapMode, setMapMode] = useState(MAP_MODES.REPORTS);
   const [pushEnabled, setPushEnabled] = useState(false);
-  const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil" | "verified"
+  const [activeFilter, setActiveFilter] = useState(null); // null | "Fresca" | "En proceso" | "Fósil"
   const [showFilterBar, setShowFilterBar] = useState(false);
   const [showMainMenu, setShowMainMenu] = useState(false);
   const [userCity, setUserCity] = useState(null);
@@ -176,7 +174,6 @@ export default function MapPage() {
   const [backendVersion, setBackendVersion] = useState("unknown");
   const tf = useCallback((key, values = {}) => formatTranslation(t, key, values), [t]);
   const freshnessLabel = (freshness) => t(FRESHNESS_LABEL_KEYS[freshness || "Fósil"] || "mapUi.filters.old");
-  const statusLabel = (status) => t(`mapUi.status.${status || "pending"}`);
   const publicContributorLabel = (report) => {
     const contributorName = `${report?.contributor_name || ""}`.trim();
     if (
@@ -205,7 +202,7 @@ export default function MapPage() {
   const currentPlatform = getCurrentPlatform();
   const versionSummary = getVersionSummary();
   const shouldHideMapControls = showMainMenu || showReportDrawer || showFlagDrawer;
-  const canBypassClearingProximity = user?.role === "admin" || user?.account_type === "municipal_worker";
+  const canBypassClearingProximity = user?.role === "admin" || user?.role === "municipality" || user?.account_type === "municipal_worker";
 
   useEffect(() => {
     if (!isNativeApp) return undefined;
@@ -284,6 +281,11 @@ export default function MapPage() {
           meters: detail.max_meters || ACTION_PROXIMITY_METERS,
         });
       }
+      if (detail.code === "location_required") {
+        return tf("mapUi.locationRequiredForAction", {
+          meters: detail.max_meters || ACTION_PROXIMITY_METERS,
+        });
+      }
       if (detail.code === "still_there_removed") {
         return t("mapUi.useValidationToConfirm");
       }
@@ -299,7 +301,6 @@ export default function MapPage() {
     setSelectedReport(null);
     setMyVote(null);
     setMyReportVote(null);
-    setMyValidation(null);
   }, []);
 
   const loadSelectedReportContext = useCallback(async (reportId) => {
@@ -312,16 +313,14 @@ export default function MapPage() {
         throw error;
       });
 
-    const [detailRes, voteRes, valRes, reportVoteRes] = await Promise.all([
+    const [detailRes, voteRes, reportVoteRes] = await Promise.all([
       axios.get(`${API}/reports/${reportId}`, { withCredentials: true }),
       axios.get(`${API}/reports/${reportId}/my-vote`, { withCredentials: true }),
-      axios.get(`${API}/reports/${reportId}/my-validation`, { withCredentials: true }),
       myReportVoteRequest,
     ]);
 
     setSelectedReport(detailRes.data);
     setMyVote(voteRes.data.vote?.vote_type || null);
-    setMyValidation(valRes.data.validation?.vote || null);
     setMyReportVote(reportVoteRes.data.vote?.vote_type || null);
     return detailRes.data;
   }, []);
@@ -354,8 +353,6 @@ export default function MapPage() {
       const params = [];
       if (activeFilter === "Fresca" || activeFilter === "En proceso" || activeFilter === "Fósil") {
         params.push(`freshness=${encodeURIComponent(activeFilter)}`);
-      } else if (activeFilter === "verified") {
-        params.push("confirmed_only=true");
       }
       if (params.length) url += "?" + params.join("&");
       const { data } = await axios.get(url, { withCredentials: true });
@@ -421,14 +418,12 @@ export default function MapPage() {
     setShowDetailsDrawer(true);
     setMyVote(null);
     setMyReportVote(null);
-    setMyValidation(null);
     try {
       await loadSelectedReportContext(report.id);
     } catch (err) {
       console.error("Failed to load report details:", err);
       setMyVote(null);
       setMyReportVote(null);
-      setMyValidation(null);
     }
   }, [loadSelectedReportContext]);
 
@@ -554,38 +549,28 @@ export default function MapPage() {
     finally { setLoading(false); }
   };
 
-  const handleValidation = async (vote) => {
-    if (!user) { toast.error(t("mapUi.registerToValidate")); navigate("/register"); return; }
-    if (!selectedReport) return;
-    setLoading(true);
-    try {
-      const location = await getActionLocation();
-      await axios.post(
-        `${API}/reports/${selectedReport.id}/validate`,
-        { vote, latitude: location.lat, longitude: location.lng },
-        { withCredentials: true }
-      );
-      setMyValidation(vote);
-      toast.success(vote === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected"));
-      fetchReports();
-      const { data } = await axios.get(`${API}/reports/${selectedReport.id}`, { withCredentials: true });
-      setSelectedReport(data);
-    } catch (error) {
-      if (!error?.response && !userLocation) {
-        toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
-      } else {
-        toast.error(getActionErrorMessage(error, "mapUi.validationError"));
-      }
-    }
-    finally { setLoading(false); }
-  };
-
   const handleReportVote = async (voteType) => {
     if (!selectedReport) return;
+    if (!user) {
+      toast.error(t("mapUi.registerToVote"));
+      navigate("/register");
+      return;
+    }
     const reportId = selectedReport.id;
     try {
       const endpoint = voteType === "upvote" ? "upvote" : "downvote";
-      const voteResponse = await axios.post(`${API}/reports/${reportId}/${endpoint}`, {}, { withCredentials: true });
+      let payload = {};
+      if (voteType === "downvote") {
+        try {
+          const location = await getActionLocation();
+          payload = { latitude: location.lat, longitude: location.lng };
+        } catch (error) {
+          if (!canBypassClearingProximity) {
+            throw error;
+          }
+        }
+      }
+      const voteResponse = await axios.post(`${API}/reports/${reportId}/${endpoint}`, payload, { withCredentials: true });
       setMyReportVote(voteType);
       if (voteType === "downvote" && voteResponse.data?.cleared) {
         toast.success(t("mapUi.voteSuccess.noLongerHere"));
@@ -601,7 +586,11 @@ export default function MapPage() {
         }
       }
     } catch (error) {
-      toast.error(getActionErrorMessage(error, "mapUi.voteError"));
+      if (!error?.response && voteType === "downvote" && !canBypassClearingProximity) {
+        toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
+      } else {
+        toast.error(getActionErrorMessage(error, "mapUi.voteError"));
+      }
     }
   };
 
@@ -713,11 +702,17 @@ export default function MapPage() {
     ? (language === "en"
         ? "Admins can clear reports without the normal proximity limit."
         : "Los administradores pueden retirar reportes sin el límite normal de proximidad.")
+    : user?.role === "municipality"
+      ? (language === "en"
+          ? "Municipal dashboards can clear reports anywhere inside their municipality."
+          : "Las cuentas municipales pueden retirar reportes desde cualquier punto de su municipio.")
     : canBypassClearingProximity
       ? (language === "en"
           ? "Municipal operators can mark reports from anywhere inside their assigned municipality."
           : "Los operarios municipales pueden marcar reportes desde cualquier punto de su municipio asignado.")
-      : tf("mapUi.proximityRequired", { meters: ACTION_PROXIMITY_METERS });
+      : (language === "en"
+          ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
+          : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -1244,11 +1239,6 @@ export default function MapPage() {
                   </div>
 
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {selectedReport.status !== "pending" && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${selectedReport.status === 'verified' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                        {statusLabel(selectedReport.status)}
-                      </span>
-                    )}
                     <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${selectedReport.freshness === 'Fresca' ? 'bg-red-100 text-red-700' : selectedReport.freshness === 'En proceso' ? 'bg-orange-100 text-orange-700' : 'bg-gray-100 text-gray-600'}`}>
                       {freshnessLabel(selectedReport.freshness)}
                     </span>
@@ -1309,12 +1299,6 @@ export default function MapPage() {
                   </Button>
                 </div>
               )}
-
-              {myValidation ? (
-                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">
-                  {tf("mapUi.yourValidation", { value: myValidation === "confirm" ? t("mapUi.confirmed") : t("mapUi.rejected") })}
-                </div>
-              ) : null}
 
               {!myVote ? (
                 <Button type="button" onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>

@@ -45,7 +45,7 @@ function BarrioCard({ barrio, index }) {
       </div>
       <div className="flex-1 min-w-0">
         <p className="font-bold text-[#2B2D42] text-sm truncate">{barrio.barrio}</p>
-        <p className="text-xs text-[#8D99AE]">{barrio.verified_reports} {barrio.verified_label}</p>
+        <p className="text-xs text-[#8D99AE]">{barrio.active_reports} {barrio.reports_label}</p>
       </div>
       <div className="text-right shrink-0">
         <p className="font-black text-lg text-[#FF6B6B]">{barrio.active_reports}</p>
@@ -231,7 +231,6 @@ export default function RankingsPage() {
                   key={b.barrio}
                   barrio={{
                     ...b,
-                    verified_label: t("rankingUi.verifiedReportsShort"),
                     reports_label: t("rankingUi.reportsLabel"),
                   }}
                   index={i}

@@ -66,7 +66,7 @@ export default function AnalyticsPage() {
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
             { label: t("analyticsUi.reports30d"), value: analytics.summary.reports_30d, icon: MapPin, color: "#FF6B6B", delta: analytics.summary.reports_trend },
-            { label: t("analyticsUi.verified"), value: analytics.summary.verified, icon: CheckCircle, color: "#66BB6A" },
+            { label: t("analyticsUi.activeReports"), value: analytics.summary.active ?? analytics.summary.verified ?? 0, icon: CheckCircle, color: "#66BB6A" },
             { label: t("analyticsUi.avgResolution"), value: analytics.summary.avg_resolution_hours ? `${analytics.summary.avg_resolution_hours}h` : "—", icon: Clock, color: "#42A5F5" },
             { label: t("analyticsUi.flagRate"), value: `${analytics.summary.flag_rate}%`, icon: Flag, color: "#FFA726" }
           ].map(({ label, value, icon: Icon, color, delta }) => (
