@@ -701,11 +701,11 @@ export default function MapPage() {
   const reportVoteStatusLabel = myReportVote === "upvote" ? t("mapUi.helpful") : t("mapUi.notHelpful");
   const voteUiCopy = language === "en"
     ? {
-        ownReportInfo: "You can't vote on your own report.",
+        ownReportInfo: "You can't mark your own report as helpful, but you can mark it as no longer there.",
         alreadyVotedInfo: `You already voted on this report: ${reportVoteStatusLabel}.`,
       }
     : {
-        ownReportInfo: "No puedes votar tu propio reporte.",
+        ownReportInfo: "No puedes votar positivamente tu propio reporte, pero sí marcar que ya no está.",
         alreadyVotedInfo: `Ya votaste este reporte: ${reportVoteStatusLabel}.`,
       };
   const clearActionInfo = user?.role === "admin"
@@ -1230,7 +1230,7 @@ export default function MapPage() {
                 {clearActionInfo}
               </div>
 
-              {isOwnSelectedReport ? (
+              {isOwnSelectedReport && myReportVote !== "downvote" ? (
                 <div className="bg-[#FFF4E5] border border-[#FFD59E] rounded-xl p-2.5 mb-2 text-center text-xs text-[#9A6700]">
                   {voteUiCopy.ownReportInfo}
                 </div>
@@ -1239,25 +1239,27 @@ export default function MapPage() {
                   {voteUiCopy.alreadyVotedInfo}
                 </div>
               ) : (
-                <div className="grid grid-cols-2 gap-2 mb-2">
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleReportVote("upvote")}
-                    disabled={loading}
-                    className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10"
-                    data-testid="upvote-btn"
-                  >
-                    <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
-                  </Button>
+                <div className={`mb-2 ${isOwnSelectedReport ? "" : "grid grid-cols-2 gap-2"}`}>
+                  {!isOwnSelectedReport ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleReportVote("upvote")}
+                      disabled={loading}
+                      className="h-9 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10"
+                      data-testid="upvote-btn"
+                    >
+                      <ThumbsUp className="w-4 h-4 mr-1" /> {t("mapUi.helpful")}
+                    </Button>
+                  ) : null}
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
                     onClick={() => handleReportVote("downvote")}
                     disabled={loading}
-                    className="h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10"
+                    className={`h-9 text-[#FF5252] border-[#FF5252]/30 hover:bg-[#FF5252]/10 ${isOwnSelectedReport ? "w-full" : ""}`}
                     data-testid="downvote-btn"
                   >
                     <ThumbsDown className="w-4 h-4 mr-1" /> {t("mapUi.notHelpful")}

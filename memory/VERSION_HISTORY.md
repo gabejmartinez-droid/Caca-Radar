@@ -6,15 +6,13 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.62-web.1`
-- iOS: `1.1.79 (81)`
-- Android: `1.1.79 (81)`
-- Backend: `1.1.18-api.1`
+- Web: `1.1.63-web.1`
+- iOS: `1.1.80 (82)`
+- Android: `1.1.80 (82)`
+- Backend: `1.1.19-api.1`
 
 Changes:
-- Fix the web report-details card so vote controls stay visible and clickable instead of being clipped below the fold.
-- Let anonymous report browsing load cleanly without tripping on authenticated-only vote-state requests.
-- Bring Apple Watch and Wear OS cooldown messaging back in sync with the real 15-second report limit.
+- Allow users to mark their own reports as no longer there while still blocking self-upvotes.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
