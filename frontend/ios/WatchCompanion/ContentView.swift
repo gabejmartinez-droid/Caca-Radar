@@ -7,13 +7,23 @@ enum WatchLocationError: LocalizedError {
     case timeout
 }
 
+private enum CoordinatedLocationSource {
+    case watch
+    case phone
+}
+
+private enum CoordinatedLocationResult {
+    case success(CLLocationCoordinate2D, CoordinatedLocationSource)
+    case failure(Error)
+}
+
 final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerDelegate {
     private let manager = CLLocationManager()
     private var continuation: CheckedContinuation<CLLocationCoordinate2D, Error>?
     private var waitingForAuthorization = false
     private var timeoutTask: Task<Void, Never>?
     private let staleLocationThreshold: TimeInterval = 300
-    private let requestTimeout: TimeInterval = 5
+    private let requestTimeout: TimeInterval = 3
 
     override init() {
         super.init()
@@ -33,17 +43,21 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
             return cachedLocation.coordinate
         }
 
-        return try await withCheckedThrowingContinuation { continuation in
-            self.continuation = continuation
-            self.startTimeout()
+        return try await withTaskCancellationHandler(operation: {
+            try await withCheckedThrowingContinuation { continuation in
+                self.continuation = continuation
+                self.startTimeout()
 
-            if status == .notDetermined {
-                waitingForAuthorization = true
-                manager.requestWhenInUseAuthorization()
-            } else {
-                startLocationAcquisition()
+                if status == .notDetermined {
+                    waitingForAuthorization = true
+                    manager.requestWhenInUseAuthorization()
+                } else {
+                    startLocationAcquisition()
+                }
             }
-        }
+        }, onCancel: { [weak self] in
+            self?.cancelPendingRequest()
+        })
     }
 
     private func startLocationAcquisition() {
@@ -73,6 +87,16 @@ final class WatchLocationManager: NSObject, ObservableObject, CLLocationManagerD
         case .failure(let error):
             continuation.resume(throwing: error)
         }
+    }
+
+    private func cancelPendingRequest() {
+        timeoutTask?.cancel()
+        timeoutTask = nil
+        waitingForAuthorization = false
+        manager.stopUpdatingLocation()
+        guard let continuation else { return }
+        self.continuation = nil
+        continuation.resume(throwing: CancellationError())
     }
 
     private func startTimeout() {
@@ -200,37 +224,85 @@ struct ContentView: View {
         statusText = copy.text(.waitingForLocation)
 
         do {
-            let coordinate = try await locationManager.requestCurrentLocation()
+            let coordinate = try await fastestAvailableCoordinate()
             statusText = copy.text(.sending)
             let result = try await bridge.sendQuickReport(latitude: coordinate.latitude, longitude: coordinate.longitude)
             apply(result: result, copy: copy)
-        } catch WatchLocationError.permissionDenied {
-            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationDenied))
-        } catch WatchLocationError.timeout {
-            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationUnavailable))
-        } catch WatchLocationError.locationUnavailable {
-            await retryUsingPhoneLocation(copy: copy, fallbackMessage: copy.text(.locationUnavailable))
         } catch {
             statusText = bridge.localizedMessage(for: error)
         }
     }
 
-    @MainActor
-    private func retryUsingPhoneLocation(copy: WatchCopy, fallbackMessage: String) async {
-        guard bridge.reachable else {
-            statusText = fallbackMessage
-            return
+    private func fastestAvailableCoordinate() async throws -> CLLocationCoordinate2D {
+        if !bridge.reachable {
+            return try await locationManager.requestCurrentLocation()
         }
 
-        statusText = copy.text(.usingPhoneLocation)
+        var failures: [Error] = []
 
-        do {
-            statusText = copy.text(.sending)
-            let result = try await bridge.sendQuickReportUsingPhoneLocation()
-            apply(result: result, copy: copy)
-        } catch {
-            statusText = bridge.localizedMessage(for: error)
+        return try await withTaskGroup(of: CoordinatedLocationResult.self) { group in
+            group.addTask {
+                do {
+                    let coordinate = try await self.locationManager.requestCurrentLocation()
+                    return .success(coordinate, .watch)
+                } catch {
+                    return .failure(error)
+                }
+            }
+
+            group.addTask {
+                do {
+                    let coordinate = try await self.bridge.requestPhoneLocationCoordinate()
+                    return .success(coordinate, .phone)
+                } catch {
+                    return .failure(error)
+                }
+            }
+
+            while let result = await group.next() {
+                switch result {
+                case .success(let coordinate, let source):
+                    group.cancelAll()
+                    await MainActor.run {
+                        if case .phone = source {
+                            self.statusText = self.bridge.copy.text(.usingPhoneLocation)
+                        }
+                    }
+                    return coordinate
+                case .failure(let error):
+                    if !(error is CancellationError) {
+                        failures.append(error)
+                    }
+                }
+            }
+
+            throw preferredLocationError(from: failures)
         }
+    }
+
+    private func preferredLocationError(from failures: [Error]) -> Error {
+        for failure in failures {
+            if let watchError = failure as? WatchLocationError,
+               case .permissionDenied = watchError {
+                return watchError
+            }
+            let appErrorCode = (failure as NSError).userInfo["appErrorCode"] as? String
+            if appErrorCode == "location_permission_denied" {
+                return failure
+            }
+        }
+
+        for failure in failures {
+            if let watchError = failure as? WatchLocationError {
+                return watchError
+            }
+            let appErrorCode = (failure as NSError).userInfo["appErrorCode"] as? String
+            if appErrorCode == "location_unavailable" || appErrorCode == "phone_unavailable" {
+                return failure
+            }
+        }
+
+        return failures.first ?? WatchLocationError.locationUnavailable
     }
 
     @MainActor

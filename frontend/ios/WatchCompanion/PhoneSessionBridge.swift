@@ -515,6 +515,46 @@ final class PhoneSessionBridge: NSObject, ObservableObject, WCSessionDelegate {
         return reply
     }
 
+    func requestPhoneLocationCoordinate() async throws -> CLLocationCoordinate2D {
+        guard WCSession.default.isReachable else {
+            updateDebug("phone_coordinate error=phone_unavailable")
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 1,
+                userInfo: [
+                    NSLocalizedDescriptionKey: copy.text(.phoneUnavailable),
+                    "appErrorCode": "phone_unavailable",
+                ]
+            )
+        }
+
+        updateDebug("phone_coordinate relay")
+        return try await sendMessageWithTimeout(
+            ["action": "phone_coordinate"],
+            timeoutSeconds: 6
+        ) { response in
+            let success = response["ok"] as? Bool ?? false
+            if success,
+               let latitude = response["latitude"] as? Double,
+               let longitude = response["longitude"] as? Double {
+                self.updateDebug("phone_coordinate ok")
+                return CLLocationCoordinate2D(latitude: latitude, longitude: longitude)
+            }
+
+            let errorCode = response["errorCode"] as? String ?? response["error"] as? String ?? "location_unavailable"
+            let errorDetail = response["errorDetail"] as? String ?? response["error"] as? String ?? errorCode
+            self.updateDebug("phone_coordinate error=\(errorCode)")
+            throw NSError(
+                domain: "PhoneSessionBridge",
+                code: 2,
+                userInfo: [
+                    NSLocalizedDescriptionKey: errorDetail,
+                    "appErrorCode": errorCode,
+                ]
+            )
+        }
+    }
+
     func sendQuickReportUsingPhoneLocation() async throws -> QuickReportReply {
         guard WCSession.default.isReachable else {
             updateDebug("phone_location error=phone_unavailable")

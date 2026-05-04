@@ -58,6 +58,23 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
+- Web `1.1.55-web.1`
+- iOS `1.1.69 (71)`
+- Android `1.1.72 (74)`
+- Backend `1.1.16-api.1`
+
+Changes:
+- Changed Apple Watch quick reporting to race the watch GPS lookup against a phone-coordinate request and use whichever location arrives first before sending a single report.
+- Shortened the watch-only location wait and reduced the phone-side location timeout so the fallback path feels noticeably faster without adding continuous background location syncing.
+- Kept the final report submission as a single action to avoid duplicate reports while still preserving the iPhone-backed fallback when watch GPS drags.
+
+Verification:
+- iOS native compile check passed.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-04 — Pending
+
+Impacted environments:
 - Web `1.1.54-web.1`
 - iOS `1.1.68 (70)`
 - Android `1.1.71 (73)`

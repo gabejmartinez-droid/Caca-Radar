@@ -45,6 +45,14 @@ final class WatchSessionCoordinator: NSObject, WCSessionDelegate {
                     pushCompanionContext()
                     replyHandler(currentCompanionContext())
                     return
+                case "phone_coordinate":
+                    let coordinate = try await phoneLocationProvider.requestCurrentLocation()
+                    replyHandler([
+                        "ok": true,
+                        "latitude": coordinate.latitude,
+                        "longitude": coordinate.longitude,
+                    ])
+                    return
                 case "quick_report":
                     guard let latitude = message["latitude"] as? Double,
                           let longitude = message["longitude"] as? Double else {
@@ -262,7 +270,7 @@ private final class PhoneQuickReportLocationProvider: NSObject, CLLocationManage
     private var waitingForAuthorization = false
     private var timeoutTask: Task<Void, Never>?
     private let staleLocationThreshold: TimeInterval = 120
-    private let requestTimeout: TimeInterval = 12
+    private let requestTimeout: TimeInterval = 6
 
     override init() {
         super.init()
