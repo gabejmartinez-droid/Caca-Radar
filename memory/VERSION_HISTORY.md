@@ -58,6 +58,24 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
+- Web `1.1.53-web.1`
+- iOS `1.1.67 (69)`
+- Android `1.1.70 (72)`
+- Backend `1.1.16-api.1`
+
+Changes:
+- Reworked the municipal pricing section into the new Municipal Básico, Municipal Plus, and Municipal Pro tiers with exact monthly and annual prices shown as `+ IVA`.
+- Visually emphasized annual pricing as the recommended option while keeping monthly pricing visible as an alternative on each municipal card.
+- Updated each municipal CTA to open a tier-specific email to `jefe@cacaradar.es` including the selected plan, population range, annual price, monthly price, and `+ IVA` in the prefilled message.
+- Added the official-population guidance line, the direct payment/invoice contact line, and the tailored-quote note for the Pro tier without changing consumer subscription plans.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-04 — Pending
+
+Impacted environments:
 - Web `1.1.52-web.1`
 - iOS `1.1.66 (68)`
 - Android `1.1.69 (71)`

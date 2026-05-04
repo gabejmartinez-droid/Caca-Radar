@@ -11,8 +11,6 @@ import { toast } from "sonner";
 import { API } from "../config";
 import { isCapacitorNative } from "../tokenManager";
 
-const MUNICIPAL_CONTACT_HREF = "mailto:jefe@cacaradar.es?subject=Solicitud%20de%20cuenta%20municipal%20Caca%20Radar";
-
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
   const { t, isRtl } = useLanguage();
@@ -63,14 +61,28 @@ export default function SubscriptionPage() {
     { icon: Crown, text: t("premiumUi.premiumBadgeFeature") },
   ];
 
+  const buildMunicipalMailto = (plan) => {
+    const subject = `Municipal subscription - ${plan.title}`;
+    const body = [
+      `Tier: ${plan.title}`,
+      `Population: ${plan.population}`,
+      `Annual price: ${plan.annualPrice}`,
+      `Monthly price: ${plan.monthlyPrice}`,
+      "Tax: + IVA",
+    ].join("\n");
+
+    return `mailto:jefe@cacaradar.es?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  };
+
   const municipalPlans = useMemo(() => ([
     {
-      id: "small",
+      id: "basic",
       icon: Landmark,
-      title: t("subscriptionUi.municipalSmallTitle"),
-      population: t("subscriptionUi.municipalSmallPopulation"),
-      price: t("subscriptionUi.municipalSmallPrice"),
-      description: t("subscriptionUi.municipalSmallDescription"),
+      title: t("subscriptionUi.municipalBasicTitle"),
+      population: t("subscriptionUi.municipalBasicPopulation"),
+      annualPrice: t("subscriptionUi.municipalBasicAnnualPrice"),
+      monthlyPrice: t("subscriptionUi.municipalBasicMonthlyPrice"),
+      description: t("subscriptionUi.municipalBasicDescription"),
       features: [
         t("subscriptionUi.municipalFeatureVerifiedProfile"),
         t("subscriptionUi.municipalFeaturePublicReports"),
@@ -80,20 +92,22 @@ export default function SubscriptionPage() {
         t("subscriptionUi.municipalFeatureMonthlyExport"),
         t("subscriptionUi.municipalFeatureEmailSupport"),
       ],
+      cta: t("subscriptionUi.subscribeMunicipalBasic"),
       highlighted: false,
       tint: "from-[#F8F9FA] to-white",
       border: "border-[#8D99AE]/20",
       iconColor: "text-[#42A5F5]",
     },
     {
-      id: "medium",
+      id: "plus",
       icon: Building2,
-      title: t("subscriptionUi.municipalMediumTitle"),
-      population: t("subscriptionUi.municipalMediumPopulation"),
-      price: t("subscriptionUi.municipalMediumPrice"),
-      description: t("subscriptionUi.municipalMediumDescription"),
+      title: t("subscriptionUi.municipalPlusTitle"),
+      population: t("subscriptionUi.municipalPlusPopulation"),
+      annualPrice: t("subscriptionUi.municipalPlusAnnualPrice"),
+      monthlyPrice: t("subscriptionUi.municipalPlusMonthlyPrice"),
+      description: t("subscriptionUi.municipalPlusDescription"),
       features: [
-        t("subscriptionUi.municipalFeatureEverythingSmall"),
+        t("subscriptionUi.municipalFeatureEverythingBasic"),
         t("subscriptionUi.municipalFeatureStaffAccounts"),
         t("subscriptionUi.municipalFeatureBarrioFilters"),
         t("subscriptionUi.municipalFeatureVisibleStatuses"),
@@ -102,20 +116,22 @@ export default function SubscriptionPage() {
         t("subscriptionUi.municipalFeatureReplyTemplates"),
         t("subscriptionUi.municipalFeatureMonthlyPdf"),
       ],
+      cta: t("subscriptionUi.subscribeMunicipalPlus"),
       highlighted: true,
       tint: "from-[#FF6B6B]/10 to-white",
       border: "border-[#FF6B6B]",
       iconColor: "text-[#FF6B6B]",
     },
     {
-      id: "large",
+      id: "pro",
       icon: Building,
-      title: t("subscriptionUi.municipalLargeTitle"),
-      population: t("subscriptionUi.municipalLargePopulation"),
-      price: t("subscriptionUi.municipalLargePrice"),
-      description: t("subscriptionUi.municipalLargeDescription"),
+      title: t("subscriptionUi.municipalProTitle"),
+      population: t("subscriptionUi.municipalProPopulation"),
+      annualPrice: t("subscriptionUi.municipalProAnnualPrice"),
+      monthlyPrice: t("subscriptionUi.municipalProMonthlyPrice"),
+      description: t("subscriptionUi.municipalProDescription"),
       features: [
-        t("subscriptionUi.municipalFeatureEverythingMedium"),
+        t("subscriptionUi.municipalFeatureEverythingPlus"),
         t("subscriptionUi.municipalFeatureTeams"),
         t("subscriptionUi.municipalFeatureAdvancedHeatmaps"),
         t("subscriptionUi.municipalFeaturePrioritySupport"),
@@ -124,6 +140,8 @@ export default function SubscriptionPage() {
         t("subscriptionUi.municipalFeatureCampaignTools"),
         t("subscriptionUi.municipalFeatureCustomOnboarding"),
       ],
+      cta: t("subscriptionUi.subscribeMunicipalPro"),
+      customNote: t("subscriptionUi.municipalProCustomQuote"),
       highlighted: false,
       tint: "from-[#2B2D42]/5 to-white",
       border: "border-[#2B2D42]/15",
@@ -241,6 +259,7 @@ export default function SubscriptionPage() {
             </div>
             <p className="text-white/82 text-sm md:text-base leading-7">{t("subscriptionUi.municipalAccountsSubtitle")}</p>
             <div className="mt-4 flex flex-wrap gap-2">
+              <span className="rounded-full bg-white/10 border border-white/10 px-3 py-1 text-xs text-white/80">{t("subscriptionUi.municipalPopulationGuide")}</span>
               <span className="rounded-full bg-white/10 border border-white/10 px-3 py-1 text-xs text-white/80">{t("subscriptionUi.municipalAccountsSetupNote")}</span>
               <span className="rounded-full bg-[#FF6B6B]/15 border border-[#FF6B6B]/20 px-3 py-1 text-xs text-[#FFD5D5]">{t("subscriptionUi.municipalPilotNote")}</span>
             </div>
@@ -273,7 +292,23 @@ export default function SubscriptionPage() {
                   </div>
 
                   <div className="mb-4">
-                    <div className="text-3xl font-black text-[#2B2D42]">{plan.price}</div>
+                    <div className="rounded-2xl bg-[#2B2D42] p-4 text-white shadow-sm">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-white/70">
+                          {t("subscriptionUi.municipalAnnualRecommended")}
+                        </span>
+                        <span className="rounded-full bg-white/12 px-2.5 py-1 text-[11px] font-semibold text-white/85">
+                          {t("subscriptionUi.annual")}
+                        </span>
+                      </div>
+                      <div className="mt-3 text-3xl font-black text-white">{plan.annualPrice}</div>
+                    </div>
+                    <div className="mt-3 rounded-2xl border border-[#E7EBF0] bg-white px-4 py-3">
+                      <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8D99AE]">
+                        {t("subscriptionUi.municipalMonthlyAlternative")}
+                      </div>
+                      <div className="mt-2 text-lg font-bold text-[#2B2D42]">{plan.monthlyPrice}</div>
+                    </div>
                   </div>
 
                   <p className="text-sm text-[#5C677D] leading-6 mb-4">{plan.description}</p>
@@ -288,15 +323,20 @@ export default function SubscriptionPage() {
                   </ul>
 
                   <div className="mt-auto space-y-3">
+                    {plan.customNote && (
+                      <p className="rounded-xl bg-[#FFF4F4] px-3 py-2 text-xs font-medium leading-5 text-[#C94C4C]">
+                        {plan.customNote}
+                      </p>
+                    )}
                     <p className="text-xs text-[#8D99AE] leading-5">{t("subscriptionUi.municipalOnboardingContact")}</p>
                     <Button
                       asChild
                       className={`w-full rounded-xl font-bold ${plan.highlighted ? "bg-[#FF6B6B] hover:bg-[#FF5252] text-white" : "bg-[#2B2D42] hover:bg-[#23253A] text-white"}`}
                       data-testid={`municipal-plan-${plan.id}-cta`}
                     >
-                      <a href={MUNICIPAL_CONTACT_HREF}>
+                      <a href={buildMunicipalMailto(plan)}>
                         <Mail className="w-4 h-4" />
-                        {t("subscriptionUi.requestMunicipalAccess")}
+                        {plan.cta}
                       </a>
                     </Button>
                   </div>
