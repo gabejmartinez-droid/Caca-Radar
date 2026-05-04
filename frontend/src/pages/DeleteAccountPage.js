@@ -96,7 +96,7 @@ export default function DeleteAccountPage() {
                       Si tienes una suscripción comprada en Apple App Store o Google Play, debes cancelarla también desde tu cuenta de la tienda correspondiente.
                     </p>
                     <p className="text-sm text-[#8D99AE]">
-                      Algunas copias de seguridad seguras pueden mantenerse durante un periodo operativo limitado hasta su rotación normal. No se reutilizan para finalidades ordinarias una vez atendida una solicitud válida de supresión.
+                      Algunas copias de seguridad seguras pueden mantenerse durante un periodo operativo limitado de hasta 30 días hasta su rotación normal. No se reutilizan para finalidades ordinarias una vez atendida una solicitud válida de supresión.
                     </p>
                   </div>
                 </div>

@@ -116,12 +116,13 @@ export default function TermsPage() {
           <Section title="9. Visibilidad pública del contenido">
             <p>En el diseño actual del servicio pueden mostrarse públicamente dentro de la app o de la web:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>fotografía del reporte, si existe, cuando la vista concreta permita mostrarla;</li>
+              <li>fotografía del reporte, si existe, cuando la vista concreta permita mostrarla y la política de visibilidad aplicable lo autorice;</li>
               <li>texto descriptivo, si existe;</li>
               <li>fecha y estado;</li>
               <li>una ubicación aproximada mostrada en el mapa público;</li>
               <li>una identificación pública reducida o anonimizada de la persona que reportó.</li>
             </ul>
+            <p>Las vistas públicas anónimas aplican una exposición más limitada: ubicación aproximada y restricciones sobre imágenes o detalles sensibles cuando corresponda.</p>
             <p>El Servicio también puede generar enlaces internos para compartir reportes.</p>
           </Section>
 
@@ -164,7 +165,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="16. Servicios de terceros">
-            <p>El Servicio integra servicios de terceros para autenticación, mapas, geocodificación, almacenamiento de imágenes, notificaciones y suscripciones. Esos terceros se rigen por sus propios términos y políticas.</p>
+            <p>El Servicio integra servicios de terceros para autenticación, mapas, geocodificación, almacenamiento de imágenes, notificaciones y suscripciones. Actualmente los principales proveedores técnicos incluyen Emergent para despliegue, MongoDB Atlas para base de datos y Resend para correo transaccional. Esos terceros se rigen por sus propios términos y políticas.</p>
           </Section>
 
           <Section title="17. Protección de datos y cookies">

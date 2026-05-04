@@ -46,7 +46,7 @@ export default function CookiesPage() {
               gestionar funciones públicas como votos o alertas y recordar algunas preferencias del navegador.
             </p>
             <p>
-              No hemos detectado en este proyecto cookies publicitarias ni herramientas de analítica o marketing que requieran un banner
+              Actualmente no utilizamos cookies publicitarias ni herramientas activas de analítica, medición o marketing que requieran un banner
               de consentimiento específico.
             </p>
           </Section>
@@ -119,6 +119,10 @@ export default function CookiesPage() {
             <p>
               En la versión web se usan servicios del navegador para notificaciones push y recursos de mapa de OpenStreetMap. Esto no significa
               que Caca Radar instale cookies publicitarias de esos terceros en tu navegador.
+            </p>
+            <p>
+              La infraestructura principal del servicio se apoya en Emergent como proveedor de despliegue, MongoDB Atlas como base de datos y Resend para correo transaccional,
+              pero eso no implica por sí mismo la instalación de cookies analíticas o de marketing en tu navegador.
             </p>
             <p>
               Para más detalle sobre el tratamiento de datos personales y proveedores técnicos, consulta la{" "}

@@ -55,6 +55,23 @@ Production notes:
 
 ## Unreleased / Next Batch
 
+### 2026-05-04 — Pending
+
+Impacted environments:
+- Web `1.1.51-web.1`
+- iOS `1.1.65 (67)`
+- Android `1.1.68 (70)`
+- Backend `1.1.15-api.1`
+
+Changes:
+- Finalized the public legal disclosures with specific infrastructure, provider, region, and retention facts: Emergent hosting, MongoDB Atlas database, Resend transactional email, EU/Spain regional posture, 30-day logs, 12-month support email retention, 30-day backups, and 6-year accounting retention.
+- Tightened the published privacy and terms wording to match the stricter public-report visibility model, including approximate public locations and limited anonymous photo exposure.
+- Updated the account deletion and cookies pages so the stated retention and provider details match the actual operating policy.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
 ### 2026-05-03 — Pending
 
 Impacted environments:

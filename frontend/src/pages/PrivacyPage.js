@@ -164,13 +164,14 @@ export default function PrivacyPage() {
             <ul className="list-disc pl-6 space-y-2">
               <li>Google, para inicio de sesión con Google;</li>
               <li>OpenStreetMap y Nominatim, para mosaicos y geocodificación inversa del mapa;</li>
-              <li>servicio de almacenamiento de objetos de Emergent, para guardar fotografías subidas a la app;</li>
+              <li>Emergent, como proveedor principal de despliegue, hosting y almacenamiento de objetos del servicio;</li>
+              <li>MongoDB Atlas, como proveedor de base de datos principal;</li>
+              <li>Resend, para el envío de emails transaccionales como verificación, recuperación de acceso y algunas comunicaciones operativas;</li>
               <li>Apple App Store y Google Play, para suscripciones y verificación de compras cuando aplique;</li>
               <li>servicios push del navegador y Google Firebase Cloud Messaging para notificaciones push cuando la función está activada.</li>
             </ul>
             <p>
-              Además, el servicio utiliza proveedores de infraestructura, base de datos, correo transaccional y despliegue que pueden variar por motivos operativos o de seguridad.
-              Si necesitas el detalle actualizado de los encargados del tratamiento activos en un momento concreto, puedes solicitarlo por email.
+              El servicio está orientado a infraestructura en la Unión Europea y España. Cuando algún proveedor técnico trate datos fuera del Espacio Económico Europeo, aplicaremos las garantías adecuadas previstas por el RGPD.
             </p>
           </Section>
 
@@ -188,14 +189,10 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="10. Transferencias internacionales">
-            <p>Algunos proveedores integrados pueden tratar datos fuera del Espacio Económico Europeo.</p>
+            <p>La infraestructura principal del servicio está configurada para operar en entorno UE / España.</p>
             <p>
-              Cuando exista transferencia internacional, se aplicarán los mecanismos previstos por el RGPD, como decisiones de adecuación,
+              Algunos proveedores integrados pueden tratar datos fuera del Espacio Económico Europeo en casos puntuales o como parte de sus redes globales de soporte. Cuando exista transferencia internacional, se aplicarán los mecanismos previstos por el RGPD, como decisiones de adecuación,
               cláusulas contractuales tipo u otras garantías válidas.
-            </p>
-            <p>
-              La localización técnica exacta puede depender del proveedor concreto que esté activo en cada momento. Facilitaremos información adicional razonable cuando sea necesario
-              para atender derechos o solicitudes de privacidad.
             </p>
           </Section>
 
@@ -207,11 +204,13 @@ export default function PrivacyPage() {
               <li>cookie `refresh_token`: 7 días;</li>
               <li>cookie `anon_id`: hasta 12 meses;</li>
               <li>suscripciones push: hasta baja, desactivación o supresión de cuenta;</li>
-              <li>recibos y estados de suscripción: mientras sean necesarios para gestión de la suscripción y cumplimiento legal.</li>
+              <li>registros de seguridad y autenticación: 30 días;</li>
+              <li>emails de soporte y solicitudes de contacto: 12 meses;</li>
+              <li>copias de seguridad operativas: 30 días;</li>
+              <li>recibos, facturación y registros contables: 6 años o el plazo legal aplicable si fuera mayor.</li>
             </ul>
             <p>
-              Los registros de seguridad, incidencias y soporte se conservan solo durante el tiempo necesario para operar el servicio, prevenir abuso,
-              atender reclamaciones razonables y cumplir obligaciones legales. Las copias de seguridad operativas se mantienen durante un periodo limitado y seguro hasta su rotación o sobrescritura.
+              Conservamos la información únicamente durante el tiempo necesario para operar el servicio, prevenir abuso, atender reclamaciones razonables y cumplir obligaciones legales. Cuando un dato deja de ser necesario, lo eliminamos o lo anonimizamos según corresponda.
             </p>
           </Section>
 
@@ -236,7 +235,7 @@ export default function PrivacyPage() {
             <p>Si compraste una suscripción en Apple o Google, debes cancelarla también desde tu cuenta de la tienda correspondiente.</p>
             <p>
               Algunas copias de seguridad seguras pueden persistir temporalmente después de una solicitud válida de supresión, pero quedan aisladas,
-              no se reutilizan para finalidades ordinarias y desaparecen cuando rota el ciclo normal de backups.
+              no se reutilizan para finalidades ordinarias y desaparecen cuando rota el ciclo normal de backups, con un máximo operativo de 30 días.
             </p>
           </Section>
 
