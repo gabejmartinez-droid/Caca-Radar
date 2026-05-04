@@ -1737,7 +1737,7 @@ def can_view_report_photo(user: Optional[dict], report: dict) -> bool:
         return False
     if user and user.get("role") == "admin":
         return True
-    return bool(user) and is_report_photo_approved(report)
+    return is_report_photo_approved(report)
 
 
 def strip_unapproved_report_photo(report: dict) -> dict:
@@ -2292,8 +2292,6 @@ async def get_file(path: str, request: Request):
         if report.get("photo_status") == "pending":
             if not viewer or viewer.get("role") != "admin":
                 raise HTTPException(status_code=403, detail="Foto pendiente de revisión")
-        else:
-            await require_auth(request)
     try:
         data, content_type = await get_object_async(path)
         return Response(content=data, media_type=content_type)

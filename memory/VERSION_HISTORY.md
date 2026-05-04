@@ -9,7 +9,7 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 - Web: `1.1.70-web.1`
 - iOS: `1.1.88 (90)`
 - Android: `1.1.87 (89)`
-- Backend: `1.1.22-api.1`
+- Backend: `1.1.23-api.1`
 
 Changes:
 - Allow users to mark their own reports as no longer there while still blocking self-upvotes.
@@ -21,6 +21,7 @@ Changes:
 - Vendor the Capacitor iOS SwiftPM binary frameworks locally so Xcode Cloud no longer needs GitHub release downloads to resolve `Capacitor` and `Cordova` during iOS builds.
 - Remove individual poop-report sharing options and drop the extra admin proximity advisory from the report details drawer.
 - Fix the “ya no está / cleaned” report action by routing it through the live downvote flow, allowing users to mark their own reports as cleaned while still blocking self-upvotes, and removing a legacy backend crash in the old cleaned-vote endpoint.
+- Restore visibility of approved and legacy report photos for public viewers while keeping pending moderation photos admin-only.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
