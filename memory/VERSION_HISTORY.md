@@ -59,11 +59,12 @@ Production notes:
 
 Impacted environments:
 - Web `1.1.55-web.1`
-- iOS `1.1.70 (72)`
+- iOS `1.1.71 (73)`
 - Android `1.1.72 (74)`
 - Backend `1.1.16-api.1`
 
 Changes:
+- Fixed the watch location race helper to use `withThrowingTaskGroup`, which matches the fact that the body rethrows the final chosen location/error.
 - Fixed the Apple Watch companion bridge build by importing `CoreLocation` in the watch session bridge where the new raced phone-coordinate helper returns `CLLocationCoordinate2D`.
 - Updated the Xcode Cloud pre-`xcodebuild` scripts to disable signing only for Debug configurations inside the CI workspace, so the generic unsigned `xcodebuild build` step can reach real compile errors without disturbing Release/archive signing.
 

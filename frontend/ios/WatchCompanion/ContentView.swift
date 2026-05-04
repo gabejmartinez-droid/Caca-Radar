@@ -240,7 +240,7 @@ struct ContentView: View {
 
         var failures: [Error] = []
 
-        return try await withTaskGroup(of: CoordinatedLocationResult.self) { group in
+        return try await withThrowingTaskGroup(of: CoordinatedLocationResult.self) { group in
             group.addTask {
                 do {
                     let coordinate = try await self.locationManager.requestCurrentLocation()
