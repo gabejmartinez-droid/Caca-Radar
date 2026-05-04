@@ -846,7 +846,7 @@ export default function AdminDashboardPage() {
 
         {tab === "violations" && (
           <>
-            <p className="text-xs text-[#8D99AE] mb-3">{violationTotal} violaciones de foto pendientes</p>
+            <p className="text-xs text-[#8D99AE] mb-3">{violationTotal} reportes pendientes de moderación</p>
             <div className="space-y-3">
               {violations.map((v, i) => (
                 <div key={v.report_id || i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`violation-${i}`}>
@@ -860,10 +860,13 @@ export default function AdminDashboardPage() {
                       <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${
                         v.reason === "face" ? "bg-red-100 text-red-600" :
                         v.reason === "license_plate" ? "bg-orange-100 text-orange-600" :
+                        v.reason === "spam" ? "bg-violet-100 text-violet-700" :
+                        v.reason === "inappropriate" ? "bg-fuchsia-100 text-fuchsia-700" :
                         "bg-amber-100 text-amber-600"
-                      }`}>{v.reason}</span>
+                      }`}>{FLAG_REASON_LABELS[v.reason] || v.reason}</span>
                       <p className="text-xs text-[#8D99AE] mt-1">{v.report?.municipality || "?"} · {v.report?.created_at?.slice(0, 10) || "?"}</p>
                       <p className="text-[10px] text-[#8D99AE]">ID: {v.report_id?.slice(0, 8)}...</p>
+                      <p className="text-[10px] text-[#8D99AE]">Flags acumulados: {v.report?.flag_count || 1}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
@@ -879,7 +882,7 @@ export default function AdminDashboardPage() {
               {violations.length === 0 && (
                 <div className="text-center py-12">
                   <CheckCircle className="w-10 h-10 text-[#66BB6A] mx-auto mb-3" />
-                  <p className="text-[#8D99AE] text-sm">No hay violaciones pendientes</p>
+                  <p className="text-[#8D99AE] text-sm">No hay reportes pendientes de moderación</p>
                 </div>
               )}
             </div>

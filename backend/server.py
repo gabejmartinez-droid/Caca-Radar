@@ -4272,11 +4272,10 @@ async def admin_update_user_account_type(user_id: str, data: AdminUserAccountTyp
 
 @api_router.get("/admin/photo-violations")
 async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 50):
-    """All photo-related flags across all municipalities."""
+    """All pending content/report flags across all municipalities."""
     await _require_admin(request)
-    photo_reasons = ["license_plate", "face", "name", "personal_info"]
     flags = await db.flags.find(
-        {"reason": {"$in": photo_reasons}, "status": {"$in": ["pending", None]}},
+        {"status": {"$in": ["pending", None]}},
         {"_id": 0}
     ).sort("created_at", -1).skip(skip).limit(limit).to_list(limit)
 
@@ -4285,11 +4284,11 @@ async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 5
     for flag in flags:
         report = await db.reports.find_one(
             {"id": flag.get("report_id")},
-            {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "municipality": 1, "created_at": 1, "contributor_name": 1}
+            {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "municipality": 1, "created_at": 1, "contributor_name": 1, "flag_count": 1}
         )
         enriched.append({**flag, "report": report})
 
-    total = await db.flags.count_documents({"reason": {"$in": photo_reasons}, "status": {"$in": ["pending", None]}})
+    total = await db.flags.count_documents({"status": {"$in": ["pending", None]}})
     return {"violations": enriched, "total": total}
 
 @api_router.post("/admin/moderate/{report_id}")

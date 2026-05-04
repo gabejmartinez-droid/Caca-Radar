@@ -6,14 +6,15 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.64-web.1`
-- iOS: `1.1.81 (83)`
-- Android: `1.1.81 (83)`
-- Backend: `1.1.19-api.1`
+- Web: `1.1.65-web.1`
+- iOS: `1.1.82 (84)`
+- Android: `1.1.82 (84)`
+- Backend: `1.1.20-api.1`
 
 Changes:
 - Allow users to mark their own reports as no longer there while still blocking self-upvotes.
 - Remove the municipal-operator advisory from the report details window.
+- Show all pending report flags, including spam, in the admin moderation dashboard.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
