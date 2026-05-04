@@ -324,7 +324,7 @@
 			mainGroup = 2FAD9756203C412B000D30F8;
 			packageReferences = (
 				CC0001202BBBBBBB00000020 /* XCLocalSwiftPackageReference "CapApp-SPM" */,
-				CC0001212BBBBBBB00000021 /* XCRemoteSwiftPackageReference "capacitor-swift-pm" */,
+				CC0001222BBBBBBB00000022 /* XCLocalSwiftPackageReference "capacitor-swift-pm-local" */,
 			);
 			productRefGroup = 2FAD9760203C412B000D30F8 /* Products */;
 			projectDirPath = "";
@@ -496,7 +496,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -504,7 +504,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -517,7 +517,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = App/App.entitlements;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				INFOPLIST_FILE = App/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.0;
@@ -525,7 +525,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_VERSION = 5.0;
@@ -538,7 +538,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -546,7 +546,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -564,11 +564,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;
@@ -586,7 +586,7 @@
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = "../WatchCompanionApp/Extension-Info.plist";
@@ -594,7 +594,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp.watchkitextension;
 				PRODUCT_NAME = CacaRadarWatchExtension;
 				SDKROOT = watchos;
@@ -611,11 +611,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = WatchAppIcon;
 				CODE_SIGN_STYLE = Automatic;
-					CURRENT_PROJECT_VERSION = 87;
+					CURRENT_PROJECT_VERSION = 88;
 				DEVELOPMENT_TEAM = Z3SH6Z4GL6;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = ../WatchCompanionApp/Info.plist;
-					MARKETING_VERSION = 1.1.85;
+					MARKETING_VERSION = 1.1.86;
 				PRODUCT_BUNDLE_IDENTIFIER = com.jefe.cacaradar.watchkitapp;
 				PRODUCT_NAME = CacaRadarWatch;
 				SDKROOT = watchos;
@@ -673,18 +673,11 @@
 			isa = XCLocalSwiftPackageReference;
 			relativePath = "CapApp-SPM";
 		};
-/* End XCLocalSwiftPackageReference section */
-
-/* Begin XCRemoteSwiftPackageReference section */
-		CC0001212BBBBBBB00000021 /* XCRemoteSwiftPackageReference "capacitor-swift-pm" */ = {
-			isa = XCRemoteSwiftPackageReference;
-			repositoryURL = "https://github.com/ionic-team/capacitor-swift-pm";
-			requirement = {
-				kind = exactVersion;
-				version = 8.3.1;
-			};
+		CC0001222BBBBBBB00000022 /* XCLocalSwiftPackageReference "capacitor-swift-pm-local" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "capacitor-swift-pm-local";
 		};
-/* End XCRemoteSwiftPackageReference section */
+/* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
 		CC0001002BBBBBBB00000001 /* CapApp-SPM */ = {
@@ -694,12 +687,12 @@
 		};
 		CC0001022BBBBBBB00000002 /* Capacitor */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CC0001212BBBBBBB00000021 /* XCRemoteSwiftPackageReference "capacitor-swift-pm" */;
+			package = CC0001222BBBBBBB00000022 /* XCLocalSwiftPackageReference "capacitor-swift-pm-local" */;
 			productName = Capacitor;
 		};
 		CC0001042BBBBBBB00000004 /* Cordova */ = {
 			isa = XCSwiftPackageProductDependency;
-			package = CC0001212BBBBBBB00000021 /* XCRemoteSwiftPackageReference "capacitor-swift-pm" */;
+			package = CC0001222BBBBBBB00000022 /* XCLocalSwiftPackageReference "capacitor-swift-pm-local" */;
 			productName = Cordova;
 		};
 /* End XCSwiftPackageProductDependency section */

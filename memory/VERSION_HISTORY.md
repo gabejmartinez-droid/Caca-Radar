@@ -7,7 +7,7 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 ### 2026-05-04 — Pending
 
 - Web: `1.1.68-web.1`
-- iOS: `1.1.85 (87)`
+- iOS: `1.1.86 (88)`
 - Android: `1.1.85 (87)`
 - Backend: `1.1.21-api.1`
 
@@ -18,6 +18,7 @@ Changes:
 - Add admin photo approvals, hide pending report photos until approved, and remove reports when a photo is rejected.
 - Switch the admin dashboard interface copy to English by default.
 - Fix a `MapPage` temporal dead-zone crash where the photo moderation notice string was referenced before it was declared, causing a white screen on production page load.
+- Vendor the Capacitor iOS SwiftPM binary frameworks locally so Xcode Cloud no longer needs GitHub release downloads to resolve `Capacitor` and `Cordova` during iOS builds.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

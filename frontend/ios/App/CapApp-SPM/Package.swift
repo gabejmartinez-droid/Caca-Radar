@@ -11,7 +11,7 @@ let package = Package(
             targets: ["CapApp-SPM"])
     ],
     dependencies: [
-        .package(url: "https://github.com/ionic-team/capacitor-swift-pm.git", exact: "8.3.1"),
+        .package(path: "../capacitor-swift-pm-local"),
         .package(url: "https://github.com/google/GoogleSignIn-iOS", from: "8.0.0"),
         .package(name: "CapacitorPushNotifications", path: "../CapacitorPushNotifications")
     ],
@@ -19,8 +19,8 @@ let package = Package(
         .target(
             name: "CapApp-SPM",
             dependencies: [
-                .product(name: "Capacitor", package: "capacitor-swift-pm"),
-                .product(name: "Cordova", package: "capacitor-swift-pm"),
+                .product(name: "Capacitor", package: "capacitor-swift-pm-local"),
+                .product(name: "Cordova", package: "capacitor-swift-pm-local"),
                 .product(name: "GoogleSignIn", package: "GoogleSignIn-iOS"),
                 .product(name: "CapacitorPushNotifications", package: "CapacitorPushNotifications")
             ]
