@@ -1,6 +1,7 @@
 import Capacitor
 import Foundation
 import Security
+import WebKit
 
 public enum CompanionBridgeStorage {
     public static let accessTokenKey = "companion.accessToken"
@@ -29,9 +30,17 @@ public enum CompanionBridgeStorage {
         UserDefaults.standard.string(forKey: preferredLanguageKey)
     }
 
-    public static func persistAuthState(accessToken: String, refreshToken: String, apiBaseUrl: String) throws {
+    public static func persistAuthState(
+        accessToken: String,
+        refreshToken: String?,
+        apiBaseUrl: String,
+        preserveStoredRefreshToken: Bool = false
+    ) throws {
         try persistKeychainValue(accessToken, service: accessService)
-        try persistKeychainValue(refreshToken, service: refreshService)
+        let nextRefreshToken = refreshToken?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !preserveStoredRefreshToken || !nextRefreshToken.isEmpty {
+            try persistKeychainValue(nextRefreshToken, service: refreshService)
+        }
 
         let defaults = UserDefaults.standard
         defaults.removeObject(forKey: accessTokenKey)
@@ -56,7 +65,6 @@ public enum CompanionBridgeStorage {
     public static func currentAuthState() -> [String: String] {
         [
             "accessToken": readAccessToken() ?? "",
-            "refreshToken": readRefreshToken() ?? "",
             "apiBaseUrl": readApiBaseUrl() ?? "",
         ]
     }
@@ -143,20 +151,24 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
     public let pluginMethods: [CAPPluginMethod] = [
         CAPPluginMethod(name: "syncAuthState", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "getAuthState", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "bootstrapSessionFromCookies", returnType: CAPPluginReturnPromise),
+        CAPPluginMethod(name: "refreshAccessToken", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "syncPreferences", returnType: CAPPluginReturnPromise),
         CAPPluginMethod(name: "clearAuthState", returnType: CAPPluginReturnPromise),
     ]
 
     @objc func syncAuthState(_ call: CAPPluginCall) {
         let accessToken = call.getString("accessToken") ?? ""
-        let refreshToken = call.getString("refreshToken") ?? ""
+        let refreshToken = call.getString("refreshToken")
         let apiBaseUrl = call.getString("apiBaseUrl") ?? ""
+        let preserveStoredRefreshToken = call.getBool("preserveStoredRefreshToken") ?? false
 
         do {
             try CompanionBridgeStorage.persistAuthState(
                 accessToken: accessToken,
                 refreshToken: refreshToken,
-                apiBaseUrl: apiBaseUrl
+                apiBaseUrl: apiBaseUrl,
+                preserveStoredRefreshToken: preserveStoredRefreshToken
             )
             NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
             call.resolve()
@@ -169,9 +181,62 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         let authState = CompanionBridgeStorage.currentAuthState()
         var payload = JSObject()
         payload["accessToken"] = authState["accessToken"] ?? ""
-        payload["refreshToken"] = authState["refreshToken"] ?? ""
         payload["apiBaseUrl"] = authState["apiBaseUrl"] ?? ""
         call.resolve(payload)
+    }
+
+    @objc func bootstrapSessionFromCookies(_ call: CAPPluginCall) {
+        let apiBaseUrl = normalizedApiBaseUrl(call.getString("apiBaseUrl"))
+        guard let apiUrl = URL(string: apiBaseUrl), let host = apiUrl.host else {
+            call.reject("Invalid API base URL")
+            return
+        }
+
+        let cookieStore = bridge?.webView?.configuration.websiteDataStore.httpCookieStore
+            ?? WKWebsiteDataStore.default().httpCookieStore
+        cookieStore.getAllCookies { cookies in
+            let matchingCookies = cookies.filter { cookie in
+                guard let cookieHost = cookie.domain.trimmingCharacters(in: .whitespacesAndNewlines).lowercased().split(separator: ":").first else {
+                    return false
+                }
+                return host.lowercased().hasSuffix(cookieHost.hasPrefix(".") ? String(cookieHost.dropFirst()) : String(cookieHost))
+            }
+            let cookieAccessToken = matchingCookies.first(where: { $0.name == "access_token" })?.value ?? ""
+            let cookieRefreshToken = matchingCookies.first(where: { $0.name == "refresh_token" })?.value ?? ""
+            let accessToken = cookieAccessToken.isEmpty ? (CompanionBridgeStorage.readAccessToken() ?? "") : cookieAccessToken
+            let refreshToken = cookieRefreshToken.isEmpty ? (CompanionBridgeStorage.readRefreshToken() ?? "") : cookieRefreshToken
+
+            do {
+                try CompanionBridgeStorage.persistAuthState(
+                    accessToken: accessToken,
+                    refreshToken: cookieRefreshToken.isEmpty ? nil : refreshToken,
+                    apiBaseUrl: apiBaseUrl,
+                    preserveStoredRefreshToken: cookieRefreshToken.isEmpty
+                )
+                NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
+                var payload = JSObject()
+                payload["accessToken"] = accessToken
+                payload["synced"] = !refreshToken.isEmpty
+                call.resolve(payload)
+            } catch {
+                call.reject("Failed to bootstrap session from cookies", nil, error)
+            }
+        }
+    }
+
+    @objc func refreshAccessToken(_ call: CAPPluginCall) {
+        let apiBaseUrl = normalizedApiBaseUrl(call.getString("apiBaseUrl"))
+        Task {
+            do {
+                let refreshedToken = try await refreshNativeAccessToken(apiBaseUrl: apiBaseUrl)
+                NotificationCenter.default.post(name: CompanionBridgeStorage.didUpdateNotification, object: nil)
+                var payload = JSObject()
+                payload["accessToken"] = refreshedToken
+                call.resolve(payload)
+            } catch {
+                call.reject("Failed to refresh native access token", nil, error)
+            }
+        }
     }
 
     @objc func syncPreferences(_ call: CAPPluginCall) {
@@ -193,5 +258,56 @@ public class CompanionBridgePlugin: CAPPlugin, CAPBridgedPlugin {
         } catch {
             call.reject("Failed to clear auth state", nil, error)
         }
+    }
+
+    private func normalizedApiBaseUrl(_ rawValue: String?) -> String {
+        let trimmed = (rawValue ?? CompanionBridgeStorage.readApiBaseUrl() ?? "https://cacaradar.es/api")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let withoutTrailingSlash = trimmed.replacingOccurrences(of: "/+$", with: "", options: .regularExpression)
+        if withoutTrailingSlash.isEmpty {
+            return "https://cacaradar.es/api"
+        }
+        if withoutTrailingSlash.hasSuffix("/api") {
+            return withoutTrailingSlash
+        }
+        return withoutTrailingSlash + "/api"
+    }
+
+    private func refreshNativeAccessToken(apiBaseUrl: String) async throws -> String {
+        guard let refreshToken = CompanionBridgeStorage.readRefreshToken(), !refreshToken.isEmpty else {
+            throw NSError(domain: "CompanionBridgePlugin", code: 401, userInfo: [NSLocalizedDescriptionKey: "No refresh token available"])
+        }
+        guard let url = URL(string: apiBaseUrl + "/auth/refresh") else {
+            throw NSError(domain: "CompanionBridgePlugin", code: 400, userInfo: [NSLocalizedDescriptionKey: "Invalid API base URL"])
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue("1", forHTTPHeaderField: "X-Native-App")
+        request.setValue("ios", forHTTPHeaderField: "X-Platform")
+        request.httpBody = try JSONSerialization.data(withJSONObject: [
+            "refresh_token": refreshToken,
+        ])
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        guard let http = response as? HTTPURLResponse, (200...299).contains(http.statusCode) else {
+            throw NSError(domain: "CompanionBridgePlugin", code: 401, userInfo: [NSLocalizedDescriptionKey: "Refresh request failed"])
+        }
+        guard
+            let json = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+            let accessToken = json["access_token"] as? String,
+            !accessToken.isEmpty
+        else {
+            throw NSError(domain: "CompanionBridgePlugin", code: 500, userInfo: [NSLocalizedDescriptionKey: "No access token returned"])
+        }
+
+        try CompanionBridgeStorage.persistAuthState(
+            accessToken: accessToken,
+            refreshToken: nil,
+            apiBaseUrl: apiBaseUrl,
+            preserveStoredRefreshToken: true
+        )
+        return accessToken
     }
 }

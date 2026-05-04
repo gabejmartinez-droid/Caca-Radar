@@ -36,7 +36,7 @@ export default function CookiesPage() {
               Política de Cookies de Caca Radar
             </h1>
           </div>
-          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 20 de abril de 2026</p>
+          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 4 de mayo de 2026</p>
         </section>
 
         <article className="bg-white rounded-2xl shadow-sm p-6 md:p-8 space-y-8">
@@ -57,7 +57,8 @@ export default function CookiesPage() {
               prestar el servicio solicitado, mantener la seguridad y recordar preferencias básicas.
             </p>
             <p>
-              TODO-LEGAL: confirmar si en producción existe alguna herramienta adicional de medición o terceros que requiera consentimiento.
+              Si en el futuro activamos herramientas de medición, personalización o terceros que requieran consentimiento, actualizaremos esta política
+              y, cuando corresponda, mostraremos el mecanismo de consentimiento adecuado antes de activarlas.
             </p>
           </Section>
 

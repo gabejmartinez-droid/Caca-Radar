@@ -180,7 +180,7 @@ public class CompanionWearListenerService extends WearableListenerService {
             throw new IllegalStateException("missing_access_token");
         }
 
-        CompanionBridgePlugin.persistAuthState(this, newAccessToken, authState.refreshToken);
+        CompanionBridgePlugin.persistAuthState(this, newAccessToken, authState.refreshToken, false);
 
         return newAccessToken;
     }

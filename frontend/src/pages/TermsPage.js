@@ -36,7 +36,7 @@ export default function TermsPage() {
               Términos de uso y aviso legal — Caca Radar
             </h1>
           </div>
-          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 20 de abril de 2026</p>
+          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 4 de mayo de 2026</p>
         </section>
 
         <article className="bg-white rounded-2xl shadow-sm p-6 md:p-8 space-y-8">
@@ -116,11 +116,11 @@ export default function TermsPage() {
           <Section title="9. Visibilidad pública del contenido">
             <p>En el diseño actual del servicio pueden mostrarse públicamente dentro de la app o de la web:</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>fotografía del reporte, si existe;</li>
+              <li>fotografía del reporte, si existe, cuando la vista concreta permita mostrarla;</li>
               <li>texto descriptivo, si existe;</li>
               <li>fecha y estado;</li>
-              <li>ubicación mostrada en el mapa;</li>
-              <li>alias o nombre visible de la persona que reportó, salvo anonimización o supresión de cuenta.</li>
+              <li>una ubicación aproximada mostrada en el mapa público;</li>
+              <li>una identificación pública reducida o anonimizada de la persona que reportó.</li>
             </ul>
             <p>El Servicio también puede generar enlaces internos para compartir reportes.</p>
           </Section>
@@ -142,7 +142,10 @@ export default function TermsPage() {
           <Section title="12. Funcionalidades premium y suscripciones">
             <p>El código actual del servicio incluye funciones premium, prueba gratuita de 7 días y planes mostrados en la app de 3,99 €/mes y 29,99 €/año, además de lógica de verificación para Apple App Store y Google Play.</p>
             <p>Antes de confirmar una contratación, la información visible en el flujo correspondiente debe mostrar precio, periodicidad, renovación, forma de cancelación y funcionalidades incluidas.</p>
-            <p>TODO-LEGAL: confirmar si todos los flujos premium mostrados en la interfaz están activos en producción y si el alta directa `/users/subscribe` sigue siendo un flujo mock.</p>
+            <p>
+              Algunas funciones premium, municipales, piloto o personalizadas pueden activarse de forma progresiva, durante onboarding o tras verificación manual.
+              La mera visualización de un plan o de una capacidad no implica activación automática hasta que el flujo o la confirmación correspondiente se complete.
+            </p>
           </Section>
 
           <Section title="13. Derecho de desistimiento y derechos de consumo">

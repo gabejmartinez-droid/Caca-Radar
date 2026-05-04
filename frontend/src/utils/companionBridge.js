@@ -15,11 +15,16 @@ export async function syncCompanionAuthState({ accessToken, refreshToken, apiBas
   const plugin = getCompanionPlugin();
   if (!plugin?.syncAuthState) return;
   try {
-    await plugin.syncAuthState({
+    const payload = {
       accessToken: accessToken || "",
-      refreshToken: refreshToken || "",
       apiBaseUrl: apiBaseUrl || "",
-    });
+    };
+    if (refreshToken !== undefined) {
+      payload.refreshToken = refreshToken || "";
+    } else {
+      payload.preserveStoredRefreshToken = true;
+    }
+    await plugin.syncAuthState(payload);
   } catch {
     // Companion sync should never break app auth flows.
   }
@@ -27,11 +32,35 @@ export async function syncCompanionAuthState({ accessToken, refreshToken, apiBas
 
 export async function getCompanionAuthState() {
   const plugin = getCompanionPlugin();
-  if (!plugin?.getAuthState) return { accessToken: "", refreshToken: "", apiBaseUrl: "" };
+  if (!plugin?.getAuthState) return { accessToken: "", apiBaseUrl: "" };
   try {
     return await plugin.getAuthState();
   } catch {
-    return { accessToken: "", refreshToken: "", apiBaseUrl: "" };
+    return { accessToken: "", apiBaseUrl: "" };
+  }
+}
+
+export async function bootstrapNativeSessionFromCookies({ apiBaseUrl }) {
+  const plugin = getCompanionPlugin();
+  if (!plugin?.bootstrapSessionFromCookies) return { accessToken: "", synced: false };
+  try {
+    return await plugin.bootstrapSessionFromCookies({
+      apiBaseUrl: apiBaseUrl || "",
+    });
+  } catch {
+    return { accessToken: "", synced: false };
+  }
+}
+
+export async function refreshNativeAccessToken({ apiBaseUrl }) {
+  const plugin = getCompanionPlugin();
+  if (!plugin?.refreshAccessToken) return { accessToken: "" };
+  try {
+    return await plugin.refreshAccessToken({
+      apiBaseUrl: apiBaseUrl || "",
+    });
+  } catch {
+    return { accessToken: "" };
   }
 }
 

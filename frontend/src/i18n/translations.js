@@ -134,7 +134,11 @@ export const translations = {
       help: "Ayuda",
       legalAndHelp: "Ayuda y legal",
       signupNotice: "Al crear tu cuenta, puedes revisar nuestra",
-      versions: "Versiones"
+      versions: "Versiones",
+      acceptPrivacyPrefix: "He leído y acepto la",
+      acceptTermsPrefix: "He leído y acepto los",
+      ageConfirmation: "Confirmo que tengo al menos 14 años o que dispongo de la autorización legal necesaria para usar el servicio.",
+      registrationConsentRequired: "Debes aceptar la Política de Privacidad, los Términos y confirmar los requisitos de edad o autorización.",
     },
     languages: nativeLanguageNames
   },
@@ -229,7 +233,11 @@ export const translations = {
       help: "Help",
       legalAndHelp: "Help & legal",
       signupNotice: "By creating your account, you can review our",
-      versions: "Versions"
+      versions: "Versions",
+      acceptPrivacyPrefix: "I have read and accept the",
+      acceptTermsPrefix: "I have read and accept the",
+      ageConfirmation: "I confirm that I am at least 14 years old or that I have the legally required authorization to use the service.",
+      registrationConsentRequired: "You must accept the Privacy Policy, the Terms, and confirm the age or authorization requirement.",
     },
     languages: nativeLanguageNames
   },
@@ -3754,6 +3762,10 @@ const navigationTranslations = {
       statusPage: "Estado",
       andTerms: "y los",
       loginNoticePrefix: "Al iniciar sesión, puedes revisar la",
+      acceptPrivacyPrefix: "He leído y acepto la",
+      acceptTermsPrefix: "He leído y acepto los",
+      ageConfirmation: "Confirmo que tengo al menos 14 años o que dispongo de la autorización legal necesaria para usar el servicio.",
+      registrationConsentRequired: "Debes aceptar la Política de Privacidad, los Términos y confirmar los requisitos de edad o autorización.",
       nonOfficialDisclaimer: "Caca Radar es una herramienta privada, independiente y no oficial. No representa, sustituye ni está afiliada a ningún ayuntamiento, administración pública ni entidad gubernamental.",
     },
     helpUi: {
@@ -3810,6 +3822,10 @@ const navigationTranslations = {
       statusPage: "Status",
       andTerms: "and the",
       loginNoticePrefix: "When signing in, you can review the",
+      acceptPrivacyPrefix: "I have read and accept the",
+      acceptTermsPrefix: "I have read and accept the",
+      ageConfirmation: "I confirm that I am at least 14 years old or that I have the legally required authorization to use the service.",
+      registrationConsentRequired: "You must accept the Privacy Policy, the Terms, and confirm the age or authorization requirement.",
       nonOfficialDisclaimer: "Caca Radar is a private, independent, unofficial tool. It does not represent, replace, or affiliate with any city council, public administration, or government entity.",
     },
     helpUi: {

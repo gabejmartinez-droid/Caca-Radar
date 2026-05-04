@@ -13,9 +13,10 @@ import { getCurrentAppVersion } from "./versionInfo";
  * Capacitor Native (iOS/Android):
  *   - Uses full hosted URL (cross-origin to capacitor://localhost).
  *   - Auth via Authorization: Bearer <token> header.
- *   - The Emergent proxy ALWAYS returns access-control-allow-origin: *
- *     which is fine because withCredentials is forced to false.
- *   - See tokenManager.js for full explanation.
+ *   - Native bootstrap/login requests may briefly use secure cookies so the
+ *     app can sync a native-only refresh path without exposing refresh tokens
+ *     back into normal JS state.
+ *   - See tokenManager.js and CompanionBridge for the native token flow.
  * ============================================================
  */
 

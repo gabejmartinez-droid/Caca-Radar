@@ -31,6 +31,9 @@ export default function RegisterPage() {
   const [username, setUsername] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [acceptedPrivacy, setAcceptedPrivacy] = useState(false);
+  const [confirmedAge, setConfirmedAge] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -104,11 +107,19 @@ export default function RegisterPage() {
       setError(t("passwordTooShort"));
       return;
     }
+    if (!acceptedTerms || !acceptedPrivacy || !confirmedAge) {
+      setError(t("legalUi.registrationConsentRequired"));
+      return;
+    }
     
     setLoading(true);
 
     try {
-      await register(email.trim().toLowerCase(), password, trimmed);
+      await register(email.trim().toLowerCase(), password, trimmed, {
+        terms_accepted: acceptedTerms,
+        privacy_accepted: acceptedPrivacy,
+        age_confirmed: confirmedAge,
+      });
       toast.success(t("registerSuccess"));
       navigate("/");
     } catch (err) {
@@ -219,6 +230,53 @@ export default function RegisterPage() {
                   data-testid="password-input"
                 />
               </div>
+            </div>
+
+            <div className="space-y-3 rounded-2xl border border-[#8D99AE]/15 bg-[#F8F9FA] px-4 py-4">
+              <label className="flex items-start gap-3 text-sm text-[#2B2D42] leading-6">
+                <input
+                  type="checkbox"
+                  checked={acceptedPrivacy}
+                  onChange={(e) => setAcceptedPrivacy(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-[#8D99AE]"
+                  required
+                />
+                <span>
+                  {t("legalUi.acceptPrivacyPrefix")}{" "}
+                  <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline">
+                    {t("legalUi.privacyPolicy")}
+                  </Link>
+                  .
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-[#2B2D42] leading-6">
+                <input
+                  type="checkbox"
+                  checked={acceptedTerms}
+                  onChange={(e) => setAcceptedTerms(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-[#8D99AE]"
+                  required
+                />
+                <span>
+                  {t("legalUi.acceptTermsPrefix")}{" "}
+                  <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline">
+                    {t("legalUi.termsOfUse")}
+                  </Link>
+                  .
+                </span>
+              </label>
+
+              <label className="flex items-start gap-3 text-sm text-[#2B2D42] leading-6">
+                <input
+                  type="checkbox"
+                  checked={confirmedAge}
+                  onChange={(e) => setConfirmedAge(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-[#8D99AE]"
+                  required
+                />
+                <span>{t("legalUi.ageConfirmation")}</span>
+              </label>
             </div>
 
             <Button

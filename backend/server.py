@@ -16,7 +16,7 @@ from html import escape
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 # Shared dependencies — DB, auth, models, utilities
 from deps import (
@@ -596,8 +596,7 @@ def issue_auth_session(user: dict, request: Request, response: Response) -> tupl
     role = user.get("role", "user")
     access_token = create_access_token(user_id, user.get("email", ""), role)
     refresh_token = create_refresh_token(user_id)
-    if not should_return_body_tokens(request):
-        set_auth_cookies(response, access_token, refresh_token)
+    set_auth_cookies(response, access_token, refresh_token)
     return access_token, refresh_token
 
 
@@ -631,7 +630,6 @@ def build_auth_payload(user: dict, access_token: str, refresh_token: str, reques
     }
     if should_return_body_tokens(request):
         payload["access_token"] = access_token
-        payload["refresh_token"] = refresh_token
     return payload
 
 
@@ -1213,6 +1211,12 @@ async def register(data: UserRegister, request: Request, response: Response):
     existing = await db.users.find_one({"email": email})
     if existing:
         raise HTTPException(status_code=400, detail="El email ya está registrado")
+
+    if not data.terms_accepted or not data.privacy_accepted or not data.age_confirmed:
+        raise HTTPException(
+            status_code=400,
+            detail="Debes aceptar la Política de Privacidad, los Términos y confirmar que cumples los requisitos de edad o autorización.",
+        )
     
     username = data.username.lower().strip()
     if len(username) < 3 or len(username) > 20:
@@ -1225,6 +1229,7 @@ async def register(data: UserRegister, request: Request, response: Response):
     
     hashed = hash_password(data.password)
     is_vip = is_vip_email(email)
+    registration_timestamp = datetime.now(timezone.utc)
     user_doc = {
         "email": email,
         "password_hash": hashed,
@@ -1247,7 +1252,11 @@ async def register(data: UserRegister, request: Request, response: Response):
         "daily_report_count": 0,
         "streak_days": 0,
         "last_active_date": None,
-        "created_at": datetime.now(timezone.utc)
+        "created_at": registration_timestamp,
+        "terms_accepted_at": registration_timestamp,
+        "privacy_accepted_at": registration_timestamp,
+        "age_confirmation_at": registration_timestamp,
+        "legal_notice_version": "2026-05-04",
     }
     result = await db.users.insert_one(user_doc)
     user_id = str(result.inserted_id)
@@ -1441,10 +1450,8 @@ async def issue_native_session_tokens(request: Request):
     if not user:
         raise HTTPException(status_code=401, detail="No autenticado")
     access_token = create_access_token(str(user["_id"]), user["email"], user.get("role", "user"))
-    refresh_token = create_refresh_token(str(user["_id"]))
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
     }
 
 @api_router.post("/auth/refresh")
@@ -1688,6 +1695,7 @@ async def get_subscription_status(request: Request):
 
 PUBLIC_REGISTERED_USER_LABEL = "registered_user"
 PUBLIC_UNRANKED_LABEL = "unranked"
+PUBLIC_REPORT_COORDINATE_PRECISION = 4
 PUBLIC_ANONYMOUS_REPORTER_NAMES = {"", "Anónimo", "Anonymous", "Anonym", "Anoniem", "Anonim"}
 
 
@@ -1705,6 +1713,21 @@ def sanitize_public_report_identity(report: dict) -> dict:
         sanitized["contributor_name"] = "Anónimo"
         sanitized["contributor_rank"] = None
         sanitized["contributor_rank_key"] = None
+    return sanitized
+
+
+def apply_public_report_privacy(report: dict, viewer_is_authenticated: bool) -> dict:
+    sanitized = sanitize_public_report_identity(report)
+    if viewer_is_authenticated:
+        return sanitized
+
+    if sanitized.get("latitude") is not None:
+        sanitized["latitude"] = round(float(sanitized["latitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
+    if sanitized.get("longitude") is not None:
+        sanitized["longitude"] = round(float(sanitized["longitude"]), PUBLIC_REPORT_COORDINATE_PRECISION)
+
+    sanitized["photo_url"] = None
+    sanitized.pop("user_id", None)
     return sanitized
 
 
@@ -1735,6 +1758,7 @@ async def apply_current_public_report_ranks(reports: list[dict]) -> list[dict]:
 
 @api_router.get("/reports")
 async def get_reports(
+    request: Request,
     municipality: Optional[str] = None,
     category: Optional[str] = None,
     freshness: Optional[str] = None,
@@ -1751,6 +1775,9 @@ async def get_reports(
     if confirmed_only:
         query["status"] = "verified"
 
+    viewer = await get_current_user(request)
+    viewer_is_authenticated = bool(viewer)
+
     reports = await db.reports.find(query, {
         "_id": 0, "id": 1, "latitude": 1, "longitude": 1, "category": 1,
         "status": 1, "created_at": 1, "refreshed_at": 1, "upvotes": 1, "downvotes": 1,
@@ -1762,7 +1789,7 @@ async def get_reports(
 
     # Add freshness labels and confidence scores
     for index, report in enumerate(reports):
-        r = sanitize_public_report_identity(report)
+        r = apply_public_report_privacy(report, viewer_is_authenticated)
         r["freshness"] = get_freshness_label(r.get("created_at", ""), r.get("refreshed_at"))
         r["confidence"] = calc_confidence_score(r)
         r["is_premium_report"] = r.get("contributor_rank") is not None
@@ -1775,12 +1802,14 @@ async def get_reports(
     return reports
 
 @api_router.get("/reports/{report_id}")
-async def get_report(report_id: str):
+async def get_report(report_id: str, request: Request):
+    viewer = await get_current_user(request)
+    viewer_is_authenticated = bool(viewer)
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     [report] = await apply_current_public_report_ranks([report])
-    report = sanitize_public_report_identity(report)
+    report = apply_public_report_privacy(report, viewer_is_authenticated)
     report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)
     report["is_premium_report"] = report.get("contributor_rank") is not None
@@ -4834,34 +4863,79 @@ app.include_router(api_router)
 # We set Vary: Origin to signal the proxy not to cache/override,
 # and include our headers so they take precedence where possible.
 
+def _parse_additional_allowed_origins() -> set[str]:
+    raw = os.environ.get("ADDITIONAL_ALLOWED_ORIGINS", "")
+    return {
+        origin.strip().rstrip("/")
+        for origin in raw.split(",")
+        if origin.strip()
+    }
+
+
+def _normalize_origin_value(value: str) -> str:
+    parsed = urlparse((value or "").strip())
+    if not parsed.scheme or not parsed.netloc:
+        return ""
+    return f"{parsed.scheme.lower()}://{parsed.netloc.lower()}".rstrip("/")
+
+
 ALLOWED_ORIGINS = {
     "http://localhost:3000",
     "http://localhost",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1",
     "https://caca-radar.emergent.host",
     "https://cacaradar.es",
+    "https://www.cacaradar.es",
     "capacitor://localhost",
     "ionic://localhost",
-}
-ALLOWED_ORIGIN_REGEX = re.compile(r"https://.*\.emergentagent\.com")
+} | _parse_additional_allowed_origins()
+ALLOWED_BROWSER_ORIGINS = {origin for origin in ALLOWED_ORIGINS if origin.startswith("http://") or origin.startswith("https://")}
+ALLOWED_CORS_HEADERS = "Authorization, Content-Type, X-App-Version, X-App-Environment, X-Platform, X-Native-App"
+CSRF_PROTECTED_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+
+def is_allowed_origin(origin: str) -> bool:
+    return origin in ALLOWED_ORIGINS
+
+
+def resolve_browser_origin(request: Request) -> str:
+    origin = _normalize_origin_value(request.headers.get("origin", ""))
+    if origin:
+        return origin
+    return _normalize_origin_value(request.headers.get("referer", ""))
+
+
+def requires_browser_origin_check(request: Request) -> bool:
+    if request.method.upper() not in CSRF_PROTECTED_METHODS:
+        return False
+    if is_explicit_native_app_request(request):
+        return False
+    return bool(request.cookies.get("access_token") or request.cookies.get("refresh_token"))
 
 @app.middleware("http")
 async def cors_middleware(request: Request, call_next):
-    origin = request.headers.get("origin", "")
-    is_allowed = origin in ALLOWED_ORIGINS or (origin and ALLOWED_ORIGIN_REGEX.fullmatch(origin))
+    origin = request.headers.get("origin", "").rstrip("/")
+    is_allowed = is_allowed_origin(origin)
+
+    if requires_browser_origin_check(request):
+        browser_origin = resolve_browser_origin(request)
+        if not browser_origin or browser_origin not in ALLOWED_BROWSER_ORIGINS:
+            return JSONResponse(status_code=403, content={"detail": "Origen no permitido"})
 
     # Handle preflight OPTIONS
     if request.method == "OPTIONS":
+        if origin and not is_allowed:
+            return Response(status_code=403, headers={"Vary": "Origin"})
         headers = {
             "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH",
-            "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+            "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", ALLOWED_CORS_HEADERS),
             "Access-Control-Max-Age": "600",
             "Vary": "Origin",
         }
         if is_allowed and origin:
             headers["Access-Control-Allow-Origin"] = origin
             headers["Access-Control-Allow-Credentials"] = "true"
-        else:
-            headers["Access-Control-Allow-Origin"] = "*"
         return Response(status_code=200, headers=headers)
 
     response = await call_next(request)
@@ -4870,11 +4944,9 @@ async def cors_middleware(request: Request, call_next):
     if is_allowed and origin:
         response.headers["Access-Control-Allow-Origin"] = origin
         response.headers["Access-Control-Allow-Credentials"] = "true"
-    else:
-        response.headers["Access-Control-Allow-Origin"] = "*"
     response.headers["Vary"] = "Origin"
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD, PATCH"
-    response.headers["Access-Control-Allow-Headers"] = "*"
+    response.headers["Access-Control-Allow-Headers"] = ALLOWED_CORS_HEADERS
 
     return response
 
@@ -4920,7 +4992,7 @@ def env_flag(name: str) -> bool:
 
 
 def startup_seeding_enabled() -> bool:
-    return not is_production_env() or env_flag("ENABLE_STARTUP_SEED_USERS")
+    return not is_production_env()
 
 
 def credentials_report_enabled() -> bool:
@@ -4931,12 +5003,7 @@ def generated_seed_password(label: str) -> str:
     return f"{label}-{secrets.token_urlsafe(18)}"
 
 
-async def seed_users():
-    """Create admin, review, and demo municipality accounts if explicitly enabled."""
-    if not startup_seeding_enabled():
-        logger.info("Startup user seeding skipped for this environment")
-        return None
-
+async def provision_privileged_accounts() -> dict | None:
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
     admin_password = os.environ.get("ADMIN_PASSWORD") or (
         generated_seed_password("admin") if not is_production_env() else None
@@ -5036,6 +5103,14 @@ async def seed_users():
         "review_password": review_password,
         "review_username": review_username,
     }
+
+
+async def seed_users():
+    """Create admin, review, and demo municipality accounts in non-production environments."""
+    if not startup_seeding_enabled():
+        logger.info("Startup user seeding skipped for this environment")
+        return None
+    return await provision_privileged_accounts()
 
 async def run_maintenance():
     """Archive old reports, deactivate expired subscriptions, recalculate ranks."""

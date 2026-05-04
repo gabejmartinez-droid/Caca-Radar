@@ -350,6 +350,9 @@ class UserRegister(BaseModel):
     password: str
     name: Optional[str] = None
     username: str
+    terms_accepted: bool = False
+    privacy_accepted: bool = False
+    age_confirmed: bool = False
 
 class UserLogin(BaseModel):
     email: EmailStr

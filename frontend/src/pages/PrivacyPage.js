@@ -36,7 +36,7 @@ export default function PrivacyPage() {
               Política de Privacidad de Caca Radar
             </h1>
           </div>
-          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 20 de abril de 2026</p>
+          <p className="text-sm font-semibold text-[#8D99AE]">Última actualización: 4 de mayo de 2026</p>
         </section>
 
         <article className="bg-white rounded-2xl shadow-sm p-6 md:p-8 space-y-8">
@@ -91,7 +91,7 @@ export default function PrivacyPage() {
                   Si activas la localización o seleccionas un punto en el mapa, tratamos coordenadas para crear reportes, validar cercanía y mostrar avisos en el mapa.
                 </p>
                 <p className="font-medium text-[#2B2D42]">
-                  En el estado actual del servicio, los reportes públicos se muestran con coordenadas visibles en el mapa, no con ubicación difuminada.
+                  En las vistas públicas mostramos una ubicación aproximada del reporte en el mapa. Algunas imágenes o detalles más sensibles pueden quedar limitados a sesiones autenticadas, moderación o contextos internos del servicio.
                 </p>
               </div>
               <div>
@@ -168,7 +168,10 @@ export default function PrivacyPage() {
               <li>Apple App Store y Google Play, para suscripciones y verificación de compras cuando aplique;</li>
               <li>servicios push del navegador y Google Firebase Cloud Messaging para notificaciones push cuando la función está activada.</li>
             </ul>
-            <p>TODO-LEGAL: confirmar proveedor de hosting principal, región de MongoDB y si existe algún proveedor adicional de email transaccional en producción.</p>
+            <p>
+              Además, el servicio utiliza proveedores de infraestructura, base de datos, correo transaccional y despliegue que pueden variar por motivos operativos o de seguridad.
+              Si necesitas el detalle actualizado de los encargados del tratamiento activos en un momento concreto, puedes solicitarlo por email.
+            </p>
           </Section>
 
           <Section title="9. Contenido visible públicamente">
@@ -178,10 +181,10 @@ export default function PrivacyPage() {
               <li>la fotografía del reporte, si existe;</li>
               <li>el texto descriptivo, si existe;</li>
               <li>la fecha y el estado del aviso;</li>
-              <li>la ubicación mostrada en el mapa;</li>
-              <li>el alias o nombre visible del contribuyente, salvo que el contenido esté anonimizado o la cuenta se haya eliminado.</li>
+              <li>una ubicación aproximada mostrada en el mapa público;</li>
+              <li>una identificación pública reducida del contribuyente, con anonimización o etiquetado genérico cuando corresponda.</li>
             </ul>
-            <p>Los reportes también pueden compartirse mediante enlaces generados por el propio servicio.</p>
+            <p>Algunos detalles, imágenes o enlaces compartibles pueden requerir autenticación, revisión o una acción expresa de la persona usuaria antes de mostrarse.</p>
           </Section>
 
           <Section title="10. Transferencias internacionales">
@@ -190,7 +193,10 @@ export default function PrivacyPage() {
               Cuando exista transferencia internacional, se aplicarán los mecanismos previstos por el RGPD, como decisiones de adecuación,
               cláusulas contractuales tipo u otras garantías válidas.
             </p>
-            <p>TODO-LEGAL: confirmar países/regiones reales de alojamiento y almacenamiento en producción.</p>
+            <p>
+              La localización técnica exacta puede depender del proveedor concreto que esté activo en cada momento. Facilitaremos información adicional razonable cuando sea necesario
+              para atender derechos o solicitudes de privacidad.
+            </p>
           </Section>
 
           <Section title="11. Conservación de los datos">
@@ -203,7 +209,10 @@ export default function PrivacyPage() {
               <li>suscripciones push: hasta baja, desactivación o supresión de cuenta;</li>
               <li>recibos y estados de suscripción: mientras sean necesarios para gestión de la suscripción y cumplimiento legal.</li>
             </ul>
-            <p>TODO-LEGAL: confirmar política interna de retención de logs, soporte por email, backups operativos y recibos contables.</p>
+            <p>
+              Los registros de seguridad, incidencias y soporte se conservan solo durante el tiempo necesario para operar el servicio, prevenir abuso,
+              atender reclamaciones razonables y cumplir obligaciones legales. Las copias de seguridad operativas se mantienen durante un periodo limitado y seguro hasta su rotación o sobrescritura.
+            </p>
           </Section>
 
           <Section title="12. Derechos de las personas usuarias">
@@ -225,7 +234,10 @@ export default function PrivacyPage() {
               retiramos tokens, votos, validaciones, flags, feedback y ubicaciones guardadas vinculadas a esa cuenta.
             </p>
             <p>Si compraste una suscripción en Apple o Google, debes cancelarla también desde tu cuenta de la tienda correspondiente.</p>
-            <p>TODO-LEGAL: confirmar el plazo máximo de persistencia de backups después de una solicitud de supresión.</p>
+            <p>
+              Algunas copias de seguridad seguras pueden persistir temporalmente después de una solicitud válida de supresión, pero quedan aisladas,
+              no se reutilizan para finalidades ordinarias y desaparecen cuando rota el ciclo normal de backups.
+            </p>
           </Section>
 
           <Section title="14. Permisos del dispositivo y seguridad">

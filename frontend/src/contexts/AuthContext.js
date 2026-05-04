@@ -1,7 +1,15 @@
 import { createContext, useContext, useState, useEffect, useCallback, useMemo } from "react";
 import axios from "axios";
 import { API, APP_ENVIRONMENT, APP_VERSION } from "../config";
-import { isCapacitorNative, initializeTokens, setTokens, getAccessToken, getRefreshToken, clearTokens } from "../tokenManager";
+import {
+  isCapacitorNative,
+  initializeTokens,
+  setTokens,
+  getAccessToken,
+  clearTokens,
+  bootstrapNativeSessionFromCookies,
+  refreshNativeAccessToken,
+} from "../tokenManager";
 import { disableGoogleAutoSelect } from "../utils/googleIdentity";
 import { signOutGoogleNative } from "../utils/googleNative";
 import { signInWithAppleNative } from "../utils/appleNative";
@@ -42,11 +50,9 @@ axios.interceptors.response.use(
   (res) => res,
   async (error) => {
     const original = error.config;
-    const nativeRefreshToken = isCapacitorNative() ? getRefreshToken() : null;
     if (
       error.response?.status === 401 &&
       !original._retry &&
-      (!isCapacitorNative() || !!nativeRefreshToken) &&
       !original.url?.includes("/auth/login") &&
       !original.url?.includes("/auth/register") &&
       !original.url?.includes("/auth/google/login") &&
@@ -65,14 +71,22 @@ axios.interceptors.response.use(
 
       isRefreshing = true;
       try {
-        const refreshPayload = isCapacitorNative()
-          ? { refresh_token: nativeRefreshToken }
-          : {};
-        const { data } = await axios.post(`${API}/auth/refresh`, refreshPayload, {
-          withCredentials: !isCapacitorNative(),
-        });
-        if (data.access_token) {
-          await setTokens(data.access_token, getRefreshToken());
+        if (isCapacitorNative()) {
+          let nextAccessToken = await refreshNativeAccessToken();
+          if (!nextAccessToken) {
+            await bootstrapNativeSessionFromCookies();
+            nextAccessToken = await refreshNativeAccessToken();
+          }
+          if (!nextAccessToken) {
+            throw error;
+          }
+        } else {
+          const { data } = await axios.post(`${API}/auth/refresh`, {}, {
+            withCredentials: true,
+          });
+          if (data.access_token) {
+            await setTokens(data.access_token);
+          }
         }
         refreshQueue.forEach((p) => p.resolve());
         refreshQueue = [];
@@ -80,9 +94,7 @@ axios.interceptors.response.use(
       } catch {
         refreshQueue.forEach((p) => p.reject(error));
         refreshQueue = [];
-        if (!isCapacitorNative() || nativeRefreshToken) {
-          await clearTokens();
-        }
+        await clearTokens();
         return Promise.reject(error);
       } finally {
         isRefreshing = false;
@@ -98,20 +110,11 @@ export function AuthProvider({ children }) {
 
   const ensureNativeSessionTokens = useCallback(async () => {
     if (!isCapacitorNative()) return;
-    if (getAccessToken() && getRefreshToken()) return;
-    const { data } = await axios.post(
-      `${API}/auth/native/session-tokens`,
-      {},
-      {
-        withCredentials: true,
-        headers: {
-          "X-Platform": getCurrentPlatform(),
-          "X-Native-App": "1",
-        },
-      },
-    );
-    if (data?.access_token && data?.refresh_token) {
-      await setTokens(data.access_token, data.refresh_token);
+    await bootstrapNativeSessionFromCookies();
+    if (getAccessToken()) return;
+    const refreshedAccess = await refreshNativeAccessToken();
+    if (refreshedAccess) {
+      await setTokens(refreshedAccess);
     }
   }, []);
 
@@ -155,12 +158,15 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const { data } = await axios.post(`${API}/auth/login`, { email, password }, {
-      withCredentials: !isCapacitorNative(),
+      withCredentials: true,
     });
     // Store tokens for native
     if (data.access_token) {
-      await setTokens(data.access_token, data.refresh_token);
+      await setTokens(data.access_token);
     } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
+    }
+    if (isCapacitorNative()) {
       await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
@@ -168,13 +174,21 @@ export function AuthProvider({ children }) {
     return data;
   }, [ensureNativeSessionTokens, syncUserLanguage]);
 
-  const register = useCallback(async (email, password, username) => {
-    const { data } = await axios.post(`${API}/auth/register`, { email, password, username }, {
-      withCredentials: !isCapacitorNative(),
+  const register = useCallback(async (email, password, username, legalAcceptance = {}) => {
+    const { data } = await axios.post(`${API}/auth/register`, {
+      email,
+      password,
+      username,
+      ...legalAcceptance,
+    }, {
+      withCredentials: true,
     });
     if (data.access_token) {
-      await setTokens(data.access_token, data.refresh_token);
+      await setTokens(data.access_token);
     } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
+    }
+    if (isCapacitorNative()) {
       await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
@@ -186,11 +200,14 @@ export function AuthProvider({ children }) {
     const { data } = await axios.post(
       `${API}/auth/google/login`,
       { credential },
-      { withCredentials: !isCapacitorNative() },
+      { withCredentials: true },
     );
     if (data.access_token) {
-      await setTokens(data.access_token, data.refresh_token);
+      await setTokens(data.access_token);
     } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
+    }
+    if (isCapacitorNative()) {
       await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
@@ -215,11 +232,14 @@ export function AuthProvider({ children }) {
         family_name: identity.familyName,
         user: identity.user,
       },
-      { withCredentials: !isCapacitorNative() },
+      { withCredentials: true },
     );
     if (data.access_token) {
-      await setTokens(data.access_token, data.refresh_token);
+      await setTokens(data.access_token);
     } else if (isCapacitorNative()) {
+      await ensureNativeSessionTokens();
+    }
+    if (isCapacitorNative()) {
       await ensureNativeSessionTokens();
     }
     syncUserLanguage(data);
@@ -263,7 +283,7 @@ export function AuthProvider({ children }) {
   const logout = useCallback(async () => {
     try {
       await axios.post(`${API}/auth/logout`, {}, {
-        withCredentials: !isCapacitorNative(),
+        withCredentials: true,
       });
     } catch { /* ignore */ }
     await clearTokens();

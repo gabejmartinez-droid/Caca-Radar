@@ -7,17 +7,16 @@ const isNative = typeof window !== "undefined" && (
 );
 
 let accessToken = null;
-let refreshToken = null;
 let tokensInitialized = !isNative;
 let tokenInitializationPromise = null;
 
-async function persistNativeTokens() {
+async function persistNativeTokens(refreshTokenValue = undefined) {
   if (!isNative) return;
   const { syncCompanionAuthState, clearCompanionAuthState } = await import("./utils/companionBridge");
-  if (accessToken || refreshToken) {
+  if (accessToken || refreshTokenValue !== undefined) {
     await syncCompanionAuthState({
       accessToken,
-      refreshToken,
+      refreshToken: refreshTokenValue,
       apiBaseUrl: API,
     });
     return;
@@ -31,7 +30,7 @@ export function isCapacitorNative() {
 
 export async function initializeTokens() {
   if (!isNative || tokensInitialized) {
-    return { accessToken, refreshToken };
+    return { accessToken };
   }
   if (tokenInitializationPromise) {
     return tokenInitializationPromise;
@@ -41,15 +40,13 @@ export async function initializeTokens() {
     .then(({ getCompanionAuthState }) => getCompanionAuthState())
     .then((state) => {
       accessToken = state?.accessToken || null;
-      refreshToken = state?.refreshToken || null;
       tokensInitialized = true;
-      return { accessToken, refreshToken };
+      return { accessToken };
     })
     .catch(() => {
       accessToken = null;
-      refreshToken = null;
       tokensInitialized = true;
-      return { accessToken, refreshToken };
+      return { accessToken };
     })
     .finally(() => {
       tokenInitializationPromise = null;
@@ -59,23 +56,41 @@ export async function initializeTokens() {
 }
 
 export async function setTokens(access, refresh) {
+  if (!isNative) {
+    accessToken = null;
+    tokensInitialized = true;
+    return;
+  }
   accessToken = access || null;
-  refreshToken = refresh || null;
   tokensInitialized = true;
-  await persistNativeTokens();
+  await persistNativeTokens(refresh);
 }
 
 export function getAccessToken() {
   return accessToken;
 }
 
-export function getRefreshToken() {
-  return refreshToken;
+export async function bootstrapNativeSessionFromCookies() {
+  if (!isNative) return { accessToken: accessToken || "", synced: false };
+  const { bootstrapNativeSessionFromCookies: bootstrapSession } = await import("./utils/companionBridge");
+  const state = await bootstrapSession({ apiBaseUrl: API });
+  accessToken = state?.accessToken || accessToken || null;
+  tokensInitialized = true;
+  return state;
+}
+
+export async function refreshNativeAccessToken() {
+  if (!isNative) return "";
+  const { refreshNativeAccessToken: refreshAccessToken } = await import("./utils/companionBridge");
+  const state = await refreshAccessToken({ apiBaseUrl: API });
+  accessToken = state?.accessToken || null;
+  tokensInitialized = true;
+  return accessToken;
 }
 
 export async function clearTokens() {
   accessToken = null;
-  refreshToken = null;
   tokensInitialized = true;
+  if (!isNative) return;
   await persistNativeTokens();
 }

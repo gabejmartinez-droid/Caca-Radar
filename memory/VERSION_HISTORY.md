@@ -4,6 +4,20 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ## Released
 
+### 2026-05-04 — Pending
+
+- Web: `1.1.50-web.1`
+- iOS: `1.1.64 (66)`
+- Android: `1.1.67 (69)`
+- Backend: `1.1.15-api.1`
+
+Changes:
+- Tighten browser auth origins and cookie-backed request protections.
+- Keep native refresh tokens out of normal JS-visible runtime state.
+- Record registration assent timestamps and age/authorization confirmation.
+- Reduce anonymous public report exposure and remove unresolved legal TODO placeholders.
+- Move privileged account provisioning out of automatic production startup.
+
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
 - Web: `1.1.5-web.1`
