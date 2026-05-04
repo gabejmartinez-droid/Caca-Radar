@@ -33,11 +33,12 @@ function CityPreviewMap({ summary, t }) {
     summary.map_bounds.south === summary.map_bounds.north &&
     summary.map_bounds.west === summary.map_bounds.east;
   const center = [summary.map_bounds.center_lat, summary.map_bounds.center_lng];
+  const boundsPadding = summary.barrio ? [8, 8] : [20, 20];
 
   return (
     <div className="h-[220px] rounded-2xl overflow-hidden shadow-sm border border-[#8D99AE]/10" data-testid="city-report-map">
       <MapContainer
-        {...(isSinglePoint ? { center, zoom: 14 } : { bounds, boundsOptions: { padding: [20, 20] } })}
+        {...(isSinglePoint ? { center, zoom: 14 } : { bounds, boundsOptions: { padding: boundsPadding } })}
         className="h-full w-full"
         zoomControl={false}
         scrollWheelZoom={false}
