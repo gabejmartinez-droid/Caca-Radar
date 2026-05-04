@@ -514,40 +514,6 @@ export default function MapPage() {
     finally { setLoading(false); }
   }, [user, navigate, getFreshLocation, userLocation, description, photoFile, fetchReports, t, clearSelectedPhoto, photoModerationNotice]);
 
-  const handleVote = async (voteType) => {
-    if (!user) { toast.error(t("mapUi.registerToVote")); navigate("/register"); return; }
-    if (!selectedReport) return;
-    setLoading(true);
-    try {
-      let location;
-      if (canBypassClearingProximity && typeof selectedReport.latitude === "number" && typeof selectedReport.longitude === "number") {
-        try {
-          location = await getActionLocation();
-        } catch {
-          location = { lat: selectedReport.latitude, lng: selectedReport.longitude };
-        }
-      } else {
-        location = await getActionLocation();
-      }
-      await axios.post(
-        `${API}/reports/${selectedReport.id}/vote`,
-        { vote_type: voteType, latitude: location.lat, longitude: location.lng },
-        { withCredentials: true }
-      );
-      setMyVote(voteType);
-      toast.success(t("mapUi.voteSuccess.noLongerHere"));
-      fetchReports();
-      await loadSelectedReportContext(selectedReport.id);
-    } catch (error) {
-      if (!error?.response && !userLocation && !canBypassClearingProximity) {
-        toast.error(tf("mapUi.locationRequiredForAction", { meters: ACTION_PROXIMITY_METERS }));
-      } else {
-        toast.error(getActionErrorMessage(error, "mapUi.voteError"));
-      }
-    }
-    finally { setLoading(false); }
-  };
-
   const handleFlag = async () => {
     if (!selectedReport || !selectedFlagReason) return;
     setLoading(true);
@@ -561,7 +527,8 @@ export default function MapPage() {
     finally { setLoading(false); }
   };
 
-  const handleReportVote = async (voteType) => {
+  const handleReportVote = async (voteType, options = {}) => {
+    const { resolvedAction = false } = options;
     if (!selectedReport) return;
     if (!user) {
       toast.error(t("mapUi.registerToVote"));
@@ -584,12 +551,21 @@ export default function MapPage() {
       }
       const voteResponse = await axios.post(`${API}/reports/${reportId}/${endpoint}`, payload, { withCredentials: true });
       setMyReportVote(voteType);
+      if (resolvedAction && voteType === "downvote") {
+        setMyVote("cleaned");
+      }
       if (voteType === "downvote" && voteResponse.data?.cleared) {
         toast.success(t("mapUi.voteSuccess.noLongerHere"));
         await fetchReports();
         closeDetailsDrawer();
       } else {
-        toast.success(voteType === "upvote" ? t("mapUi.voteSuccess.upvote") : t("mapUi.voteSuccess.downvote"));
+        toast.success(
+          voteType === "upvote"
+            ? t("mapUi.voteSuccess.upvote")
+            : resolvedAction
+              ? t("mapUi.voteSuccess.noLongerHere")
+              : t("mapUi.voteSuccess.downvote")
+        );
         await fetchReports();
         try {
           await loadSelectedReportContext(reportId);
@@ -685,6 +661,8 @@ export default function MapPage() {
   })();
   const currentUserId = user?._id || user?.id || null;
   const isOwnSelectedReport = Boolean(selectedReport?.user_id && currentUserId && selectedReport.user_id === currentUserId);
+  const hasLegacyCleanedVote = myVote === "cleaned";
+  const hasMarkedResolved = hasLegacyCleanedVote || myReportVote === "downvote";
   const reportVoteStatusLabel = myReportVote === "upvote" ? t("mapUi.helpful") : t("mapUi.notHelpful");
   const voteUiCopy = language === "en"
     ? {
@@ -1248,10 +1226,10 @@ export default function MapPage() {
                 </div>
               )}
 
-              {!myVote ? (
-                <Button type="button" onClick={() => handleVote("cleaned")} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>
+              {!hasMarkedResolved ? (
+                <Button type="button" onClick={() => handleReportVote("downvote", { resolvedAction: true })} disabled={loading} className="w-full mb-2 bg-[#66BB6A] hover:bg-[#4CAF50] text-white py-3 rounded-xl" data-testid="vote-cleaned-btn"><CheckCircle className="w-4 h-4 mr-2" />{t("mapUi.noLongerHere")}</Button>
               ) : (
-                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
+                <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {t("mapUi.noLongerHere")}</div>
               )}
 
               <div className="grid grid-cols-1 gap-2">

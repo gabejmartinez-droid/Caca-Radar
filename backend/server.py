@@ -2320,9 +2320,6 @@ async def vote_report(report_id: str, data: VoteCreate, request: Request, respon
     if not can_clear_report_without_proximity(user, report):
         distance_meters = require_report_proximity(report, data.latitude, data.longitude)
 
-    if vote_type == "upvote" and report.get("user_id") == user_id:
-        raise HTTPException(status_code=400, detail="No puedes votar tu propio reporte")
-    
     existing_vote = await db.votes.find_one({"report_id": report_id, "user_id": user_id})
     if existing_vote:
         raise HTTPException(status_code=400, detail="Ya has votado en este reporte")
@@ -2458,7 +2455,7 @@ async def _handle_report_vote(report_id: str, vote_type: str, request: Request, 
     anon_id = get_anonymous_id(request)
     user_id = user["_id"] if user else anon_id
 
-    if report.get("user_id") == user_id:
+    if vote_type == "upvote" and report.get("user_id") == user_id:
         raise HTTPException(status_code=400, detail="No puedes votar tu propio reporte")
 
     # Check existing vote
