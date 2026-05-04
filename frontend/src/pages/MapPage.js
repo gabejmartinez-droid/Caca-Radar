@@ -452,6 +452,10 @@ export default function MapPage() {
     });
   }, []);
 
+  const photoModerationNotice = language === "en"
+    ? "Images are shown after a moderator reviews them."
+    : "Las imágenes se mostrarán después de que un moderador las revise.";
+
   const handlePhotoSelect = async (e) => {
     const file = e.target.files?.[0];
     e.target.value = "";
@@ -724,10 +728,6 @@ export default function MapPage() {
       : (language === "en"
           ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
           : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
-  const photoModerationNotice = language === "en"
-    ? "Images are shown after a moderator reviews them."
-    : "Las imágenes se mostrarán después de que un moderador las revise.";
-
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
     { key: "ios", label: "iOS", value: versionSummary.ios },

@@ -6,9 +6,9 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.67-web.1`
-- iOS: `1.1.84 (86)`
-- Android: `1.1.84 (86)`
+- Web: `1.1.68-web.1`
+- iOS: `1.1.85 (87)`
+- Android: `1.1.85 (87)`
 - Backend: `1.1.21-api.1`
 
 Changes:
@@ -17,6 +17,7 @@ Changes:
 - Show all pending report flags, including spam, in the admin moderation dashboard.
 - Add admin photo approvals, hide pending report photos until approved, and remove reports when a photo is rejected.
 - Switch the admin dashboard interface copy to English by default.
+- Fix a `MapPage` temporal dead-zone crash where the photo moderation notice string was referenced before it was declared, causing a white screen on production page load.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
