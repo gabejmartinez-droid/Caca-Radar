@@ -6,11 +6,12 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { useAuth } from "../contexts/AuthContext";
 import { formatTranslation } from "../utils/ranks";
 import { isWithinSpain } from "../utils/spainLocation";
+import { SPAIN_LOCATION_GATE_ENABLED } from "../config";
 
 export default function SpainLocationGate({ children }) {
   const { t } = useLanguage();
   const { user, loading } = useAuth();
-  const [status, setStatus] = useState("checking");
+  const [status, setStatus] = useState(() => (SPAIN_LOCATION_GATE_ENABLED ? "checking" : "allowed"));
   const [errorKey, setErrorKey] = useState("");
 
   const checkLocation = useCallback(() => {
@@ -52,6 +53,11 @@ export default function SpainLocationGate({ children }) {
   }, []);
 
   useEffect(() => {
+    if (!SPAIN_LOCATION_GATE_ENABLED) {
+      setStatus("allowed");
+      setErrorKey("");
+      return;
+    }
     if (loading) return;
     if (user?.geo_review_exempt) {
       setStatus("allowed");
@@ -61,7 +67,7 @@ export default function SpainLocationGate({ children }) {
     checkLocation();
   }, [checkLocation, loading, user]);
 
-  if (status === "allowed") {
+  if (!SPAIN_LOCATION_GATE_ENABLED || status === "allowed") {
     return children;
   }
 

@@ -58,6 +58,22 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
+- Web `1.1.54-web.1`
+- iOS `1.1.68 (70)`
+- Android `1.1.71 (73)`
+- Backend `1.1.16-api.1`
+
+Changes:
+- Temporarily disabled the Spain-only GPS gate across the shared app so App Review can access the main product flows without being blocked by the location restriction.
+- Moved the gate behind a single frontend configuration flag so it can be re-enabled later by setting `REACT_APP_ENABLE_SPAIN_LOCATION_GATE=true`.
+
+Verification:
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-04 — Pending
+
+Impacted environments:
 - Web `1.1.53-web.1`
 - iOS `1.1.67 (69)`
 - Android `1.1.70 (72)`
