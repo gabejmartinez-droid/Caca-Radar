@@ -1,8 +1,8 @@
 {
   "web": "1.1.55-web.1",
   "ios": {
-    "version": "1.1.69",
-    "build": "71"
+    "version": "1.1.70",
+    "build": "72"
   },
   "android": {
     "version": "1.1.72",

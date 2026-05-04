@@ -59,6 +59,22 @@ Production notes:
 
 Impacted environments:
 - Web `1.1.55-web.1`
+- iOS `1.1.70 (72)`
+- Android `1.1.72 (74)`
+- Backend `1.1.16-api.1`
+
+Changes:
+- Fixed the Apple Watch companion bridge build by importing `CoreLocation` in the watch session bridge where the new raced phone-coordinate helper returns `CLLocationCoordinate2D`.
+- Updated the Xcode Cloud pre-`xcodebuild` scripts to disable signing only for Debug configurations inside the CI workspace, so the generic unsigned `xcodebuild build` step can reach real compile errors without disturbing Release/archive signing.
+
+Verification:
+- Local `xcodebuild build` with Debug signing disabled now gets past the old signing failure and the watch companion compile error is resolved.
+- A full local unsigned build is still noisy under sandboxed package/cache restrictions, but no further Swift compile error surfaced after the import fix.
+
+### 2026-05-04 — Pending
+
+Impacted environments:
+- Web `1.1.55-web.1`
 - iOS `1.1.69 (71)`
 - Android `1.1.72 (74)`
 - Backend `1.1.16-api.1`
