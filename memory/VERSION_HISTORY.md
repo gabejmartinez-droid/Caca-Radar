@@ -6,9 +6,9 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.66-web.1`
-- iOS: `1.1.83 (85)`
-- Android: `1.1.83 (85)`
+- Web: `1.1.67-web.1`
+- iOS: `1.1.84 (86)`
+- Android: `1.1.84 (86)`
 - Backend: `1.1.21-api.1`
 
 Changes:
@@ -16,6 +16,7 @@ Changes:
 - Remove the municipal-operator advisory from the report details window.
 - Show all pending report flags, including spam, in the admin moderation dashboard.
 - Add admin photo approvals, hide pending report photos until approved, and remove reports when a photo is rejected.
+- Switch the admin dashboard interface copy to English by default.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

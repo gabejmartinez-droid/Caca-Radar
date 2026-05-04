@@ -13,13 +13,13 @@ import axios from "axios";
 import { API } from "../config";
 
 const FLAG_REASON_LABELS = {
-  license_plate: "Matrícula visible",
-  face: "Cara visible",
-  name: "Nombre visible",
-  personal_info: "Info personal",
-  inappropriate: "Contenido inapropiado",
-  spam: "Spam / Falso",
-  other: "Otro",
+  license_plate: "Visible license plate",
+  face: "Visible face",
+  name: "Visible name",
+  personal_info: "Personal info",
+  inappropriate: "Inappropriate content",
+  spam: "Spam / False",
+  other: "Other",
 };
 
 function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
@@ -38,10 +38,10 @@ function StatCard({ icon: Icon, label, value, sub, color = "#FF6B6B" }) {
 }
 
 function formatDateTime(value) {
-  if (!value) return "Nunca";
+  if (!value) return "Never";
   const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "Nunca";
-  return new Intl.DateTimeFormat("es-ES", {
+  if (Number.isNaN(date.getTime())) return "Never";
+  return new Intl.DateTimeFormat("en-GB", {
     dateStyle: "short",
     timeStyle: "short",
   }).format(date);
@@ -56,8 +56,8 @@ function PlatformBadge({ platform }) {
       : normalized === "web"
         ? { label: "Web", Icon: Globe, color: "#8D99AE", bg: "#8D99AE15" }
         : normalized === "native"
-          ? { label: "Nativo", Icon: MonitorSmartphone, color: "#FFA726", bg: "#FFA72615" }
-          : { label: "Desconocido", Icon: MonitorSmartphone, color: "#8D99AE", bg: "#8D99AE15" };
+          ? { label: "Native", Icon: MonitorSmartphone, color: "#FFA726", bg: "#FFA72615" }
+          : { label: "Unknown", Icon: MonitorSmartphone, color: "#8D99AE", bg: "#8D99AE15" };
 
   return (
     <span className="inline-flex items-center gap-1 rounded-full px-2 py-1 text-[10px] font-bold" style={{ color: config.color, backgroundColor: config.bg }}>
@@ -68,7 +68,7 @@ function PlatformBadge({ platform }) {
 }
 
 function municipalityLabel(municipality) {
-  if (!municipality) return "Selecciona un municipio";
+  if (!municipality) return "Select a municipality";
   return municipality.province
     ? `${municipality.municipality_name} · ${municipality.province}`
     : municipality.municipality_name;
@@ -111,7 +111,7 @@ export default function AdminDashboardPage() {
       if (err.response?.status === 401 || err.response?.status === 403) {
         navigate("/admin/login");
       } else {
-        toast.error("Error cargando datos");
+        toast.error("Could not load dashboard data");
       }
     } finally {
       setLoading(false);
@@ -136,7 +136,7 @@ export default function AdminDashboardPage() {
         }
         return next;
       });
-    } catch { toast.error("Error cargando usuarios"); }
+    } catch { toast.error("Could not load users"); }
   }, [userPage, userSearch]);
 
   const updateUserDraft = useCallback((userId, patch) => {
@@ -154,7 +154,7 @@ export default function AdminDashboardPage() {
     const draft = userDrafts[draftKey];
     if (!draft || !draftKey) return;
     if (draft.accountType === "municipal_worker" && !draft.municipalityName.trim()) {
-      toast.error("Asigna un municipio antes de guardar.");
+      toast.error("Assign a municipality before saving.");
       return;
     }
     setSavingUserId(draftKey);
@@ -186,9 +186,9 @@ export default function AdminDashboardPage() {
           municipalityProvince: data.user?.municipality_province || "",
         },
       }));
-      toast.success("Tipo de cuenta actualizado");
+      toast.success("Account type updated");
     } catch (error) {
-      toast.error(error.response?.data?.detail || "No pudimos actualizar el tipo de cuenta");
+      toast.error(error.response?.data?.detail || "Could not update the account type");
     } finally {
       setSavingUserId(null);
     }
@@ -199,7 +199,7 @@ export default function AdminDashboardPage() {
       const { data } = await axios.get(`${API}/admin/photo-violations`, { withCredentials: true });
       setViolations(data.violations);
       setViolationTotal(data.total);
-    } catch { toast.error("Error cargando violaciones"); }
+    } catch { toast.error("Could not load moderation reports"); }
   }, []);
 
   const fetchPhotoApprovals = useCallback(async () => {
@@ -217,7 +217,7 @@ export default function AdminDashboardPage() {
       if (error.response?.status === 401 || error.response?.status === 403) {
         navigate("/admin/login");
       } else {
-        toast.error("Error cargando aprobaciones de fotos");
+        toast.error("Could not load photo approvals");
       }
     } finally {
       setPhotoApprovalLoading(false);
@@ -230,7 +230,7 @@ export default function AdminDashboardPage() {
       setRecentReports(data.reports);
       setReportTotal(data.total);
     } catch {
-      toast.error("Error cargando reportes recientes");
+      toast.error("Could not load recent reports");
     }
   }, [reportPage]);
 
@@ -246,7 +246,7 @@ export default function AdminDashboardPage() {
         return options[0]?.municipality_name || "";
       });
     } catch {
-      toast.error("Error cargando dashboards municipales");
+      toast.error("Could not load municipality dashboards");
     }
   }, []);
 
@@ -269,7 +269,7 @@ export default function AdminDashboardPage() {
       if (err.response?.status === 401 || err.response?.status === 403) {
         navigate("/admin/login");
       } else {
-        toast.error(err.response?.data?.detail || "Error cargando el dashboard municipal");
+        toast.error(err.response?.data?.detail || "Could not load the municipality dashboard");
       }
     } finally {
       setMunicipalityLoading(false);
@@ -297,10 +297,10 @@ export default function AdminDashboardPage() {
   const handleModerate = async (reportId, action) => {
     try {
       await axios.post(`${API}/admin/moderate/${reportId}`, { action }, { withCredentials: true });
-      toast.success(`Reporte ${action === "hide" ? "ocultado" : action === "restore" ? "restaurado" : "flags descartados"}`);
+      toast.success(`Report ${action === "hide" ? "hidden" : action === "restore" ? "restored" : "flags dismissed"}`);
       fetchViolations();
       fetchDashboard();
-    } catch { toast.error("Error al moderar"); }
+    } catch { toast.error("Could not moderate the report"); }
   };
 
   const handleLogout = async () => {
@@ -325,7 +325,7 @@ export default function AdminDashboardPage() {
   const handlePhotoApprovalModeration = useCallback(async (action, ids = null) => {
     const reportIds = Array.isArray(ids) ? ids : selectedPhotoApprovalIds;
     if (!reportIds.length) {
-      toast.error("Selecciona al menos una foto");
+      toast.error("Select at least one photo");
       return;
     }
 
@@ -336,11 +336,11 @@ export default function AdminDashboardPage() {
         { action, report_ids: reportIds },
         { withCredentials: true }
       );
-      toast.success(data.message || (action === "approve" ? "Fotos aprobadas" : "Reportes eliminados"));
+      toast.success(data.message || (action === "approve" ? "Photos approved" : "Reports removed"));
       setSelectedPhotoApprovalIds((prev) => prev.filter((id) => !reportIds.includes(id)));
       await Promise.all([fetchPhotoApprovals(), fetchDashboard(), fetchRecentReports()]);
     } catch (error) {
-      toast.error(error.response?.data?.detail || "Error moderando fotos");
+      toast.error(error.response?.data?.detail || "Could not moderate the selected photos");
     } finally {
       setPhotoApprovalLoading(false);
     }
@@ -365,19 +365,19 @@ export default function AdminDashboardPage() {
           <span className="font-bold text-sm">Admin Panel</span>
         </div>
         <Button variant="ghost" size="sm" onClick={handleLogout} className="text-white/60 hover:text-white hover:bg-white/10" data-testid="admin-logout">
-          <LogOut className="w-4 h-4 mr-1" /> Salir
+          <LogOut className="w-4 h-4 mr-1" /> Sign out
         </Button>
       </div>
 
       {/* Tabs */}
       <div className="flex border-b border-[#8D99AE]/10 bg-white">
         {[
-          { id: "overview", label: "Resumen", icon: TrendingUp },
-          { id: "municipalities", label: "Municipios", icon: Building2 },
-          { id: "reports", label: "Reportes", icon: FileText },
-          { id: "users", label: "Usuarios", icon: Users },
-          { id: "photoApprovals", label: "Fotos", icon: Image },
-          { id: "violations", label: "Violaciones", icon: AlertTriangle },
+          { id: "overview", label: "Overview", icon: TrendingUp },
+          { id: "municipalities", label: "Municipalities", icon: Building2 },
+          { id: "reports", label: "Reports", icon: FileText },
+          { id: "users", label: "Users", icon: Users },
+          { id: "photoApprovals", label: "Photos", icon: Image },
+          { id: "violations", label: "Moderation", icon: AlertTriangle },
         ].map(({ id, label, icon: Icon }) => (
           <button
             key={id}
@@ -396,35 +396,35 @@ export default function AdminDashboardPage() {
         {tab === "overview" && d && (
           <>
             {/* User Stats */}
-            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Usuarios</h2>
+            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Users</h2>
             <div className="grid grid-cols-2 gap-3 mb-5">
-              <StatCard icon={Users} label="Total usuarios" value={d.users.total} sub={`+${d.users.new_7d} esta semana`} />
-              <StatCard icon={Users} label="Premium" value={d.users.premium} sub={`${d.users.conversion_rate}% conversión`} color="#66BB6A" />
-              <StatCard icon={Users} label="Gratuitos" value={d.users.free} />
-              <StatCard icon={TrendingUp} label="Nuevos (30d)" value={d.users.new_30d} color="#FFA726" />
+              <StatCard icon={Users} label="Total users" value={d.users.total} sub={`+${d.users.new_7d} this week`} />
+              <StatCard icon={Users} label="Premium" value={d.users.premium} sub={`${d.users.conversion_rate}% conversion`} color="#66BB6A" />
+              <StatCard icon={Users} label="Free" value={d.users.free} />
+              <StatCard icon={TrendingUp} label="New (30d)" value={d.users.new_30d} color="#FFA726" />
             </div>
 
             {/* Subscription Stats */}
-            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Suscripciones</h2>
+            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Subscriptions</h2>
             <div className="grid grid-cols-2 gap-3 mb-5">
-              <StatCard icon={DollarSign} label="Ingresos est./mes" value={`€${d.subscriptions.est_monthly_revenue}`} color="#66BB6A" />
-              <StatCard icon={Users} label="Mensuales" value={d.subscriptions.monthly} />
-              <StatCard icon={Users} label="Anuales" value={d.subscriptions.annual} />
-              <StatCard icon={Users} label="Municipios activos" value={d.subscriptions.municipality_active} sub={`de ${d.subscriptions.municipality_total} total`} color="#FFA726" />
+              <StatCard icon={DollarSign} label="Estimated monthly revenue" value={`€${d.subscriptions.est_monthly_revenue}`} color="#66BB6A" />
+              <StatCard icon={Users} label="Monthly" value={d.subscriptions.monthly} />
+              <StatCard icon={Users} label="Annual" value={d.subscriptions.annual} />
+              <StatCard icon={Users} label="Active municipalities" value={d.subscriptions.municipality_active} sub={`${d.subscriptions.municipality_total} total`} color="#FFA726" />
             </div>
 
             {/* Report Stats */}
-            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Reportes</h2>
+            <h2 className="text-sm font-bold text-[#2B2D42] mb-3">Reports</h2>
             <div className="grid grid-cols-2 gap-3 mb-3">
               <StatCard icon={FileText} label="Total" value={d.reports.total} />
-              <StatCard icon={Eye} label="Activos" value={d.reports.active} color="#66BB6A" />
-              <StatCard icon={AlertTriangle} label="Marcados" value={d.reports.flagged} color="#FF5252" />
-              <StatCard icon={FileText} label="Últimos 7d" value={d.reports.last_7d} sub={`${d.reports.last_30d} en 30d`} color="#FFA726" />
+              <StatCard icon={Eye} label="Active" value={d.reports.active} color="#66BB6A" />
+              <StatCard icon={AlertTriangle} label="Flagged" value={d.reports.flagged} color="#FF5252" />
+              <StatCard icon={FileText} label="Last 7d" value={d.reports.last_7d} sub={`${d.reports.last_30d} in 30d`} color="#FFA726" />
             </div>
             <div className="grid grid-cols-3 gap-3">
-              <StatCard icon={TrendingUp} label="Frescos" value={d.reports.fresh} sub="≤ 24h" color="#66BB6A" />
-              <StatCard icon={Clock3} label="Antiguos" value={d.reports.old} sub="1–7 días" color="#FFA726" />
-              <StatCard icon={Skull} label="Fósiles" value={d.reports.fossil} sub="> 7 días" color="#FF5252" />
+              <StatCard icon={TrendingUp} label="Fresh" value={d.reports.fresh} sub="≤ 24h" color="#66BB6A" />
+              <StatCard icon={Clock3} label="Aging" value={d.reports.old} sub="1–7 days" color="#FFA726" />
+              <StatCard icon={Skull} label="Stale" value={d.reports.fossil} sub="> 7 days" color="#FF5252" />
             </div>
           </>
         )}
@@ -434,9 +434,9 @@ export default function AdminDashboardPage() {
             <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
               <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
                 <div>
-                  <h2 className="text-base font-bold text-[#2B2D42]">Dashboards municipales</h2>
+                  <h2 className="text-base font-bold text-[#2B2D42]">Municipality dashboards</h2>
                   <p className="text-sm text-[#8D99AE]">
-                    Selecciona un municipio activo para ver su panel con el mismo alcance que tiene ese ayuntamiento.
+                    Select an active municipality to inspect the same dashboard that city staff can access.
                   </p>
                 </div>
                 <Button
@@ -447,13 +447,13 @@ export default function AdminDashboardPage() {
                     fetchMunicipalityDashboard();
                   }}
                 >
-                  <RefreshCw className="w-4 h-4 mr-2" /> Actualizar
+                  <RefreshCw className="w-4 h-4 mr-2" /> Refresh
                 </Button>
               </div>
 
               <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_180px]">
                 <div>
-                  <label className="text-xs font-bold text-[#8D99AE] mb-2 block">Municipio activo</label>
+                  <label className="text-xs font-bold text-[#8D99AE] mb-2 block">Active municipality</label>
                   <Select
                     value={selectedMunicipality}
                     onValueChange={(value) => {
@@ -464,7 +464,7 @@ export default function AdminDashboardPage() {
                     }}
                   >
                     <SelectTrigger className="bg-[#F8F9FA] border-0 h-11 rounded-xl">
-                      <SelectValue placeholder="Selecciona un municipio" />
+                      <SelectValue placeholder="Select a municipality" />
                     </SelectTrigger>
                     <SelectContent>
                       {municipalityDashboards.map((municipality) => (
@@ -476,7 +476,7 @@ export default function AdminDashboardPage() {
                   </Select>
                 </div>
                 <div className="bg-[#F8F9FA] rounded-xl px-4 py-3">
-                  <p className="text-xs font-bold text-[#8D99AE]">Dashboards activos</p>
+                  <p className="text-xs font-bold text-[#8D99AE]">Active dashboards</p>
                   <p className="text-2xl font-black text-[#2B2D42]">{municipalityDashboards.length}</p>
                 </div>
               </div>
@@ -485,8 +485,8 @@ export default function AdminDashboardPage() {
             {!municipalityDashboards.length && !municipalityLoading && (
               <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
                 <Building2 className="w-10 h-10 text-[#8D99AE] mx-auto mb-3" />
-                <p className="text-[#2B2D42] font-bold mb-1">No hay dashboards municipales activos</p>
-                <p className="text-sm text-[#8D99AE]">Cuando un municipio tenga acceso activo, aparecerá aquí para revisión admin.</p>
+                <p className="text-[#2B2D42] font-bold mb-1">No active municipality dashboards</p>
+                <p className="text-sm text-[#8D99AE]">When a municipality has active access, it will appear here for admin review.</p>
               </div>
             )}
 
@@ -500,12 +500,12 @@ export default function AdminDashboardPage() {
               <>
                 <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
                   {[
-                    { label: "Total reportes", value: municipalityDashboard.stats?.total_reports, icon: MapPin, color: "#FF6B6B" },
-                    { label: "Activos", value: municipalityDashboard.stats?.active_reports, icon: Eye, color: "#FFA726" },
-                    { label: "Reportados", value: municipalityDashboard.stats?.flagged_reports, icon: Flag, color: "#FF5252" },
-                    { label: "Archivados", value: municipalityDashboard.stats?.archived_reports, icon: Archive, color: "#66BB6A" },
-                    { label: "Últimos 7 días", value: municipalityDashboard.stats?.recent_reports_7d, icon: BarChart3, color: "#42A5F5" },
-                    { label: "Flags pendientes", value: municipalityDashboard.stats?.pending_flags, icon: AlertTriangle, color: "#FF5252" },
+                    { label: "Total reports", value: municipalityDashboard.stats?.total_reports, icon: MapPin, color: "#FF6B6B" },
+                    { label: "Active", value: municipalityDashboard.stats?.active_reports, icon: Eye, color: "#FFA726" },
+                    { label: "Flagged", value: municipalityDashboard.stats?.flagged_reports, icon: Flag, color: "#FF5252" },
+                    { label: "Archived", value: municipalityDashboard.stats?.archived_reports, icon: Archive, color: "#66BB6A" },
+                    { label: "Last 7 days", value: municipalityDashboard.stats?.recent_reports_7d, icon: BarChart3, color: "#42A5F5" },
+                    { label: "Pending flags", value: municipalityDashboard.stats?.pending_flags, icon: AlertTriangle, color: "#FF5252" },
                   ].map(({ label, value, icon, color }) => (
                     <StatCard key={label} icon={icon} label={label} value={value ?? 0} color={color} />
                   ))}
@@ -513,9 +513,9 @@ export default function AdminDashboardPage() {
 
                 <div className="flex gap-2 mb-4 flex-wrap">
                   {[
-                    { id: "map", label: "Mapa" },
-                    { id: "reports", label: "Reportes" },
-                    { id: "photos", label: `Fotos (${municipalityDashboard.photo_reviews?.length || 0})` },
+                    { id: "map", label: "Map" },
+                    { id: "reports", label: "Reports" },
+                    { id: "photos", label: `Photos (${municipalityDashboard.photo_reviews?.length || 0})` },
                     { id: "flags", label: `Flags (${municipalityDashboard.flags?.length || 0})` },
                   ].map((view) => (
                     <Button
@@ -533,8 +533,8 @@ export default function AdminDashboardPage() {
                 {municipalityView === "map" && (
                   <MunicipalityMapCard
                     mapData={municipalityDashboard.map}
-                    title={`Mapa de ${municipalityDashboard.municipality}`}
-                    subtitle="Vista admin reflejada del mapa municipal activo."
+                    title={`Map of ${municipalityDashboard.municipality}`}
+                    subtitle="Admin mirror of the active municipality map."
                   />
                 )}
 
@@ -542,9 +542,9 @@ export default function AdminDashboardPage() {
                   <>
                     <div className="flex gap-2 mb-4 flex-wrap">
                       {[
-                        { id: "active", label: "Activos" },
-                        { id: "flagged", label: "Reportados" },
-                        { id: "archived", label: "Archivados" },
+                        { id: "active", label: "Active" },
+                        { id: "flagged", label: "Flagged" },
+                        { id: "archived", label: "Archived" },
                       ].map((filter) => (
                         <Button
                           key={filter.id}
@@ -566,18 +566,18 @@ export default function AdminDashboardPage() {
                         <table className="w-full text-sm">
                           <thead className="bg-[#F8F9FA] border-b">
                             <tr>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Ubicación</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Contribuidor</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Fecha</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Votos</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Location</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Contributor</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Date</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Votes</th>
                               <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Flags</th>
-                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Estado</th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-[#8D99AE]">Status</th>
                             </tr>
                           </thead>
                           <tbody className="divide-y">
                             {(municipalityDashboard.reports?.reports || []).length === 0 ? (
                               <tr>
-                                <td colSpan={6} className="px-4 py-8 text-center text-[#8D99AE]">No hay reportes</td>
+                                <td colSpan={6} className="px-4 py-8 text-center text-[#8D99AE]">No reports found</td>
                               </tr>
                             ) : (municipalityDashboard.reports?.reports || []).map((report) => (
                               <tr key={report.id} className="hover:bg-[#F8F9FA]">
@@ -593,8 +593,8 @@ export default function AdminDashboardPage() {
                                 </td>
                                 <td className="px-4 py-3">
                                   <div className="text-xs">
-                                    <p className="font-bold text-[#2B2D42]">{report.contributor_name || "Anónimo"}</p>
-                                    <p className="text-[#8D99AE]">{report.contributor_rank || "Sin rango"}</p>
+                                    <p className="font-bold text-[#2B2D42]">{report.contributor_name || "Anonymous"}</p>
+                                    <p className="text-[#8D99AE]">{report.contributor_rank || "Unranked"}</p>
                                   </div>
                                 </td>
                                 <td className="px-4 py-3 text-xs text-[#8D99AE]">{formatDateTime(report.created_at)}</td>
@@ -606,11 +606,11 @@ export default function AdminDashboardPage() {
                                 <td className="px-4 py-3 text-xs font-bold text-[#FF5252]">{report.flag_count || 0}</td>
                                 <td className="px-4 py-3">
                                   {report.flagged ? (
-                                    <Badge variant="destructive" className="text-xs">Reportado</Badge>
+                                    <Badge variant="destructive" className="text-xs">Flagged</Badge>
                                   ) : report.archived ? (
-                                    <Badge variant="secondary" className="text-xs">Archivado</Badge>
+                                    <Badge variant="secondary" className="text-xs">Archived</Badge>
                                   ) : (
-                                    <Badge className="text-xs bg-[#66BB6A]">Activo</Badge>
+                                    <Badge className="text-xs bg-[#66BB6A]">Active</Badge>
                                   )}
                                 </td>
                               </tr>
@@ -628,7 +628,7 @@ export default function AdminDashboardPage() {
                           <ChevronLeft className="w-4 h-4" />
                         </Button>
                         <span className="text-xs text-[#8D99AE]">
-                          Pág {municipalityDashboard.reports?.page || 1} de {Math.max(1, municipalityDashboard.reports?.pages || 1)}
+                          Page {municipalityDashboard.reports?.page || 1} of {Math.max(1, municipalityDashboard.reports?.pages || 1)}
                         </span>
                         <Button
                           size="sm"
@@ -647,20 +647,20 @@ export default function AdminDashboardPage() {
                   <div className="space-y-4">
                     {(municipalityDashboard.photo_reviews || []).length === 0 ? (
                       <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-[#8D99AE]">
-                        No hay revisiones de foto pendientes.
+                        No pending photo reviews.
                       </div>
                     ) : (municipalityDashboard.photo_reviews || []).map((review, index) => (
                       <div key={review.report?.id || index} className="bg-white rounded-xl p-4 shadow-sm">
                         <div className="flex items-start gap-3 mb-3">
                           {review.report?.photo_url ? (
-                            <img src={`${API}/files/${review.report.photo_url}`} alt="Foto reportada" className="w-20 h-20 object-cover rounded-lg" />
+                            <img src={`${API}/files/${review.report.photo_url}`} alt="Flagged photo" className="w-20 h-20 object-cover rounded-lg" />
                           ) : (
                             <div className="w-20 h-20 bg-gray-100 rounded-lg flex items-center justify-center">
                               <Camera className="w-6 h-6 text-[#8D99AE]" />
                             </div>
                           )}
                           <div className="min-w-0 flex-1">
-                            <p className="font-bold text-[#2B2D42] mb-1">{review.report?.contributor_name || "Anónimo"}</p>
+                            <p className="font-bold text-[#2B2D42] mb-1">{review.report?.contributor_name || "Anonymous"}</p>
                             <p className="text-xs text-[#8D99AE] mb-2">{formatDateTime(review.report?.created_at)}</p>
                             <div className="flex flex-wrap gap-2">
                               {(review.flags || []).map((flag, flagIndex) => (
@@ -680,7 +680,7 @@ export default function AdminDashboardPage() {
                   <div className="space-y-4">
                     {(municipalityDashboard.flags || []).length === 0 ? (
                       <div className="bg-white rounded-2xl shadow-sm p-8 text-center text-[#8D99AE]">
-                        No hay flags pendientes.
+                        No pending flags.
                       </div>
                     ) : (municipalityDashboard.flags || []).map((flag, index) => (
                       <div key={`${flag.report_id}-${index}`} className="bg-white rounded-xl p-4 shadow-sm">
@@ -711,14 +711,14 @@ export default function AdminDashboardPage() {
 
         {tab === "reports" && (
           <>
-            <p className="text-xs text-[#8D99AE] mb-3">{reportTotal} reportes totales · 100 por página</p>
+            <p className="text-xs text-[#8D99AE] mb-3">{reportTotal} total reports · 100 per page</p>
             <div className="space-y-3">
               {recentReports.map((report, i) => (
                 <div key={report.id || i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`recent-report-${i}`}>
                   <div className="flex items-start justify-between gap-3 mb-2">
                     <div className="min-w-0">
-                      <p className="font-bold text-[#2B2D42] truncate">{report.reporter?.display_name || report.contributor_name || "Anónimo"}</p>
-                      <p className="text-[11px] text-[#8D99AE] truncate">{report.reporter?.email || "Sin email"}</p>
+                      <p className="font-bold text-[#2B2D42] truncate">{report.reporter?.display_name || report.contributor_name || "Anonymous"}</p>
+                      <p className="text-[11px] text-[#8D99AE] truncate">{report.reporter?.email || "No email"}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <p className="text-[11px] font-bold text-[#2B2D42]">{formatDateTime(report.created_at)}</p>
@@ -730,17 +730,17 @@ export default function AdminDashboardPage() {
                       {report.reporter?.role || "user"}
                     </span>
                     <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-[#8D99AE]/10 text-[#8D99AE]">
-                      {report.municipality || "Sin municipio"}{report.barrio ? ` · ${report.barrio}` : ""}
+                      {report.municipality || "No municipality"}{report.barrio ? ` · ${report.barrio}` : ""}
                     </span>
                     {report.flagged && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-600">Marcado</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-red-100 text-red-600">Flagged</span>
                     )}
                     {report.archived && (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">Archivado</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full font-bold bg-gray-100 text-gray-600">Archived</span>
                     )}
                   </div>
                   <p className="text-xs text-[#2B2D42] mb-1">
-                    <span className="font-bold">Rango:</span> {report.contributor_rank || "Sin rango"}
+                    <span className="font-bold">Rank:</span> {report.contributor_rank || "Unranked"}
                   </p>
                   <p className="text-xs text-[#2B2D42] mb-1">
                     <span className="font-bold">Coords:</span> {typeof report.latitude === "number" ? report.latitude.toFixed(5) : "?"}, {typeof report.longitude === "number" ? report.longitude.toFixed(5) : "?"}
@@ -748,7 +748,7 @@ export default function AdminDashboardPage() {
                   {report.description ? (
                     <p className="text-xs text-[#8D99AE] line-clamp-3">{report.description}</p>
                   ) : (
-                    <p className="text-xs text-[#8D99AE] italic">Sin descripción</p>
+                    <p className="text-xs text-[#8D99AE] italic">No description</p>
                   )}
                 </div>
               ))}
@@ -758,7 +758,7 @@ export default function AdminDashboardPage() {
               <Button size="sm" variant="outline" disabled={reportPage === 0} onClick={() => setReportPage(p => p - 1)} data-testid="reports-prev">
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-xs text-[#8D99AE]">Pág {reportPage + 1} de {Math.max(1, Math.ceil(reportTotal / 100))}</span>
+              <span className="text-xs text-[#8D99AE]">Page {reportPage + 1} of {Math.max(1, Math.ceil(reportTotal / 100))}</span>
               <Button size="sm" variant="outline" disabled={(reportPage + 1) * 100 >= reportTotal} onClick={() => setReportPage(p => p + 1)} data-testid="reports-next">
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -774,25 +774,25 @@ export default function AdminDashboardPage() {
                 <Input
                   value={userSearch}
                   onChange={(e) => { setUserSearch(e.target.value); setUserPage(0); }}
-                  placeholder="Buscar por email, username, nombre..."
+                  placeholder="Search by email, username, name..."
                   className="pl-10"
                   data-testid="user-search-input"
                 />
               </div>
             </div>
-            <p className="text-xs text-[#8D99AE] mb-3">{userTotal} usuarios encontrados</p>
+            <p className="text-xs text-[#8D99AE] mb-3">{userTotal} users found</p>
             <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="min-w-[220px]">Usuario</TableHead>
-                    <TableHead className="min-w-[120px]">Último login</TableHead>
-                    <TableHead className="min-w-[110px]">Plataforma</TableHead>
-                    <TableHead className="min-w-[90px]">Reportes</TableHead>
-                    <TableHead className="min-w-[80px]">Votos</TableHead>
-                    <TableHead className="min-w-[90px]">Puntos</TableHead>
-                    <TableHead className="min-w-[220px]">Tipo de cuenta</TableHead>
-                    <TableHead className="min-w-[110px]">Acceso</TableHead>
+                    <TableHead className="min-w-[220px]">User</TableHead>
+                    <TableHead className="min-w-[120px]">Last login</TableHead>
+                    <TableHead className="min-w-[110px]">Platform</TableHead>
+                    <TableHead className="min-w-[90px]">Reports</TableHead>
+                    <TableHead className="min-w-[80px]">Votes</TableHead>
+                    <TableHead className="min-w-[90px]">Points</TableHead>
+                    <TableHead className="min-w-[220px]">Account type</TableHead>
+                    <TableHead className="min-w-[110px]">Access</TableHead>
                     <TableHead className="min-w-[120px]">Auth</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -816,7 +816,7 @@ export default function AdminDashboardPage() {
                           <p className="font-bold text-[#2B2D42] truncate">{u.display_name}</p>
                           <p className="text-[11px] text-[#8D99AE] truncate">{u.email}</p>
                           <p className="text-[10px] text-[#8D99AE] truncate">
-                            {u.created_at ? `Alta ${formatDateTime(u.created_at)}` : "Sin fecha de alta"}
+                            {u.created_at ? `Joined ${formatDateTime(u.created_at)}` : "No signup date"}
                           </p>
                         </div>
                       </TableCell>
@@ -824,7 +824,7 @@ export default function AdminDashboardPage() {
                       <TableCell><PlatformBadge platform={u.last_platform} /></TableCell>
                       <TableCell>
                         <div className="text-xs font-bold text-[#2B2D42]">{u.reports_count || 0}</div>
-                        <div className="text-[10px] text-[#8D99AE]">racha {u.streak_days || 0}</div>
+                        <div className="text-[10px] text-[#8D99AE]">streak {u.streak_days || 0}</div>
                       </TableCell>
                       <TableCell className="text-xs font-bold text-[#2B2D42]">{u.votes_count || 0}</TableCell>
                       <TableCell>
@@ -841,11 +841,11 @@ export default function AdminDashboardPage() {
                             })}
                           >
                             <SelectTrigger className="h-8 text-xs">
-                              <SelectValue placeholder="Selecciona tipo" />
+                              <SelectValue placeholder="Select account type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="standard">Usuario estándar</SelectItem>
-                              <SelectItem value="municipal_worker">Operario municipal</SelectItem>
+                              <SelectItem value="standard">Standard user</SelectItem>
+                              <SelectItem value="municipal_worker">Municipal worker</SelectItem>
                             </SelectContent>
                           </Select>
                           {isMunicipalWorker ? (
@@ -853,18 +853,18 @@ export default function AdminDashboardPage() {
                               <Input
                                 value={draft.municipalityName}
                                 onChange={(event) => updateUserDraft(draftKey, { municipalityName: event.target.value })}
-                                placeholder="Municipio asignado"
+                                placeholder="Assigned municipality"
                                 className="h-8 text-xs"
                               />
                               <Input
                                 value={draft.municipalityProvince}
                                 onChange={(event) => updateUserDraft(draftKey, { municipalityProvince: event.target.value })}
-                                placeholder="Provincia (opcional)"
+                                placeholder="Province (optional)"
                                 className="h-8 text-xs"
                               />
                             </div>
                           ) : (
-                            <p className="text-[10px] text-[#8D99AE]">Sin permisos especiales de limpieza.</p>
+                            <p className="text-[10px] text-[#8D99AE]">No special cleanup permissions.</p>
                           )}
                           <Button
                             size="sm"
@@ -874,7 +874,7 @@ export default function AdminDashboardPage() {
                             onClick={() => handleSaveUserAccountType(u)}
                           >
                             {savingUserId === draftKey ? <Loader2 className="w-3.5 h-3.5 mr-1 animate-spin" /> : null}
-                            Guardar
+                            Save
                           </Button>
                         </div>
                       </TableCell>
@@ -903,7 +903,7 @@ export default function AdminDashboardPage() {
               <Button size="sm" variant="outline" disabled={userPage === 0} onClick={() => setUserPage(p => p - 1)} data-testid="users-prev">
                 <ChevronLeft className="w-4 h-4" />
               </Button>
-              <span className="text-xs text-[#8D99AE]">Pág {userPage + 1} de {Math.max(1, Math.ceil(userTotal / 20))}</span>
+              <span className="text-xs text-[#8D99AE]">Page {userPage + 1} of {Math.max(1, Math.ceil(userTotal / 20))}</span>
               <Button size="sm" variant="outline" disabled={(userPage + 1) * 20 >= userTotal} onClick={() => setUserPage(p => p + 1)} data-testid="users-next">
                 <ChevronRight className="w-4 h-4" />
               </Button>
@@ -916,20 +916,20 @@ export default function AdminDashboardPage() {
             <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
               <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
                 <div>
-                  <h2 className="text-base font-bold text-[#2B2D42]">Aprobaciones de fotos</h2>
+                  <h2 className="text-base font-bold text-[#2B2D42]">Photo approvals</h2>
                   <p className="text-sm text-[#8D99AE]">
-                    Las fotos adjuntas quedan pendientes hasta que un admin las aprueba. Si se rechazan, el reporte original se elimina.
+                    Attached photos stay pending until an admin approves them. If rejected, the original report is removed.
                   </p>
                 </div>
                 <Button size="sm" variant="outline" onClick={fetchPhotoApprovals} disabled={photoApprovalLoading}>
                   {photoApprovalLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
-                  Actualizar
+                  Refresh
                 </Button>
               </div>
 
               <div className="flex flex-wrap gap-2 items-center justify-between">
                 <p className="text-xs text-[#8D99AE]">
-                  {photoApprovalTotal} fotos pendientes · 100 por página
+                  {photoApprovalTotal} pending photos · 100 per page
                 </p>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -939,8 +939,8 @@ export default function AdminDashboardPage() {
                     disabled={!photoApprovals.length}
                   >
                     {photoApprovals.length && photoApprovals.every((item) => selectedPhotoApprovalIds.includes(item.id))
-                      ? "Deseleccionar visibles"
-                      : "Seleccionar visibles"}
+                      ? "Deselect visible"
+                      : "Select visible"}
                   </Button>
                   <Button
                     size="sm"
@@ -948,7 +948,7 @@ export default function AdminDashboardPage() {
                     onClick={() => handlePhotoApprovalModeration("approve")}
                     disabled={photoApprovalLoading || selectedPhotoApprovalIds.length === 0}
                   >
-                    Aprobar seleccionadas ({selectedPhotoApprovalIds.length})
+                    Approve selected ({selectedPhotoApprovalIds.length})
                   </Button>
                   <Button
                     size="sm"
@@ -956,7 +956,7 @@ export default function AdminDashboardPage() {
                     onClick={() => handlePhotoApprovalModeration("reject")}
                     disabled={photoApprovalLoading || selectedPhotoApprovalIds.length === 0}
                   >
-                    Rechazar seleccionadas ({selectedPhotoApprovalIds.length})
+                    Reject selected ({selectedPhotoApprovalIds.length})
                   </Button>
                 </div>
               </div>
@@ -969,8 +969,8 @@ export default function AdminDashboardPage() {
             ) : photoApprovals.length === 0 ? (
               <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
                 <CheckCircle className="w-10 h-10 text-[#66BB6A] mx-auto mb-3" />
-                <p className="text-[#2B2D42] font-bold mb-1">No hay fotos pendientes de aprobación</p>
-                <p className="text-sm text-[#8D99AE]">Las nuevas imágenes aparecerán aquí antes de mostrarse al resto de usuarios.</p>
+                <p className="text-[#2B2D42] font-bold mb-1">No pending photos to approve</p>
+                <p className="text-sm text-[#8D99AE]">Newly uploaded images will appear here before they are shown to other users.</p>
               </div>
             ) : (
               <>
@@ -983,7 +983,7 @@ export default function AdminDashboardPage() {
                           checked={selectedPhotoApprovalIds.includes(approval.id)}
                           onChange={() => togglePhotoApprovalSelection(approval.id)}
                           className="mt-1 h-4 w-4 rounded border-[#8D99AE]/40"
-                          aria-label={`Seleccionar foto ${approval.id}`}
+                          aria-label={`Select photo ${approval.id}`}
                         />
                         {approval.photo_url ? (
                           <img
@@ -999,21 +999,21 @@ export default function AdminDashboardPage() {
 
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2 flex-wrap mb-2">
-                            <p className="font-bold text-[#2B2D42]">{approval.municipality || "Sin municipio"}</p>
+                            <p className="font-bold text-[#2B2D42]">{approval.municipality || "No municipality"}</p>
                             {approval.barrio ? (
                               <Badge variant="outline" className="text-[10px]">{approval.barrio}</Badge>
                             ) : null}
-                            <Badge className="bg-[#FFA726] text-white text-[10px]">Pendiente</Badge>
+                            <Badge className="bg-[#FFA726] text-white text-[10px]">Pending</Badge>
                           </div>
                           <div className="text-xs text-[#8D99AE] space-y-1 mb-2">
-                            <p>Subida: {formatDateTime(approval.photo_submitted_at || approval.created_at)}</p>
-                            <p>Contribuidor: {approval.contributor_name || "Anónimo"}</p>
+                            <p>Uploaded: {formatDateTime(approval.photo_submitted_at || approval.created_at)}</p>
+                            <p>Contributor: {approval.contributor_name || "Anonymous"}</p>
                             <p>{approval.latitude?.toFixed?.(4)}, {approval.longitude?.toFixed?.(4)}</p>
                           </div>
                           {approval.description ? (
                             <p className="text-sm text-[#2B2D42] italic line-clamp-2">"{approval.description}"</p>
                           ) : (
-                            <p className="text-xs text-[#8D99AE] italic">Sin descripción</p>
+                            <p className="text-xs text-[#8D99AE] italic">No description</p>
                           )}
                         </div>
 
@@ -1024,7 +1024,7 @@ export default function AdminDashboardPage() {
                             onClick={() => handlePhotoApprovalModeration("approve", [approval.id])}
                             disabled={photoApprovalLoading}
                           >
-                            Aprobar
+                            Approve
                           </Button>
                           <Button
                             size="sm"
@@ -1032,7 +1032,7 @@ export default function AdminDashboardPage() {
                             onClick={() => handlePhotoApprovalModeration("reject", [approval.id])}
                             disabled={photoApprovalLoading}
                           >
-                            Rechazar
+                            Reject
                           </Button>
                         </div>
                       </div>
@@ -1050,7 +1050,7 @@ export default function AdminDashboardPage() {
                     <ChevronLeft className="w-4 h-4" />
                   </Button>
                   <span className="text-xs text-[#8D99AE]">
-                    Pág {photoApprovalPage + 1} de {Math.max(1, Math.ceil(photoApprovalTotal / 100))}
+                    Page {photoApprovalPage + 1} of {Math.max(1, Math.ceil(photoApprovalTotal / 100))}
                   </span>
                   <Button
                     size="sm"
@@ -1068,13 +1068,13 @@ export default function AdminDashboardPage() {
 
         {tab === "violations" && (
           <>
-            <p className="text-xs text-[#8D99AE] mb-3">{violationTotal} reportes pendientes de moderación</p>
+            <p className="text-xs text-[#8D99AE] mb-3">{violationTotal} reports pending moderation</p>
             <div className="space-y-3">
               {violations.map((v, i) => (
                 <div key={v.report_id || i} className="bg-white rounded-xl p-4 shadow-sm" data-testid={`violation-${i}`}>
                   <div className="flex items-start gap-3 mb-3">
                     {v.report?.photo_url ? (
-                      <img src={`${API}/files/${v.report.photo_url}`} alt="Foto" className="w-16 h-16 object-cover rounded-lg" />
+                      <img src={`${API}/files/${v.report.photo_url}`} alt="Photo" className="w-16 h-16 object-cover rounded-lg" />
                     ) : (
                       <div className="w-16 h-16 bg-gray-100 rounded-lg flex items-center justify-center"><Image className="w-6 h-6 text-[#8D99AE]" /></div>
                     )}
@@ -1088,15 +1088,15 @@ export default function AdminDashboardPage() {
                       }`}>{FLAG_REASON_LABELS[v.reason] || v.reason}</span>
                       <p className="text-xs text-[#8D99AE] mt-1">{v.report?.municipality || "?"} · {v.report?.created_at?.slice(0, 10) || "?"}</p>
                       <p className="text-[10px] text-[#8D99AE]">ID: {v.report_id?.slice(0, 8)}...</p>
-                      <p className="text-[10px] text-[#8D99AE]">Flags acumulados: {v.report?.flag_count || 1}</p>
+                      <p className="text-[10px] text-[#8D99AE]">Accumulated flags: {v.report?.flag_count || 1}</p>
                     </div>
                   </div>
                   <div className="flex gap-2">
                     <Button size="sm" variant="outline" className="flex-1 text-red-500 border-red-200 hover:bg-red-50" onClick={() => handleModerate(v.report_id, "hide")} data-testid={`hide-${i}`}>
-                      <XCircle className="w-3.5 h-3.5 mr-1" /> Ocultar
+                      <XCircle className="w-3.5 h-3.5 mr-1" /> Hide
                     </Button>
                     <Button size="sm" variant="outline" className="flex-1 text-[#66BB6A] border-[#66BB6A]/30 hover:bg-[#66BB6A]/10" onClick={() => handleModerate(v.report_id, "dismiss")} data-testid={`dismiss-${i}`}>
-                      <CheckCircle className="w-3.5 h-3.5 mr-1" /> Descartar
+                      <CheckCircle className="w-3.5 h-3.5 mr-1" /> Dismiss
                     </Button>
                   </div>
                 </div>
@@ -1104,7 +1104,7 @@ export default function AdminDashboardPage() {
               {violations.length === 0 && (
                 <div className="text-center py-12">
                   <CheckCircle className="w-10 h-10 text-[#66BB6A] mx-auto mb-3" />
-                  <p className="text-[#8D99AE] text-sm">No hay reportes pendientes de moderación</p>
+                  <p className="text-[#8D99AE] text-sm">No reports pending moderation</p>
                 </div>
               )}
             </div>
