@@ -58,12 +58,13 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
-- Web `1.1.56-web.1`
-- iOS `1.1.73 (75)`
-- Android `1.1.73 (75)`
+- Web `1.1.57-web.1`
+- iOS `1.1.74 (76)`
+- Android `1.1.74 (76)`
 - Backend `1.1.16-api.1`
 
 Changes:
+- Increased heatmap intensity by 25% by raising the shared density scale from `0.5` to `0.625`, partially undoing the earlier density reduction without going all the way back to the old hotter map.
 - Increased the report details popup height on web/desktop so the vote controls remain fully visible and clickable instead of being clipped under the card edge.
 - Removed the community advisory block from the report popup again to recover vertical space for the actual report actions.
 - Fixed the watch location race helper to use `withThrowingTaskGroup`, which matches the fact that the body rethrows the final chosen location/error.

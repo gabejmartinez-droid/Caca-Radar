@@ -17,7 +17,7 @@ const HEAT_OPTIONS = {
     1.0: "#FF5252"
   }
 };
-const HEAT_INTENSITY_SCALE = 0.5;
+const HEAT_INTENSITY_SCALE = 0.625;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
