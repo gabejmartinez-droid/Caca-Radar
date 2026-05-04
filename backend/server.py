@@ -1726,6 +1726,27 @@ def can_view_exact_report_coordinates(user: Optional[dict]) -> bool:
     return get_account_type(user) == "municipal_worker"
 
 
+def is_report_photo_approved(report: dict) -> bool:
+    if not report.get("photo_url"):
+        return False
+    return report.get("photo_status") in {None, "approved"}
+
+
+def can_view_report_photo(user: Optional[dict], report: dict) -> bool:
+    if not report.get("photo_url"):
+        return False
+    if user and user.get("role") == "admin":
+        return True
+    return bool(user) and is_report_photo_approved(report)
+
+
+def strip_unapproved_report_photo(report: dict) -> dict:
+    sanitized = dict(report)
+    if sanitized.get("photo_url") and not is_report_photo_approved(sanitized):
+        sanitized["photo_url"] = None
+    return sanitized
+
+
 def apply_public_report_privacy(report: dict, viewer: Optional[dict]) -> dict:
     sanitized = sanitize_public_report_identity(report)
     viewer_is_authenticated = bool(viewer)
@@ -1738,8 +1759,10 @@ def apply_public_report_privacy(report: dict, viewer: Optional[dict]) -> dict:
     else:
         sanitized["coordinates_hidden"] = False
 
-    if not viewer_is_authenticated:
+    if not can_view_report_photo(viewer, report):
         sanitized["photo_url"] = None
+
+    if not viewer_is_authenticated:
         sanitized.pop("user_id", None)
     return sanitized
 
@@ -1794,6 +1817,7 @@ async def get_reports(
         "status": 1, "created_at": 1, "refreshed_at": 1, "upvotes": 1, "downvotes": 1,
         "contributor_name": 1, "contributor_rank": 1, "contributor_rank_key": 1, "municipality": 1,
         "province": 1, "description": 1, "photo_url": 1, "barrio": 1,
+        "photo_status": 1,
         "validation_count": 1, "confidence_score": 1, "flagged": 1, "archived": 1, "user_id": 1,
     }).to_list(2000)
     reports = await apply_current_public_report_ranks(reports)
@@ -2097,6 +2121,7 @@ def build_report_doc(report_id: str, data: ReportCreate, user_id: str, user: dic
     doc = {
         "id": report_id, "latitude": data.latitude, "longitude": data.longitude,
         "photo_url": None, "description": data.description, "category": category,
+        "photo_status": "none", "photo_bonus_awarded": False,
         "created_at": now, "refreshed_at": now, "status": "verified",
         "status_score": 1, "still_there_count": 1, "cleaned_count": 0,
         "upvotes": 0, "downvotes": 0, "validation_count": 1,
@@ -2242,26 +2267,33 @@ async def upload_photo(report_id: str, request: Request, file: UploadFile = File
     
     result = await put_object_async(path, data, file.content_type or "image/jpeg")
     
-    await db.reports.update_one({"id": report_id}, {"$set": {"photo_url": result["path"]}})
-    
-    # Award photo bonus points to report creator
-    report = await db.reports.find_one({"id": report_id})
-    if report:
-        reporter_id = report.get("user_id", "")
-        try:
-            reporter = await db.users.find_one({"_id": ObjectId(reporter_id)})
-            if reporter:
-                from scoring_service import REPORT_PHOTO_BONUS
-                await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": REPORT_PHOTO_BONUS}})
-        except Exception:
-            pass
-    
-    return {"photo_url": result["path"]}
+    await db.reports.update_one(
+        {"id": report_id},
+        {"$set": {
+            "photo_url": result["path"],
+            "photo_status": "pending",
+            "photo_submitted_at": datetime.now(timezone.utc).isoformat(),
+            "photo_reviewed_at": None,
+            "photo_reviewed_by": None,
+            "photo_bonus_awarded": False,
+        }},
+    )
+
+    return {"photo_url": result["path"], "photo_status": "pending"}
 
 @api_router.get("/files/{path:path}")
 async def get_file(path: str, request: Request):
     if path.startswith(f"{APP_NAME}/reports/"):
-        await require_auth(request)
+        report = await db.reports.find_one({"photo_url": path}, {"_id": 0, "id": 1, "photo_status": 1})
+        if not report:
+            raise HTTPException(status_code=404, detail="Archivo no encontrado")
+
+        viewer = await get_current_user(request)
+        if report.get("photo_status") == "pending":
+            if not viewer or viewer.get("role") != "admin":
+                raise HTTPException(status_code=403, detail="Foto pendiente de revisión")
+        else:
+            await require_auth(request)
     try:
         data, content_type = await get_object_async(path)
         return Response(content=data, media_type=content_type)
@@ -3427,6 +3459,7 @@ async def _get_municipality_reports_data(
     skip = (safe_page - 1) * safe_limit
     total = await db.reports.count_documents(query)
     reports = await db.reports.find(query, {"_id": 0}).sort("created_at", -1).skip(skip).limit(safe_limit).to_list(safe_limit)
+    reports = [strip_unapproved_report_photo(report) for report in reports]
     return {
         "reports": reports,
         "total": total,
@@ -3448,7 +3481,7 @@ async def _get_municipality_flags_data(muni_name: str, status: str = "pending") 
             {"id": flag["report_id"]},
             {"_id": 0, "id": 1, "photo_url": 1, "latitude": 1, "longitude": 1, "created_at": 1}
         )
-        flag["report"] = report
+        flag["report"] = strip_unapproved_report_photo(report) if report else report
 
     return flags
 
@@ -3471,6 +3504,7 @@ async def _get_municipality_photo_reviews_data(muni_name: str) -> list[dict]:
         report = await db.reports.find_one({"id": rid}, {"_id": 0})
         if not report:
             continue
+        report = strip_unapproved_report_photo(report)
 
         all_flags = await db.flags.find({"report_id": rid}, {"_id": 0, "reason": 1, "created_at": 1}).to_list(20)
 
@@ -4291,6 +4325,136 @@ async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 5
     total = await db.flags.count_documents({"status": {"$in": ["pending", None]}})
     return {"violations": enriched, "total": total}
 
+
+async def _remove_report_after_photo_rejection(report: dict, admin_user: dict) -> None:
+    report_id = report.get("id")
+    if not report_id:
+        return
+
+    await db.reports.delete_one({"id": report_id})
+    await db.votes.delete_many({"report_id": report_id})
+    await db.validations.delete_many({"report_id": report_id})
+    await db.report_votes.delete_many({"report_id": report_id})
+    await db.flags.delete_many({"report_id": report_id})
+
+    municipality_name = report.get("municipality")
+    if municipality_name:
+        await db.municipalities.update_one(
+            {"name": municipality_name, "province": report.get("province", "")},
+            {"$inc": {"report_count": -1}},
+        )
+
+    await db.report_audit_log.insert_one({
+        "id": str(uuid.uuid4()),
+        "event": "report_removed_photo_rejected",
+        "report_id": report_id,
+        "user_id": report.get("user_id"),
+        "municipality": municipality_name,
+        "province": report.get("province"),
+        "metadata": {
+            "photo_url": report.get("photo_url"),
+            "moderated_by": str(admin_user.get("_id")),
+            "moderated_by_email": admin_user.get("email"),
+        },
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    })
+
+
+@api_router.get("/admin/photo-approvals")
+async def admin_photo_approvals(request: Request, skip: int = 0, limit: int = 100):
+    """Admin queue of reports whose photos are pending approval."""
+    await _require_admin(request)
+    safe_skip = max(skip, 0)
+    safe_limit = max(1, min(limit, 100))
+    query = {
+        "photo_url": {"$ne": None},
+        "photo_status": "pending",
+        "archived": {"$ne": True},
+        "flagged": {"$ne": True},
+    }
+    approvals = await db.reports.find(
+        query,
+        {
+            "_id": 0,
+            "id": 1,
+            "photo_url": 1,
+            "photo_status": 1,
+            "photo_submitted_at": 1,
+            "created_at": 1,
+            "description": 1,
+            "municipality": 1,
+            "province": 1,
+            "barrio": 1,
+            "latitude": 1,
+            "longitude": 1,
+            "contributor_name": 1,
+            "contributor_rank": 1,
+            "contributor_rank_key": 1,
+            "user_id": 1,
+        },
+    ).sort("photo_submitted_at", -1).skip(safe_skip).limit(safe_limit).to_list(safe_limit)
+    approvals = await apply_current_public_report_ranks(approvals)
+    total = await db.reports.count_documents(query)
+    return {"approvals": approvals, "total": total, "skip": safe_skip, "limit": safe_limit}
+
+
+@api_router.post("/admin/photo-approvals/moderate")
+async def admin_photo_approvals_moderate(request: Request):
+    """Approve or reject pending report photos in batch."""
+    admin_user = await _require_admin(request)
+    body = await request.json()
+    action = body.get("action")
+    report_ids = body.get("report_ids") or []
+
+    if action not in {"approve", "reject"}:
+        raise HTTPException(status_code=400, detail="Acción inválida")
+    if not isinstance(report_ids, list) or not report_ids:
+        raise HTTPException(status_code=400, detail="Selecciona al menos un reporte")
+
+    normalized_ids = [str(report_id).strip() for report_id in report_ids if str(report_id).strip()]
+    normalized_ids = list(dict.fromkeys(normalized_ids))[:100]
+    if not normalized_ids:
+        raise HTTPException(status_code=400, detail="Selecciona al menos un reporte")
+
+    pending_reports = await db.reports.find(
+        {"id": {"$in": normalized_ids}, "photo_status": "pending"},
+        {"_id": 0},
+    ).to_list(len(normalized_ids))
+    if not pending_reports:
+        raise HTTPException(status_code=404, detail="No se encontraron fotos pendientes para revisar")
+
+    moderated_at = datetime.now(timezone.utc).isoformat()
+
+    if action == "approve":
+        approved_count = 0
+        from scoring_service import REPORT_PHOTO_BONUS
+
+        for report in pending_reports:
+            updates = {
+                "photo_status": "approved",
+                "photo_reviewed_at": moderated_at,
+                "photo_reviewed_by": str(admin_user.get("_id")),
+            }
+            reporter_id = report.get("user_id")
+            if reporter_id and not report.get("photo_bonus_awarded"):
+                try:
+                    await db.users.update_one({"_id": ObjectId(reporter_id)}, {"$inc": {"total_score": REPORT_PHOTO_BONUS}})
+                    updates["photo_bonus_awarded"] = True
+                except Exception:
+                    updates["photo_bonus_awarded"] = False
+
+            await db.reports.update_one({"id": report["id"]}, {"$set": updates})
+            approved_count += 1
+
+        return {"message": f"{approved_count} fotos aprobadas", "approved": approved_count}
+
+    rejected_count = 0
+    for report in pending_reports:
+        await _remove_report_after_photo_rejection(report, admin_user)
+        rejected_count += 1
+
+    return {"message": f"{rejected_count} reportes eliminados por rechazo de foto", "rejected": rejected_count}
+
 @api_router.post("/admin/moderate/{report_id}")
 async def admin_moderate_report(report_id: str, request: Request):
     """Admin: moderate any report (hide, restore, dismiss flags)."""
@@ -4999,6 +5163,7 @@ async def init_database():
     await db.reports.create_index([("latitude", 1), ("longitude", 1)])
     await db.reports.create_index("municipality")
     await db.reports.create_index("user_id")
+    await db.reports.create_index("photo_status")
     await db.votes.create_index([("report_id", 1), ("user_id", 1)], unique=True)
     await db.flags.create_index([("report_id", 1), ("user_id", 1)], unique=True)
     await db.flags.create_index("municipality")

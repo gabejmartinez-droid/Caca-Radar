@@ -494,6 +494,9 @@ export default function MapPage() {
         await axios.post(`${API}/reports/${report.id}/photo`, formData, { withCredentials: true, headers: { "Content-Type": "multipart/form-data" } });
       }
       toast.success(report.converted_to_confirmation ? t("reportConfirmed") : t("reportSuccess"));
+      if (photoFile) {
+        toast.message(photoModerationNotice);
+      }
       if (report.points_earned) {
         setPointsEarned({ points: report.points_earned, breakdown: report.points_breakdown });
       }
@@ -507,7 +510,7 @@ export default function MapPage() {
       fetchReports();
     } catch (error) { toast.error(error.response?.data?.detail || t("reportError")); }
     finally { setLoading(false); }
-  }, [user, navigate, getFreshLocation, userLocation, description, photoFile, fetchReports, t, clearSelectedPhoto]);
+  }, [user, navigate, getFreshLocation, userLocation, description, photoFile, fetchReports, t, clearSelectedPhoto, photoModerationNotice]);
 
   const handleVote = async (voteType) => {
     if (!user) { toast.error(t("mapUi.registerToVote")); navigate("/register"); return; }
@@ -721,6 +724,9 @@ export default function MapPage() {
       : (language === "en"
           ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
           : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
+  const photoModerationNotice = language === "en"
+    ? "Images are shown after a moderator reviews them."
+    : "Las imágenes se mostrarán después de que un moderador las revise.";
 
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
@@ -1136,6 +1142,9 @@ export default function MapPage() {
                 <Camera className="w-8 h-8" /><span>{t("addPhoto")}</span>
               </button>
             )}
+            <p className="text-xs text-[#8D99AE] text-center mb-4">
+              {photoModerationNotice}
+            </p>
           </div>
           <DrawerFooter className="pt-0">
             <Button onClick={handleSubmitReport} disabled={loading} className="w-full bg-[#FF6B6B] hover:bg-[#FF5252] text-white py-6 rounded-xl text-lg font-bold" style={{ fontFamily: 'Nunito, sans-serif' }} data-testid="submit-report-btn">

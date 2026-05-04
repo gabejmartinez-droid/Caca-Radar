@@ -86,6 +86,11 @@ export default function AdminDashboardPage() {
   const [savingUserId, setSavingUserId] = useState(null);
   const [violations, setViolations] = useState([]);
   const [violationTotal, setViolationTotal] = useState(0);
+  const [photoApprovals, setPhotoApprovals] = useState([]);
+  const [photoApprovalTotal, setPhotoApprovalTotal] = useState(0);
+  const [photoApprovalPage, setPhotoApprovalPage] = useState(0);
+  const [selectedPhotoApprovalIds, setSelectedPhotoApprovalIds] = useState([]);
+  const [photoApprovalLoading, setPhotoApprovalLoading] = useState(false);
   const [recentReports, setRecentReports] = useState([]);
   const [reportTotal, setReportTotal] = useState(0);
   const [reportPage, setReportPage] = useState(0);
@@ -197,6 +202,28 @@ export default function AdminDashboardPage() {
     } catch { toast.error("Error cargando violaciones"); }
   }, []);
 
+  const fetchPhotoApprovals = useCallback(async () => {
+    setPhotoApprovalLoading(true);
+    try {
+      const { data } = await axios.get(
+        `${API}/admin/photo-approvals?skip=${photoApprovalPage * 100}&limit=100`,
+        { withCredentials: true }
+      );
+      const approvals = data.approvals || [];
+      setPhotoApprovals(approvals);
+      setPhotoApprovalTotal(data.total || 0);
+      setSelectedPhotoApprovalIds((prev) => prev.filter((id) => approvals.some((item) => item.id === id)));
+    } catch (error) {
+      if (error.response?.status === 401 || error.response?.status === 403) {
+        navigate("/admin/login");
+      } else {
+        toast.error("Error cargando aprobaciones de fotos");
+      }
+    } finally {
+      setPhotoApprovalLoading(false);
+    }
+  }, [navigate, photoApprovalPage]);
+
   const fetchRecentReports = useCallback(async () => {
     try {
       const { data } = await axios.get(`${API}/admin/recent-reports?skip=${reportPage * 100}&limit=100`, { withCredentials: true });
@@ -256,9 +283,10 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     if (tab === "users") fetchUsers();
     if (tab === "violations") fetchViolations();
+    if (tab === "photoApprovals") fetchPhotoApprovals();
     if (tab === "reports") fetchRecentReports();
     if (tab === "municipalities") fetchMunicipalityDashboards();
-  }, [fetchMunicipalityDashboards, fetchUsers, fetchViolations, fetchRecentReports, tab]);
+  }, [fetchMunicipalityDashboards, fetchPhotoApprovals, fetchUsers, fetchViolations, fetchRecentReports, tab]);
 
   useEffect(() => {
     if (tab === "municipalities" && selectedMunicipality) {
@@ -279,6 +307,44 @@ export default function AdminDashboardPage() {
     await axios.post(`${API}/auth/logout`, {}, { withCredentials: true });
     navigate("/admin/login");
   };
+
+  const togglePhotoApprovalSelection = useCallback((reportId) => {
+    setSelectedPhotoApprovalIds((prev) => (
+      prev.includes(reportId) ? prev.filter((id) => id !== reportId) : [...prev, reportId]
+    ));
+  }, []);
+
+  const toggleAllPhotoApprovals = useCallback(() => {
+    const visibleIds = (photoApprovals || []).map((item) => item.id);
+    if (!visibleIds.length) return;
+    setSelectedPhotoApprovalIds((prev) => (
+      visibleIds.every((id) => prev.includes(id)) ? prev.filter((id) => !visibleIds.includes(id)) : visibleIds
+    ));
+  }, [photoApprovals]);
+
+  const handlePhotoApprovalModeration = useCallback(async (action, ids = null) => {
+    const reportIds = Array.isArray(ids) ? ids : selectedPhotoApprovalIds;
+    if (!reportIds.length) {
+      toast.error("Selecciona al menos una foto");
+      return;
+    }
+
+    setPhotoApprovalLoading(true);
+    try {
+      const { data } = await axios.post(
+        `${API}/admin/photo-approvals/moderate`,
+        { action, report_ids: reportIds },
+        { withCredentials: true }
+      );
+      toast.success(data.message || (action === "approve" ? "Fotos aprobadas" : "Reportes eliminados"));
+      setSelectedPhotoApprovalIds((prev) => prev.filter((id) => !reportIds.includes(id)));
+      await Promise.all([fetchPhotoApprovals(), fetchDashboard(), fetchRecentReports()]);
+    } catch (error) {
+      toast.error(error.response?.data?.detail || "Error moderando fotos");
+    } finally {
+      setPhotoApprovalLoading(false);
+    }
+  }, [fetchDashboard, fetchPhotoApprovals, fetchRecentReports, selectedPhotoApprovalIds]);
 
   if (loading) {
     return (
@@ -310,6 +376,7 @@ export default function AdminDashboardPage() {
           { id: "municipalities", label: "Municipios", icon: Building2 },
           { id: "reports", label: "Reportes", icon: FileText },
           { id: "users", label: "Usuarios", icon: Users },
+          { id: "photoApprovals", label: "Fotos", icon: Image },
           { id: "violations", label: "Violaciones", icon: AlertTriangle },
         ].map(({ id, label, icon: Icon }) => (
           <button
@@ -841,6 +908,161 @@ export default function AdminDashboardPage() {
                 <ChevronRight className="w-4 h-4" />
               </Button>
             </div>
+          </>
+        )}
+
+        {tab === "photoApprovals" && (
+          <>
+            <div className="bg-white rounded-2xl shadow-sm p-4 mb-4">
+              <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+                <div>
+                  <h2 className="text-base font-bold text-[#2B2D42]">Aprobaciones de fotos</h2>
+                  <p className="text-sm text-[#8D99AE]">
+                    Las fotos adjuntas quedan pendientes hasta que un admin las aprueba. Si se rechazan, el reporte original se elimina.
+                  </p>
+                </div>
+                <Button size="sm" variant="outline" onClick={fetchPhotoApprovals} disabled={photoApprovalLoading}>
+                  {photoApprovalLoading ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <RefreshCw className="w-4 h-4 mr-2" />}
+                  Actualizar
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2 items-center justify-between">
+                <p className="text-xs text-[#8D99AE]">
+                  {photoApprovalTotal} fotos pendientes · 100 por página
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={toggleAllPhotoApprovals}
+                    disabled={!photoApprovals.length}
+                  >
+                    {photoApprovals.length && photoApprovals.every((item) => selectedPhotoApprovalIds.includes(item.id))
+                      ? "Deseleccionar visibles"
+                      : "Seleccionar visibles"}
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="bg-[#66BB6A] hover:bg-[#4CAF50] text-white"
+                    onClick={() => handlePhotoApprovalModeration("approve")}
+                    disabled={photoApprovalLoading || selectedPhotoApprovalIds.length === 0}
+                  >
+                    Aprobar seleccionadas ({selectedPhotoApprovalIds.length})
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="destructive"
+                    onClick={() => handlePhotoApprovalModeration("reject")}
+                    disabled={photoApprovalLoading || selectedPhotoApprovalIds.length === 0}
+                  >
+                    Rechazar seleccionadas ({selectedPhotoApprovalIds.length})
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {photoApprovalLoading && !photoApprovals.length ? (
+              <div className="bg-white rounded-2xl shadow-sm p-10 flex items-center justify-center">
+                <Loader2 className="w-7 h-7 animate-spin text-[#FF6B6B]" />
+              </div>
+            ) : photoApprovals.length === 0 ? (
+              <div className="bg-white rounded-2xl shadow-sm p-8 text-center">
+                <CheckCircle className="w-10 h-10 text-[#66BB6A] mx-auto mb-3" />
+                <p className="text-[#2B2D42] font-bold mb-1">No hay fotos pendientes de aprobación</p>
+                <p className="text-sm text-[#8D99AE]">Las nuevas imágenes aparecerán aquí antes de mostrarse al resto de usuarios.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-3">
+                  {photoApprovals.map((approval, index) => (
+                    <div key={approval.id || index} className="bg-white rounded-xl p-4 shadow-sm">
+                      <div className="flex items-start gap-4">
+                        <input
+                          type="checkbox"
+                          checked={selectedPhotoApprovalIds.includes(approval.id)}
+                          onChange={() => togglePhotoApprovalSelection(approval.id)}
+                          className="mt-1 h-4 w-4 rounded border-[#8D99AE]/40"
+                          aria-label={`Seleccionar foto ${approval.id}`}
+                        />
+                        {approval.photo_url ? (
+                          <img
+                            src={`${API}/files/${approval.photo_url}`}
+                            alt="Miniatura pendiente"
+                            className="w-24 h-24 rounded-xl object-cover shrink-0 bg-[#F8F9FA]"
+                          />
+                        ) : (
+                          <div className="w-24 h-24 rounded-xl bg-[#F8F9FA] flex items-center justify-center shrink-0">
+                            <Image className="w-6 h-6 text-[#8D99AE]" />
+                          </div>
+                        )}
+
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap mb-2">
+                            <p className="font-bold text-[#2B2D42]">{approval.municipality || "Sin municipio"}</p>
+                            {approval.barrio ? (
+                              <Badge variant="outline" className="text-[10px]">{approval.barrio}</Badge>
+                            ) : null}
+                            <Badge className="bg-[#FFA726] text-white text-[10px]">Pendiente</Badge>
+                          </div>
+                          <div className="text-xs text-[#8D99AE] space-y-1 mb-2">
+                            <p>Subida: {formatDateTime(approval.photo_submitted_at || approval.created_at)}</p>
+                            <p>Contribuidor: {approval.contributor_name || "Anónimo"}</p>
+                            <p>{approval.latitude?.toFixed?.(4)}, {approval.longitude?.toFixed?.(4)}</p>
+                          </div>
+                          {approval.description ? (
+                            <p className="text-sm text-[#2B2D42] italic line-clamp-2">"{approval.description}"</p>
+                          ) : (
+                            <p className="text-xs text-[#8D99AE] italic">Sin descripción</p>
+                          )}
+                        </div>
+
+                        <div className="flex flex-col gap-2 shrink-0">
+                          <Button
+                            size="sm"
+                            className="bg-[#66BB6A] hover:bg-[#4CAF50] text-white"
+                            onClick={() => handlePhotoApprovalModeration("approve", [approval.id])}
+                            disabled={photoApprovalLoading}
+                          >
+                            Aprobar
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="destructive"
+                            onClick={() => handlePhotoApprovalModeration("reject", [approval.id])}
+                            disabled={photoApprovalLoading}
+                          >
+                            Rechazar
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="flex justify-between items-center mt-4">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={photoApprovalPage === 0}
+                    onClick={() => setPhotoApprovalPage((page) => Math.max(0, page - 1))}
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </Button>
+                  <span className="text-xs text-[#8D99AE]">
+                    Pág {photoApprovalPage + 1} de {Math.max(1, Math.ceil(photoApprovalTotal / 100))}
+                  </span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={(photoApprovalPage + 1) * 100 >= photoApprovalTotal}
+                    onClick={() => setPhotoApprovalPage((page) => page + 1)}
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </>
+            )}
           </>
         )}
 
