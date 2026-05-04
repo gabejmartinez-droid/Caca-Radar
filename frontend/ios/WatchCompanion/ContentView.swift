@@ -259,7 +259,7 @@ struct ContentView: View {
                 }
             }
 
-            while let result = await group.next() {
+            while let result = try await group.next() {
                 switch result {
                 case .success(let coordinate, let source):
                     group.cancelAll()
