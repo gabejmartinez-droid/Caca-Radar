@@ -691,10 +691,11 @@ export default function MapPage() {
   );
   const detailsCardBottomPx = viewportWidth < 768 ? 18 : user?.subscription_active ? 226 : 158;
   const detailsCardMaxHeightPx = (() => {
+    const availableHeight = Math.max(viewportHeight - detailsCardBottomPx - 72, 320);
     if (viewportWidth < 768) {
-      return Math.min(Math.max(Math.round(viewportHeight * 0.58), 360), Math.max(viewportHeight - 132, 360));
+      return Math.min(Math.max(Math.round(viewportHeight * 0.62), 420), availableHeight);
     }
-    return Math.min(Math.max(Math.round(viewportHeight * 0.17), 168), 200);
+    return Math.min(Math.max(Math.round(viewportHeight * 0.56), 420), availableHeight);
   })();
   const currentUserId = user?._id || user?.id || null;
   const isOwnSelectedReport = Boolean(selectedReport?.user_id && currentUserId && selectedReport.user_id === currentUserId);
@@ -1207,7 +1208,7 @@ export default function MapPage() {
             data-testid="details-drawer"
           >
             <div className="mx-auto mt-3 h-1.5 w-16 rounded-full bg-[#E9ECF2]" />
-            <div className="px-3 pt-2 pb-3 overflow-y-auto">
+            <div className="px-3 pt-2 pb-4 overflow-y-auto max-h-full">
               <div className="flex items-center justify-between gap-3 mb-2">
                 <h2 className="text-lg font-bold text-[#2B2D42] truncate" style={{ fontFamily: 'Nunito, sans-serif' }}>{t("detailsTitle")}</h2>
                 <Button variant="ghost" className="text-[#8D99AE] h-7 px-2 shrink-0" onClick={closeDetailsDrawer}>
@@ -1268,10 +1269,6 @@ export default function MapPage() {
                     )}
                   </div>
                 </div>
-              </div>
-
-              <div className="mt-3 rounded-2xl bg-[#F8F9FA] px-3 py-2 text-[11px] leading-5 text-[#5C677D]">
-                {t("mapUi.communityReportsAdvisory")}
               </div>
 
               <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">

@@ -58,12 +58,14 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
-- Web `1.1.55-web.1`
-- iOS `1.1.72 (74)`
-- Android `1.1.72 (74)`
+- Web `1.1.56-web.1`
+- iOS `1.1.73 (75)`
+- Android `1.1.73 (75)`
 - Backend `1.1.16-api.1`
 
 Changes:
+- Increased the report details popup height on web/desktop so the vote controls remain fully visible and clickable instead of being clipped under the card edge.
+- Removed the community advisory block from the report popup again to recover vertical space for the actual report actions.
 - Fixed the watch location race helper to use `withThrowingTaskGroup`, which matches the fact that the body rethrows the final chosen location/error.
 - Marked the `group.next()` await with `try` so the throwing task-group iteration compiles cleanly in Xcode Cloud.
 - Fixed the Apple Watch companion bridge build by importing `CoreLocation` in the watch session bridge where the new raced phone-coordinate helper returns `CLLocationCoordinate2D`.
