@@ -3,7 +3,7 @@ import { MapContainer, TileLayer, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import axios from "axios";
 import { toast } from "sonner";
-import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Share2, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair, MessageSquare, Heart, Cookie, FileText } from "lucide-react";
+import { MapPin, Plus, User, LogIn, X, Camera, Flag, ThumbsUp, ThumbsDown, Clock, CheckCircle, Loader2, Trophy, AlertTriangle, Shield, Star, Flame, LogOut, BarChart3, Building2, Layers, Bell, BellOff, Filter, Lock, ChevronDown, Crosshair, MessageSquare, Heart, Cookie, FileText } from "lucide-react";
 import { Button } from "../components/ui/button";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger
@@ -15,7 +15,6 @@ import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { LanguageSelector } from "../components/LanguageSelector";
-import SocialShareButtons from "../components/SocialShareButtons";
 import { useNavigate } from "react-router-dom";
 import "leaflet/dist/leaflet.css";
 import { HeatmapLayer } from "../components/HeatmapLayer";
@@ -26,7 +25,6 @@ import PointsPopup from "../components/PointsPopup";
 import StreakFlame from "../components/StreakFlame";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { compressReportPhoto, REPORT_PHOTO_MAX_BYTES } from "../utils/reportPhoto";
-import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { isCapacitorNative } from "../tokenManager";
 import { getCurrentPlatform, getVersionSummary } from "../versionInfo";
 const DEFAULT_CENTER = [40.4168, -3.7038];
@@ -608,24 +606,6 @@ export default function MapPage() {
     }
   };
 
-  const getReportSharePayload = async () => {
-    if (!selectedReport) return null;
-    const { data } = await axios.get(`${API}/reports/${selectedReport.id}/share`, { withCredentials: true });
-    return { title: data.title, text: data.text, url: data.url || data.app_url };
-  };
-
-  const handleShare = async () => {
-    if (!selectedReport) return;
-    try {
-      await shareWithNativeOrCopy({
-        ...(await getReportSharePayload()),
-        onCopied: () => toast.success(t("mapUi.linkCopied")),
-      });
-    } catch (err) {
-      if (err.name !== "AbortError") toast.error(t("mapUi.shareError"));
-    }
-  };
-
   const togglePush = async () => {
     if (!user) { navigate("/login"); return; }
     const supported = await isPushSupported();
@@ -715,19 +695,11 @@ export default function MapPage() {
         ownReportInfo: "No puedes votar positivamente tu propio reporte, pero sí marcar que ya no está.",
         alreadyVotedInfo: `Ya votaste este reporte: ${reportVoteStatusLabel}.`,
       };
-  const clearActionInfo = user?.role === "admin"
-    ? (language === "en"
-        ? "Admins can clear reports without the normal proximity limit."
-        : "Los administradores pueden retirar reportes sin el límite normal de proximidad.")
-    : user?.role === "municipality"
-      ? (language === "en"
-          ? "Municipal dashboards can clear reports anywhere inside their municipality."
-          : "Las cuentas municipales pueden retirar reportes desde cualquier punto de su municipio.")
-    : canBypassClearingProximity
-      ? null
-      : (language === "en"
-          ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
-          : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
+  const clearActionInfo = canBypassClearingProximity
+    ? null
+    : (language === "en"
+        ? `You must be within ${ACTION_PROXIMITY_METERS} m to mark a report as already gone.`
+        : `Debes estar a menos de ${ACTION_PROXIMITY_METERS} m para marcar que ya no está.`);
   const versionEntries = [
     { key: "web", label: "Web", value: versionSummary.web },
     { key: "ios", label: "iOS", value: versionSummary.ios },
@@ -1282,21 +1254,11 @@ export default function MapPage() {
                 <div className="bg-[#F8F9FA] rounded-xl p-2.5 mb-2 text-center text-xs text-[#8D99AE]">{t("mapUi.alreadyMarkedResolved")}: {myVote === "still_there" ? t("stillThere") : t("mapUi.noLongerHere")}</div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
-                <Button type="button" variant="ghost" onClick={handleShare} className="h-9 text-[#42A5F5] hover:text-[#1E88E5]" data-testid="share-btn">
-                  <Share2 className="w-4 h-4 mr-2" />{t("mapUi.share")}
-                </Button>
+              <div className="grid grid-cols-1 gap-2">
                 <Button type="button" variant="ghost" onClick={() => { setShowFlagDrawer(true); setShowDetailsDrawer(false); }} className="h-9 text-[#8D99AE] hover:text-[#FF5252]" data-testid="flag-report-btn">
                   <Flag className="w-4 h-4 mr-2" />{t("flagReport")}
                 </Button>
               </div>
-              <SocialShareButtons
-                className="mt-2"
-                prefix="report-share"
-                loadShareData={getReportSharePayload}
-                onCopied={() => toast.success(t("mapUi.linkCopied"))}
-                onError={() => toast.error(t("mapUi.shareError"))}
-              />
             </div>
           </div>
         </>
