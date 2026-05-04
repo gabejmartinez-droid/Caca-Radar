@@ -1765,6 +1765,7 @@ async def get_reports(
     status: Optional[str] = None,
     confirmed_only: Optional[bool] = None
 ):
+    viewer = await require_auth(request)
     query = {"archived": {"$ne": True}, "flagged": {"$ne": True}}
     if municipality:
         query["municipality"] = municipality
@@ -1774,9 +1775,6 @@ async def get_reports(
         query["status"] = status
     if confirmed_only:
         query["status"] = "verified"
-
-    viewer = await get_current_user(request)
-    viewer_is_authenticated = bool(viewer)
 
     reports = await db.reports.find(query, {
         "_id": 0, "id": 1, "latitude": 1, "longitude": 1, "category": 1,
@@ -1789,7 +1787,7 @@ async def get_reports(
 
     # Add freshness labels and confidence scores
     for index, report in enumerate(reports):
-        r = apply_public_report_privacy(report, viewer_is_authenticated)
+        r = apply_public_report_privacy(report, bool(viewer))
         r["freshness"] = get_freshness_label(r.get("created_at", ""), r.get("refreshed_at"))
         r["confidence"] = calc_confidence_score(r)
         r["is_premium_report"] = r.get("contributor_rank") is not None
@@ -1803,13 +1801,12 @@ async def get_reports(
 
 @api_router.get("/reports/{report_id}")
 async def get_report(report_id: str, request: Request):
-    viewer = await get_current_user(request)
-    viewer_is_authenticated = bool(viewer)
+    await require_auth(request)
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     [report] = await apply_current_public_report_ranks([report])
-    report = apply_public_report_privacy(report, viewer_is_authenticated)
+    report = apply_public_report_privacy(report, True)
     report["freshness"] = get_freshness_label(report.get("created_at", ""), report.get("refreshed_at"))
     report["confidence"] = calc_confidence_score(report)
     report["is_premium_report"] = report.get("contributor_rank") is not None
@@ -2247,7 +2244,9 @@ async def upload_photo(report_id: str, request: Request, file: UploadFile = File
     return {"photo_url": result["path"]}
 
 @api_router.get("/files/{path:path}")
-async def get_file(path: str):
+async def get_file(path: str, request: Request):
+    if path.startswith(f"{APP_NAME}/reports/"):
+        await require_auth(request)
     try:
         data, content_type = await get_object_async(path)
         return Response(content=data, media_type=content_type)
@@ -2814,8 +2813,9 @@ async def api_city_report(request: Request, city: str, barrio: str | None = None
 
 
 @api_router.get("/city-reports/share")
-async def api_city_report_share(city: str, barrio: str | None = None):
-    """Public shareable city or barrio report summary."""
+async def api_city_report_share(request: Request, city: str, barrio: str | None = None):
+    """Authenticated city or barrio report summary."""
+    await require_auth(request)
     data = await get_location_share_summary(db, city, barrio)
     if not data.get("has_data"):
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
@@ -2862,7 +2862,8 @@ async def api_city_report_share(city: str, barrio: str | None = None):
 
 @api_router.get("/city-reports/share-image")
 @api_router.get("/city-reports/share-image.png")
-async def api_city_report_share_image(city: str, barrio: str | None = None):
+async def api_city_report_share_image(request: Request, city: str, barrio: str | None = None):
+    await require_auth(request)
     summary = await get_location_share_summary(db, city, barrio)
     if not summary.get("has_data"):
         png = build_rankings_share_png(
@@ -2880,17 +2881,13 @@ async def api_city_report_share_image(city: str, barrio: str | None = None):
 @api_router.get("/share-image/location")
 @api_router.get("/share-image/location.png")
 async def api_location_share_image(city: str, barrio: str | None = None):
-    summary = await get_location_share_summary(db, city, barrio)
-    if not summary.get("has_data"):
-        png = build_rankings_share_png(
-            f"Caca Radar — {city}",
-            LOCATION_SHARE_COPY["headline"],
-            [],
-            footer=LOCATION_SHARE_COPY["footer"],
-        )
-        return build_share_image_response(png, {"kind": "location-share", "city": city, "barrio": barrio, "empty": True})
-    png = build_barrio_snapshot_png(summary)
-    return build_share_image_response(png, {"kind": "location-share", "city": city, "barrio": barrio, "generated_at": summary.get("generated_at")})
+    png = build_rankings_share_png(
+        "Caca Radar",
+        "Inicia sesión para ver reportes y paneles privados.",
+        [],
+        footer="Descarga Caca Radar",
+    )
+    return build_share_image_response(png, {"kind": "location-share-private", "city": city, "barrio": barrio})
 
 
 @api_router.get("/share-image/location/{city_slug}")
@@ -2907,24 +2904,14 @@ async def api_location_share_image_barrio_slug(city_slug: str, barrio_slug: str)
 
 @api_router.get("/share/location", response_class=HTMLResponse)
 async def api_location_share_page(city: str, barrio: str | None = None):
-    summary = await get_location_share_summary(db, city, barrio)
-    if summary.get("found"):
-        metadata = build_location_share_metadata(get_frontend_url(), summary, image_version=get_share_image_version())
-        title = metadata["title"]
-        description = metadata["description"]
-        image_url = metadata["image_url"]
-        share_url = metadata["share_url"]
-        redirect_url = metadata["download_url"]
-        headers = build_cache_headers(summary)
-    else:
-        city_slug = slugify_location_segment(city)
-        barrio_slug = slugify_location_segment(barrio or "") if barrio else None
-        title = f"Caca Radar — {city}"
-        description = "Descarga Caca Radar y ayuda a mejorar tu zona."
-        image_url = f"{get_frontend_url()}/share-example-es.png"
-        share_url = build_location_share_url(city_slug, barrio_slug)
-        redirect_url = build_location_download_url(city_slug, barrio_slug)
-        headers = build_cache_headers({"city": city, "barrio": barrio, "fallback": True})
+    city_slug = slugify_location_segment(city)
+    barrio_slug = slugify_location_segment(barrio or "") if barrio else None
+    title = "Caca Radar"
+    description = "Inicia sesión para ver reportes y paneles privados de Caca Radar."
+    image_url = f"{get_frontend_url()}/share-example-es.png"
+    share_url = build_location_share_url(city_slug, barrio_slug)
+    redirect_url = build_location_download_url(city_slug, barrio_slug)
+    headers = build_cache_headers({"city": city, "barrio": barrio, "private_reports": True})
     return HTMLResponse(
         render_share_page(
             title=title,
@@ -2986,18 +2973,9 @@ async def api_public_share_page(
 
     if kind == "city-report":
         selected_city = city or "Madrid"
-        summary = await get_city_report_summary(db, selected_city, barrio=barrio)
-        location = f"{selected_city} — {barrio}" if barrio else selected_city
-        title = f"Avisos activos en {location}"
-        description = (
-            f"{location}: {summary.get('fresh_reports', 0)} frescos, "
-            f"{summary.get('older_reports', 0)} antiguos, "
-            f"{summary.get('fossil_reports', 0)} fósiles."
-        )
-        image_url = append_query_params(
-            f"{frontend_url}/api/city-reports/share-image.png?city={quote(selected_city)}" + (f"&barrio={quote(barrio)}" if barrio else ""),
-            v=get_share_image_version(),
-        )
+        title = "Caca Radar"
+        description = "Inicia sesión para ver informes privados por ciudad o barrio."
+        image_url = fallback_image
         redirect_url = build_download_url("city-report", city=selected_city, barrio=barrio)
         share_url = build_share_page_url("city-report", city=selected_city, barrio=barrio)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
@@ -3011,11 +2989,10 @@ async def api_public_share_page(
         return HTMLResponse(render_share_page(title=title, description=description, image_url=fallback_image, share_url=share_url, redirect_url=redirect_url))
 
     if kind == "report" and report_id:
-        report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0, "municipality": 1, "photo_url": 1})
-        municipality = city or (report or {}).get("municipality") or "España"
-        title = f"Reporte de caca en {municipality} — Caca Radar"
-        description = f"Nuevo reporte en {municipality}. Ayuda a mantener las calles limpias."
-        image_url = f"{frontend_url}/api/files/{report['photo_url']}" if report and report.get("photo_url") else fallback_image
+        municipality = city or "España"
+        title = "Caca Radar"
+        description = "Inicia sesión para ver reportes privados y colaborar con tu municipio."
+        image_url = fallback_image
         redirect_url = build_download_url("report", report_id=report_id, city=municipality)
         share_url = build_share_page_url("report", report_id=report_id, city=municipality)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))
@@ -4516,6 +4493,7 @@ async def update_push_preferences(data: PushPreferencesUpdate, request: Request)
 @api_router.get("/reports/{report_id}/share")
 async def get_share_data(report_id: str, request: Request):
     """Get shareable data for a report."""
+    await require_auth(request)
     report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")

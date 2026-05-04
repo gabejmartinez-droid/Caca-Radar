@@ -91,7 +91,7 @@ export default function PrivacyPage() {
                   Si activas la localización o seleccionas un punto en el mapa, tratamos coordenadas para crear reportes, validar cercanía y mostrar avisos en el mapa.
                 </p>
                 <p className="font-medium text-[#2B2D42]">
-                  En las vistas públicas mostramos una ubicación aproximada del reporte en el mapa. Algunas imágenes o detalles más sensibles pueden quedar limitados a sesiones autenticadas, moderación o contextos internos del servicio.
+                  Los reportes no se muestran de forma pública y abierta a personas no autenticadas. Su visualización queda limitada a cuentas autenticadas, flujos internos del servicio y accesos municipales o administrativos autorizados.
                 </p>
               </div>
               <div>
@@ -176,16 +176,16 @@ export default function PrivacyPage() {
           </Section>
 
           <Section title="9. Contenido visible públicamente">
-            <p>Los reportes visibles en Caca Radar son aportaciones de la comunidad.</p>
-            <p>En el estado actual del servicio, otras personas usuarias pueden ver dentro de la app o web:</p>
+            <p>Los reportes de Caca Radar son aportaciones de la comunidad, pero no están pensados como un tablón público abierto a cualquier visitante.</p>
+            <p>En el estado actual del servicio, el acceso a reportes queda limitado a personas usuarias autenticadas y, cuando proceda, a cuentas municipales o administrativas autorizadas.</p>
             <ul className="list-disc pl-6 space-y-2">
-              <li>la fotografía del reporte, si existe;</li>
+              <li>la fotografía del reporte, si existe, según permisos y contexto de acceso;</li>
               <li>el texto descriptivo, si existe;</li>
               <li>la fecha y el estado del aviso;</li>
-              <li>una ubicación aproximada mostrada en el mapa público;</li>
-              <li>una identificación pública reducida del contribuyente, con anonimización o etiquetado genérico cuando corresponda.</li>
+              <li>la ubicación del aviso según el nivel de acceso aplicable al usuario autenticado;</li>
+              <li>una identificación reducida del contribuyente, con anonimización o etiquetado genérico cuando corresponda.</li>
             </ul>
-            <p>Algunos detalles, imágenes o enlaces compartibles pueden requerir autenticación, revisión o una acción expresa de la persona usuaria antes de mostrarse.</p>
+            <p>Las vistas públicas anónimas no muestran listados abiertos de reportes. Algunos detalles, imágenes o enlaces compartibles pueden requerir autenticación, revisión o una acción expresa de la persona usuaria antes de mostrarse.</p>
           </Section>
 
           <Section title="10. Transferencias internacionales">
@@ -199,7 +199,7 @@ export default function PrivacyPage() {
           <Section title="11. Conservación de los datos">
             <ul className="list-disc pl-6 space-y-2">
               <li>datos de cuenta: mientras la cuenta esté activa; tras su eliminación, la cuenta se borra y los reportes publicados se anonimizan;</li>
-              <li>reportes públicos: pueden permanecer visibles hasta archivo automático, moderación o eliminación; el código actual archiva reportes antiguos a partir de 30 días;</li>
+              <li>reportes: pueden permanecer accesibles para personas usuarias autenticadas, equipos municipales autorizados o flujos internos hasta archivo automático, moderación o eliminación; el código actual archiva reportes antiguos a partir de 30 días;</li>
               <li>cookie `access_token`: 1 hora;</li>
               <li>cookie `refresh_token`: 7 días;</li>
               <li>cookie `anon_id`: hasta 12 meses;</li>

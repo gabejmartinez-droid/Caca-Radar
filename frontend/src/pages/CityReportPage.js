@@ -114,7 +114,7 @@ function normalizeCityReportSummary(data) {
 
 export default function CityReportPage() {
   const { user } = useAuth();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [cityOptions, setCityOptions] = useState([]);
@@ -181,6 +181,11 @@ export default function CityReportPage() {
   }, [canUseSearch, requestedCity, t]);
 
   useEffect(() => {
+    if (!user) {
+      setSummary(null);
+      setLoadError("");
+      return;
+    }
     if (!requestedCity) {
       setSummary(null);
       setLoadError("");
@@ -222,7 +227,7 @@ export default function CityReportPage() {
     };
     fetchSummary();
     return () => { ignore = true; };
-  }, [requestedCity, requestedBarrio, canUseSearch, t]);
+  }, [requestedCity, requestedBarrio, canUseSearch, t, user]);
 
   const filteredCities = useMemo(() => {
     const query = searchValue.trim().toLowerCase();
@@ -281,7 +286,7 @@ export default function CityReportPage() {
     if (!summary?.city) return null;
     const query = new URLSearchParams({ city: summary.city });
     if (summary.barrio) query.set("barrio", summary.barrio);
-    const { data } = await axios.get(`${API}/city-reports/share?${query.toString()}`);
+    const { data } = await axios.get(`${API}/city-reports/share?${query.toString()}`, { withCredentials: true });
     return {
       title: data.title || formatTranslation(t, "cityReportUi.shareTitle", {
         location: summary.barrio
@@ -323,6 +328,46 @@ export default function CityReportPage() {
       older: summary.older_reports,
       fossils: summary.fossil_reports,
     }) : "";
+  const cityPrivateTitle = (() => {
+    const value = t("cityReportUi.privateTitle");
+    return value === "cityReportUi.privateTitle"
+      ? (language === "es" ? "Los informes no son públicos" : "City reports are not public")
+      : value;
+  })();
+  const cityPrivateBody = (() => {
+    const value = t("cityReportUi.privateBody");
+    return value === "cityReportUi.privateBody"
+      ? (language === "es"
+          ? "Inicia sesión para consultar resúmenes de reportes. Las cuentas municipales autorizadas también pueden acceder a estos datos."
+          : "Sign in to review report summaries. Authorized municipal accounts can also access this data.")
+      : value;
+  })();
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-[#F8F9FA] flex flex-col" data-testid="city-report-login-required">
+        <div className="ios-safe-header p-4 flex justify-between items-center">
+          <Button variant="ghost" onClick={() => navigate("/")} className="text-[#8D99AE]">
+            <ArrowLeft className="w-4 h-4 mr-2" />{t("backToMap")}
+          </Button>
+          <LanguageSelector />
+        </div>
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <Lock className="w-12 h-12 text-[#8D99AE] mb-4" />
+          <h2 className="text-xl font-bold text-[#2B2D42] mb-2">{cityPrivateTitle}</h2>
+          <p className="text-[#8D99AE] text-sm mb-6">{cityPrivateBody}</p>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Button onClick={() => navigate("/login")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-8 py-5">
+              {t("login")}
+            </Button>
+            <Button onClick={() => navigate("/register")} variant="outline" className="rounded-xl font-bold px-8 py-5">
+              {t("register")}
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!isPremium && !requestedCity) {
     return (

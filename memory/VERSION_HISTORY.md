@@ -58,6 +58,25 @@ Production notes:
 ### 2026-05-04 — Pending
 
 Impacted environments:
+- Web `1.1.52-web.1`
+- iOS `1.1.66 (68)`
+- Android `1.1.69 (71)`
+- Backend `1.1.16-api.1`
+
+Changes:
+- Stopped exposing community reports, report details, report share payloads, and report photos to anonymous/public visitors.
+- Required authenticated access for report lists, report detail views, city-report share summaries, and report media, while keeping municipal and other authenticated flows working.
+- Replaced public report and city-share landing pages with generic marketing previews so shared links no longer leak live report content to crawlers or logged-out visitors.
+- Updated the map, city-report, and legal copy so the app now clearly states that reports are private to authenticated or authorized municipal access.
+
+Verification:
+- Backend compile passed.
+- Frontend mobile bundle rebuilt and re-synced.
+- Android release bundle rebuilt successfully.
+
+### 2026-05-04 — Pending
+
+Impacted environments:
 - Web `1.1.51-web.1`
 - iOS `1.1.65 (67)`
 - Android `1.1.68 (70)`

@@ -114,16 +114,16 @@ export default function TermsPage() {
           </Section>
 
           <Section title="9. Visibilidad pública del contenido">
-            <p>En el diseño actual del servicio pueden mostrarse públicamente dentro de la app o de la web:</p>
+            <p>En el diseño actual del servicio los reportes no se ofrecen como un directorio público abierto a visitantes no autenticados.</p>
+            <p>Su visualización queda reservada a personas usuarias con sesión iniciada y a cuentas municipales o administrativas autorizadas. En ese contexto pueden mostrarse dentro de la app o de la web:</p>
             <ul className="list-disc pl-6 space-y-2">
               <li>fotografía del reporte, si existe, cuando la vista concreta permita mostrarla y la política de visibilidad aplicable lo autorice;</li>
               <li>texto descriptivo, si existe;</li>
               <li>fecha y estado;</li>
-              <li>una ubicación aproximada mostrada en el mapa público;</li>
-              <li>una identificación pública reducida o anonimizada de la persona que reportó.</li>
+              <li>la ubicación del aviso según el nivel de acceso aplicable;</li>
+              <li>una identificación reducida o anonimizada de la persona que reportó.</li>
             </ul>
-            <p>Las vistas públicas anónimas aplican una exposición más limitada: ubicación aproximada y restricciones sobre imágenes o detalles sensibles cuando corresponda.</p>
-            <p>El Servicio también puede generar enlaces internos para compartir reportes.</p>
+            <p>El Servicio también puede generar enlaces internos o flujos compartibles que sigan requiriendo autenticación para ver el detalle del reporte cuando así se configure.</p>
           </Section>
 
           <Section title="10. Moderación, reporte y revisión">
