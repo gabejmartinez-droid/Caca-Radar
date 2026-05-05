@@ -3088,7 +3088,7 @@ async def api_city_report_share(request: Request, city: str, barrio: str | None 
 @api_router.get("/city-reports/share-image")
 @api_router.get("/city-reports/share-image.png")
 async def api_city_report_share_image(request: Request, city: str, barrio: str | None = None):
-    await require_auth(request)
+    await archive_expired_reports()
     summary = await get_location_share_summary(db, city, barrio)
     if not summary.get("has_data"):
         png = build_rankings_share_png(
