@@ -9,7 +9,7 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 - Web: `1.1.71-web.1`
 - iOS: `1.1.89 (91)`
 - Android: `1.1.88 (90)`
-- Backend: `1.1.24-api.1`
+- Backend: `1.1.25-api.1`
 
 Changes:
 - Allow users to mark their own reports as no longer there while still blocking self-upvotes.
@@ -26,6 +26,7 @@ Changes:
 - Reduce the report-clearing threshold to a single nearby downvote instead of requiring two.
 - Run the 14-day cleanup before public, municipal, ranking, and admin dashboard queries so stale reports disappear consistently.
 - Tighten client-side report photo compression to smaller square images and a lower target size to reduce storage usage.
+- Normalize uploaded report photos on the server, strip EXIF/metadata, and convert them to AVIF when supported by the runtime or WebP/JPEG as fallbacks to reduce storage further.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

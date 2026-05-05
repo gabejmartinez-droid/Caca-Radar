@@ -4,6 +4,7 @@ load_dotenv()
 from fastapi import FastAPI, APIRouter, HTTPException, Request, UploadFile, File, Query, Response, Depends, Form
 from fastapi.responses import HTMLResponse, JSONResponse, Response, RedirectResponse
 from bson import ObjectId
+import io
 import os
 import secrets
 import subprocess
@@ -17,6 +18,14 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 from typing import Optional
 from urllib.parse import quote, urlparse
+
+try:
+    from PIL import Image, ImageOps, UnidentifiedImageError, features as pillow_features
+except ImportError:  # pragma: no cover - production installs Pillow via requirements
+    Image = None
+    ImageOps = None
+    UnidentifiedImageError = Exception
+    pillow_features = None
 
 # Shared dependencies — DB, auth, models, utilities
 from deps import (
@@ -290,6 +299,7 @@ api_router = APIRouter(prefix="/api")
 
 ACTION_PROXIMITY_METERS = 5
 REPORT_CLEARED_VOTES_NEEDED = 1
+REPORT_PHOTO_STORAGE_MAX_SIDE = 1200
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 SUPPORTED_LANGUAGE_CODES = {"es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"}
 
@@ -2282,6 +2292,84 @@ async def calc_top_zones(db, muni_name: str, thirty_days_ago: str) -> list:
     top = sorted(zone_map.items(), key=lambda x: -x[1])[:10]
     return [{"area": f"Zona {k}", "count": v} for k, v in top]
 
+
+def _report_photo_format_candidates() -> list[tuple[str, str, str, dict]]:
+    candidates: list[tuple[str, str, str, dict]] = []
+    if Image is not None:
+        try:
+            Image.init()
+        except Exception:
+            pass
+
+    avif_supported = False
+    webp_supported = False
+    try:
+        avif_supported = bool(pillow_features and pillow_features.check("avif"))
+    except Exception:
+        avif_supported = False
+    try:
+        webp_supported = bool(pillow_features and pillow_features.check("webp"))
+    except Exception:
+        webp_supported = False
+
+    if avif_supported:
+        candidates.append(("AVIF", "image/avif", "avif", {"quality": 52, "speed": 6}))
+    if webp_supported:
+        candidates.append(("WEBP", "image/webp", "webp", {"quality": 78, "method": 6}))
+    candidates.append(("JPEG", "image/jpeg", "jpg", {"quality": 82, "optimize": True}))
+    return candidates
+
+
+def normalize_report_photo_for_storage(
+    data: bytes,
+    original_filename: str | None = None,
+    original_content_type: str | None = None,
+) -> tuple[bytes, str, str]:
+    if Image is None or ImageOps is None:
+        ext = (original_filename or "report-photo.jpg").rsplit(".", 1)[-1].lower() if original_filename else "jpg"
+        return data, (original_content_type or "image/jpeg"), ext
+
+    try:
+        with Image.open(io.BytesIO(data)) as opened:
+            try:
+                opened.seek(0)
+            except Exception:
+                pass
+
+            image = ImageOps.exif_transpose(opened)
+
+            if image.mode in ("RGBA", "LA") or (image.mode == "P" and "transparency" in image.info):
+                rgba_image = image.convert("RGBA")
+                flattened = Image.new("RGB", image.size, (255, 255, 255))
+                flattened.paste(rgba_image, mask=rgba_image.getchannel("A"))
+                normalized = flattened
+            elif image.mode != "RGB":
+                normalized = image.convert("RGB")
+            else:
+                normalized = image.copy()
+    except UnidentifiedImageError as exc:
+        raise HTTPException(status_code=400, detail="Archivo de imagen no válido") from exc
+    except Exception as exc:
+        logger.exception("Failed to parse uploaded report photo")
+        raise HTTPException(status_code=400, detail="No hemos podido procesar la imagen") from exc
+
+    try:
+        longest_side = max(normalized.size)
+        if longest_side > REPORT_PHOTO_STORAGE_MAX_SIDE:
+            normalized.thumbnail((REPORT_PHOTO_STORAGE_MAX_SIDE, REPORT_PHOTO_STORAGE_MAX_SIDE), Image.Resampling.LANCZOS)
+
+        for fmt, content_type, ext, save_kwargs in _report_photo_format_candidates():
+            buffer = io.BytesIO()
+            try:
+                normalized.save(buffer, format=fmt, **save_kwargs)
+                return buffer.getvalue(), content_type, ext
+            except OSError:
+                continue
+    finally:
+        normalized.close()
+
+    raise HTTPException(status_code=500, detail="No hemos podido convertir la imagen")
+
 @api_router.post("/reports/{report_id}/photo")
 async def upload_photo(report_id: str, request: Request, file: UploadFile = File(...)):
     user = await require_registered(request)
@@ -2297,11 +2385,15 @@ async def upload_photo(report_id: str, request: Request, file: UploadFile = File
     data = await file.read()
     if len(data) > 5 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="Archivo demasiado grande (max 5MB)")
-    
-    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
+
+    normalized_data, normalized_content_type, ext = normalize_report_photo_for_storage(
+        data,
+        original_filename=file.filename,
+        original_content_type=file.content_type,
+    )
     path = f"{APP_NAME}/reports/{report_id}/{uuid.uuid4()}.{ext}"
-    
-    result = await put_object_async(path, data, file.content_type or "image/jpeg")
+
+    result = await put_object_async(path, normalized_data, normalized_content_type)
     
     await db.reports.update_one(
         {"id": report_id},
