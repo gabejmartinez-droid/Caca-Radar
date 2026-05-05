@@ -7,6 +7,7 @@ from typing import Optional
 
 from bson.decimal128 import Decimal128
 from location_share_service import (
+    build_active_report_filter,
     choose_preferred_location_label,
     get_report_age_bucket,
     resolve_location,
@@ -130,7 +131,7 @@ async def get_city_rankings(db, limit: int = 50) -> dict:
     """Get cleanest and dirtiest cities ranked by active reports per 10,000 residents."""
     # Get active reports grouped by municipality
     pipeline = [
-        {"$match": {"archived": {"$ne": True}, "flagged": {"$ne": True}}},
+        {"$match": build_active_report_filter()},
         {"$group": {
             "_id": "$municipality",
             "active_reports": {"$sum": 1},
@@ -182,7 +183,7 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
     """Get barrio/neighborhood rankings within a city by report density."""
     normalized_city = (city or "").strip()
     reports = await db.reports.find(
-        {"municipality": normalized_city, "archived": {"$ne": True}, "flagged": {"$ne": True}},
+        {"municipality": normalized_city, **build_active_report_filter()},
         {"_id": 0, "id": 1, "latitude": 1, "longitude": 1, "status": 1, "created_at": 1, "barrio": 1}
     ).to_list(10000)
 
@@ -254,7 +255,7 @@ async def get_barrio_rankings(db, city: str, limit: int = 50) -> dict:
 async def get_active_report_cities(db, limit: int = 500) -> dict:
     """Return cities that currently have active reports."""
     pipeline = [
-        {"$match": {"archived": {"$ne": True}, "flagged": {"$ne": True}}},
+        {"$match": build_active_report_filter()},
         {"$group": {
             "_id": "$municipality",
             "active_reports": {"$sum": 1},
@@ -304,8 +305,7 @@ async def get_active_report_barrios(db, city: str, limit: int = 500) -> dict:
     pipeline = [
         {"$match": {
             "municipality": city_filter,
-            "archived": {"$ne": True},
-            "flagged": {"$ne": True},
+            **build_active_report_filter(),
             "barrio": {"$nin": [None, ""]},
         }},
         {"$group": {
@@ -346,7 +346,7 @@ async def get_city_report_summary(db, city: str, barrio: str | None = None, prev
         }
 
     city_filter = resolved.city if len(resolved.city_variants) <= 1 else {"$in": list(resolved.city_variants)}
-    query = {"municipality": city_filter, "archived": {"$ne": True}, "flagged": {"$ne": True}}
+    query = {"municipality": city_filter, **build_active_report_filter()}
     if resolved.barrio:
         barrio_filter = resolved.barrio if len(resolved.barrio_variants) <= 1 else {"$in": list(resolved.barrio_variants)}
         query["barrio"] = barrio_filter

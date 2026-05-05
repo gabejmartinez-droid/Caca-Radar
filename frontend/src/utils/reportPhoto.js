@@ -1,7 +1,7 @@
-const MAX_LONGEST_SIDE = 1400;
-const TARGET_MAX_BYTES = 500 * 1024;
-const MIN_QUALITY = 0.45;
-const INITIAL_QUALITY = 0.82;
+const MAX_LONGEST_SIDE = 1200;
+const TARGET_MAX_BYTES = 350 * 1024;
+const MIN_QUALITY = 0.4;
+const INITIAL_QUALITY = 0.78;
 const QUALITY_STEP = 0.08;
 
 function clamp(value, min, max) {

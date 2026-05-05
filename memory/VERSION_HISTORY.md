@@ -6,10 +6,10 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-04 — Pending
 
-- Web: `1.1.70-web.1`
-- iOS: `1.1.88 (90)`
-- Android: `1.1.87 (89)`
-- Backend: `1.1.23-api.1`
+- Web: `1.1.71-web.1`
+- iOS: `1.1.89 (91)`
+- Android: `1.1.88 (90)`
+- Backend: `1.1.24-api.1`
 
 Changes:
 - Allow users to mark their own reports as no longer there while still blocking self-upvotes.
@@ -22,6 +22,10 @@ Changes:
 - Remove individual poop-report sharing options and drop the extra admin proximity advisory from the report details drawer.
 - Fix the “ya no está / cleaned” report action by routing it through the live downvote flow, allowing users to mark their own reports as cleaned while still blocking self-upvotes, and removing a legacy backend crash in the old cleaned-vote endpoint.
 - Restore visibility of approved and legacy report photos for public viewers while keeping pending moderation photos admin-only.
+- Archive reports after 14 days of inactivity, using the last confirmation/refresh time when available so reconfirmed reports stay alive.
+- Reduce the report-clearing threshold to a single nearby downvote instead of requiring two.
+- Run the 14-day cleanup before public, municipal, ranking, and admin dashboard queries so stale reports disappear consistently.
+- Tighten client-side report photo compression to smaller square images and a lower target size to reduce storage usage.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

@@ -4,7 +4,7 @@ import json
 import re
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from hashlib import md5
 from typing import Optional
 
@@ -15,6 +15,23 @@ ACTIVE_REPORT_FILTER = {
     "archived": {"$ne": True},
     "flagged": {"$ne": True},
 }
+ACTIVE_REPORT_MAX_AGE_DAYS = 14
+
+
+def build_active_report_filter(max_age_days: int = ACTIVE_REPORT_MAX_AGE_DAYS) -> dict:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+    return {
+        **ACTIVE_REPORT_FILTER,
+        "$or": [
+            {"refreshed_at": {"$gte": cutoff}},
+            {
+                "$and": [
+                    {"$or": [{"refreshed_at": {"$exists": False}}, {"refreshed_at": None}]},
+                    {"created_at": {"$gte": cutoff}},
+                ]
+            },
+        ],
+    }
 
 LOCATION_SHARE_COPY = {
     "headline": "¿Cuánta caca de perro hay en nuestras aceras?",
@@ -357,7 +374,7 @@ async def get_location_share_summary(
         }
 
     city_filter = resolved.city if len(resolved.city_variants) <= 1 else {"$in": list(resolved.city_variants)}
-    query = {**ACTIVE_REPORT_FILTER, "municipality": city_filter}
+    query = {**build_active_report_filter(), "municipality": city_filter}
     if resolved.barrio:
         barrio_filter = resolved.barrio if len(resolved.barrio_variants) <= 1 else {"$in": list(resolved.barrio_variants)}
         query["barrio"] = barrio_filter

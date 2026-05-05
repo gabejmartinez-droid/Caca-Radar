@@ -61,8 +61,10 @@ from digest_service import send_weekly_digests, generate_municipality_digest
 from city_rankings_service import get_city_rankings, get_barrio_rankings, get_active_report_cities, get_active_report_barrios, get_city_report_summary
 from share_image_service import build_rankings_share_png, build_barrio_snapshot_png, get_share_image_media_type
 from location_share_service import (
+    ACTIVE_REPORT_MAX_AGE_DAYS,
     LOCATION_SHARE_COPY,
     append_query_params,
+    build_active_report_filter,
     build_cache_headers,
     build_download_path,
     build_location_share_metadata,
@@ -287,7 +289,7 @@ app.state.started_at = datetime.now(timezone.utc).isoformat()
 api_router = APIRouter(prefix="/api")
 
 ACTION_PROXIMITY_METERS = 5
-REPORT_CLEARED_VOTES_NEEDED = 2
+REPORT_CLEARED_VOTES_NEEDED = 1
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 SUPPORTED_LANGUAGE_CODES = {"es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"}
 
@@ -322,6 +324,38 @@ def build_share_page_url(kind: str, **params) -> str:
             continue
         query_parts.append(f"{quote(str(key))}={quote(str(value))}")
     return f"{frontend_url}/api/share?{'&'.join(query_parts)}"
+
+
+def build_expired_report_query(max_age_days: int = ACTIVE_REPORT_MAX_AGE_DAYS) -> dict:
+    cutoff = (datetime.now(timezone.utc) - timedelta(days=max_age_days)).isoformat()
+    return {
+        "archived": {"$ne": True},
+        "$or": [
+            {"refreshed_at": {"$lt": cutoff}},
+            {
+                "$and": [
+                    {"$or": [{"refreshed_at": {"$exists": False}}, {"refreshed_at": None}]},
+                    {"created_at": {"$lt": cutoff}},
+                ]
+            },
+        ],
+    }
+
+
+async def archive_expired_reports(max_age_days: int = ACTIVE_REPORT_MAX_AGE_DAYS) -> int:
+    now_iso = datetime.now(timezone.utc).isoformat()
+    result = await db.reports.update_many(
+        build_expired_report_query(max_age_days),
+        {
+            "$set": {
+                "archived": True,
+                "status": "archived",
+                "archived_reason": "expired",
+                "moderated_at": now_iso,
+            }
+        },
+    )
+    return result.modified_count
 
 
 def build_location_download_url(city_slug: str, barrio_slug: str | None = None) -> str:
@@ -1801,8 +1835,9 @@ async def get_reports(
     status: Optional[str] = None,
     confirmed_only: Optional[bool] = None
 ):
+    await archive_expired_reports()
     viewer = await get_current_user(request)
-    query = {"archived": {"$ne": True}, "flagged": {"$ne": True}}
+    query = build_active_report_filter()
     if municipality:
         query["municipality"] = municipality
     if category:
@@ -1838,8 +1873,9 @@ async def get_reports(
 
 @api_router.get("/reports/{report_id}")
 async def get_report(report_id: str, request: Request):
+    await archive_expired_reports()
     viewer = await get_current_user(request)
-    report = await db.reports.find_one({"id": report_id, "archived": {"$ne": True}}, {"_id": 0})
+    report = await db.reports.find_one({"id": report_id, **build_active_report_filter()}, {"_id": 0})
     if not report:
         raise HTTPException(status_code=404, detail="Reporte no encontrado")
     [report] = await apply_current_public_report_ranks([report])
@@ -2744,11 +2780,13 @@ async def flag_report(report_id: str, data: FlagCreate, request: Request, respon
 @api_router.get("/rankings/cities")
 async def api_city_rankings(request: Request):
     """Get cleanest/dirtiest cities ranked by reports per 10k residents."""
+    await archive_expired_reports()
     return await get_city_rankings(db)
 
 @api_router.get("/rankings/cities/share")
 async def api_city_rankings_share(list_type: str = "dirtiest"):
     """Public shareable city ranking data (top 10 only)."""
+    await archive_expired_reports()
     data = await get_city_rankings(db, limit=10)
     cities = data.get(list_type, data["dirtiest"])[:10]
     title = "Las ciudades más sucias de España" if list_type == "dirtiest" else "Las ciudades más limpias de España"
@@ -2777,6 +2815,7 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
 @api_router.get("/rankings/cities/share-image")
 @api_router.get("/rankings/cities/share-image.png")
 async def api_city_rankings_share_image(list_type: str = "dirtiest"):
+    await archive_expired_reports()
     data = await get_city_rankings(db, limit=10)
     cities = data.get(list_type, data["dirtiest"])[:5]
     title = "Ciudades más sucias de España" if list_type == "dirtiest" else "Ciudades más limpias de España"
@@ -2796,11 +2835,13 @@ async def api_city_rankings_share_image(list_type: str = "dirtiest"):
 @api_router.get("/rankings/barrios")
 async def api_barrio_rankings(request: Request, city: str = "Madrid"):
     """Get barrio rankings within a city."""
+    await archive_expired_reports()
     return await get_barrio_rankings(db, city)
 
 @api_router.get("/rankings/barrios/share")
 async def api_barrio_rankings_share(city: str = "Madrid"):
     """Public shareable barrio ranking data (top 10 only) for a city."""
+    await archive_expired_reports()
     data = await get_barrio_rankings(db, city, limit=10)
     title = f"Los barrios con más avisos en {city}"
     app_url = build_download_url("barrio-rankings", city=city)
@@ -2832,6 +2873,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
 @api_router.get("/rankings/barrios/share-image")
 @api_router.get("/rankings/barrios/share-image.png")
 async def api_barrio_rankings_share_image(city: str = "Madrid"):
+    await archive_expired_reports()
     data = await get_barrio_rankings(db, city, limit=10)
     barrios = data.get("barrios") or []
     if not barrios:
@@ -2867,6 +2909,7 @@ async def api_city_report_cities(request: Request):
     user = await get_current_user(request)
     if not user or not user.get("subscription_active"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    await archive_expired_reports()
     return await get_active_report_cities(db)
 
 
@@ -2876,6 +2919,7 @@ async def api_city_report_barrios(request: Request, city: str):
     user = await get_current_user(request)
     if not user or not user.get("subscription_active"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    await archive_expired_reports()
     return await get_active_report_barrios(db, city)
 
 
@@ -2885,6 +2929,7 @@ async def api_city_report(request: Request, city: str, barrio: str | None = None
     user = await get_current_user(request)
     if not user or not user.get("subscription_active"):
         raise HTTPException(status_code=403, detail="Se requiere suscripción premium")
+    await archive_expired_reports()
     summary = await get_city_report_summary(db, city, barrio=barrio)
     return {
         **summary,
@@ -2903,6 +2948,7 @@ async def api_city_report(request: Request, city: str, barrio: str | None = None
 async def api_city_report_share(request: Request, city: str, barrio: str | None = None):
     """Authenticated city or barrio report summary."""
     await require_auth(request)
+    await archive_expired_reports()
     data = await get_location_share_summary(db, city, barrio)
     if not data.get("has_data"):
         raise HTTPException(status_code=404, detail="Ciudad o barrio sin reportes activos")
@@ -3362,8 +3408,7 @@ async def subscribe_municipality(request: Request):
 def _build_municipality_report_query(muni_name: str, status: Optional[str] = None) -> dict:
     query = {"municipality": muni_name}
     if status == "active":
-        query["archived"] = False
-        query["flagged"] = False
+        query.update(build_active_report_filter())
     elif status == "flagged":
         query["flagged"] = True
     elif status == "archived":
@@ -3373,7 +3418,7 @@ def _build_municipality_report_query(muni_name: str, status: Optional[str] = Non
 
 async def _get_municipality_stats_data(muni_name: str) -> dict:
     total = await db.reports.count_documents({"municipality": muni_name})
-    active = await db.reports.count_documents({"municipality": muni_name, "archived": False, "flagged": False})
+    active = await db.reports.count_documents({"municipality": muni_name, **build_active_report_filter()})
     flagged = await db.reports.count_documents({"municipality": muni_name, "flagged": True})
     archived = await db.reports.count_documents({"municipality": muni_name, "archived": True})
     week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
@@ -3541,6 +3586,7 @@ async def _build_municipality_dashboard_payload(
     report_limit: int = 20,
     flag_status: str = "pending",
 ) -> dict:
+    await archive_expired_reports()
     stats, map_data, reports, flags, photo_reviews, analytics = await asyncio.gather(
         _get_municipality_stats_data(muni_name),
         _get_municipality_map_data(muni_name),
@@ -3605,21 +3651,25 @@ async def _get_active_admin_municipality_dashboards() -> list[dict]:
 @api_router.get("/municipality/stats")
 async def get_municipality_stats(request: Request):
     user = await require_municipality(request)
+    await archive_expired_reports()
     return await _get_municipality_stats_data(user.get("municipality_name", ""))
 
 @api_router.get("/municipality/map")
 async def get_municipality_map(request: Request):
     user = await require_municipality(request)
+    await archive_expired_reports()
     return await _get_municipality_map_data(user.get("municipality_name", ""))
 
 @api_router.get("/municipality/reports")
 async def get_municipality_reports(request: Request, status: Optional[str] = None, page: int = 1, limit: int = 20):
     user = await require_municipality(request)
+    await archive_expired_reports()
     return await _get_municipality_reports_data(user.get("municipality_name", ""), status, page, limit)
 
 @api_router.get("/municipality/flags")
 async def get_municipality_flags(request: Request, status: str = "pending"):
     user = await require_municipality(request)
+    await archive_expired_reports()
     return await _get_municipality_flags_data(user.get("municipality_name", ""), status)
 
 @api_router.post("/municipality/moderate/{report_id}")
@@ -3646,6 +3696,7 @@ async def moderate_report(report_id: str, data: ModerationAction, request: Reque
 async def get_photo_reviews(request: Request):
     """Get reports with photos that have been flagged for photo violations (license_plate, face, name, personal_info)."""
     user = await require_municipality(request)
+    await archive_expired_reports()
     return await _get_municipality_photo_reviews_data(user.get("municipality_name", ""))
 
 
@@ -3682,6 +3733,7 @@ async def trigger_weekly_digests(request: Request):
 async def preview_digest(request: Request):
     """Preview the weekly digest for current municipality."""
     user = await require_municipality(request)
+    await archive_expired_reports()
     digest = await generate_municipality_digest(db, user.get("municipality_name", ""))
     return digest
 
@@ -4032,6 +4084,7 @@ async def _require_admin(request: Request) -> dict:
 async def admin_dashboard(request: Request):
     """Full admin dashboard data — platform overview."""
     await _require_admin(request)
+    await archive_expired_reports()
     now = datetime.now(timezone.utc)
     seven_days = (now - timedelta(days=7)).isoformat()
     thirty_days = (now - timedelta(days=30)).isoformat()
@@ -4042,7 +4095,7 @@ async def admin_dashboard(request: Request):
     total_municipalities = await db.users.count_documents({"role": "municipality"})
     active_muni_subs = await db.users.count_documents({"role": "municipality", "municipality_subscription_active": True})
     total_reports = await db.reports.count_documents({})
-    active_reports = await db.reports.count_documents({"archived": False, "flagged": False})
+    active_reports = await db.reports.count_documents(build_active_report_filter())
     reports_7d = await db.reports.count_documents({"created_at": {"$gte": seven_days}})
     reports_30d = await db.reports.count_documents({"created_at": {"$gte": thirty_days}})
     flagged_reports = await db.reports.count_documents({"flagged": True})
@@ -4133,6 +4186,7 @@ async def admin_municipality_dashboard(
 async def admin_recent_reports(request: Request, skip: int = 0, limit: int = 100):
     """Recent reports with reporter identity for admin review."""
     await _require_admin(request)
+    await archive_expired_reports()
     safe_limit = max(1, min(limit, 100))
     safe_skip = max(0, skip)
 
@@ -4303,6 +4357,7 @@ async def admin_update_user_account_type(user_id: str, data: AdminUserAccountTyp
 async def admin_photo_violations(request: Request, skip: int = 0, limit: int = 50):
     """All pending content/report flags across all municipalities."""
     await _require_admin(request)
+    await archive_expired_reports()
     flags = await db.flags.find(
         {"status": {"$in": ["pending", None]}},
         {"_id": 0}
@@ -4359,6 +4414,7 @@ async def _remove_report_after_photo_rejection(report: dict, admin_user: dict) -
 async def admin_photo_approvals(request: Request, skip: int = 0, limit: int = 100):
     """Admin queue of reports whose photos are pending approval."""
     await _require_admin(request)
+    await archive_expired_reports()
     safe_skip = max(skip, 0)
     safe_limit = max(1, min(limit, 100))
     query = {
@@ -5312,13 +5368,8 @@ async def seed_users():
     return await provision_privileged_accounts()
 
 async def run_maintenance():
-    """Archive old reports, deactivate expired subscriptions, recalculate ranks."""
-    # Archive reports older than 30 days
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
-    await db.reports.update_many(
-        {"created_at": {"$lt": cutoff}, "archived": {"$ne": True}},
-        {"$set": {"archived": True}}
-    )
+    """Archive expired reports, deactivate expired subscriptions, recalculate ranks."""
+    await archive_expired_reports()
     await reset_daily_counts(db)
 
     # Deactivate expired subscriptions (skip VIP/lifetime)
