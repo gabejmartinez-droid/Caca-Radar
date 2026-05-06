@@ -47,6 +47,10 @@ export const GOOGLE_IOS_CLIENT_ID =
   "685896513137-h75c4t1ikftjofpl6vovakoj4f6vgn1l.apps.googleusercontent.com";
 export const APPLE_WEB_CLIENT_ID = process.env.REACT_APP_APPLE_CLIENT_ID || "";
 export const APPLE_WEB_REDIRECT_URI = process.env.REACT_APP_APPLE_REDIRECT_URI || "";
+export const APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID =
+  process.env.REACT_APP_APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID || "premium_monthly";
+export const APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID =
+  process.env.REACT_APP_APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID || "premium_annual";
 export const PLAY_INTEGRITY_ENABLED = process.env.REACT_APP_ENABLE_PLAY_INTEGRITY === "true";
 export const PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER = process.env.REACT_APP_GOOGLE_CLOUD_PROJECT_NUMBER || "";
 // Temporarily disabled for App Review; set REACT_APP_ENABLE_SPAIN_LOCATION_GATE=true to re-enable.

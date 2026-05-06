@@ -11,6 +11,9 @@ class AppViewController: CAPBridgeViewController {
         if bridge?.plugin(withName: "AppleAuth") == nil {
             bridge?.registerPluginInstance(AppleAuthPlugin())
         }
+        if bridge?.plugin(withName: "AppleSubscriptions") == nil {
+            bridge?.registerPluginInstance(AppleSubscriptionsPlugin())
+        }
         if bridge?.plugin(withName: "CompanionBridge") == nil {
             bridge?.registerPluginInstance(CompanionBridgePlugin())
         }

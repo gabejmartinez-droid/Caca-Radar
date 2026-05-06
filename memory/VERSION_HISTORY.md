@@ -4,11 +4,11 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ## Released
 
-### 2026-05-04 — Pending
+### 2026-05-06 — Pending
 
-- Web: `1.1.71-web.1`
-- iOS: `1.1.89 (91)`
-- Android: `1.1.88 (90)`
+- Web: `1.1.72-web.1`
+- iOS: `1.1.90 (92)`
+- Android: `1.1.89 (91)`
 - Backend: `1.1.26-api.1`
 
 Changes:
@@ -28,6 +28,9 @@ Changes:
 - Tighten client-side report photo compression to smaller square images and a lower target size to reduce storage usage.
 - Normalize uploaded report photos on the server, strip EXIF/metadata, and convert them to AVIF when supported by the runtime or WebP/JPEG as fallbacks to reduce storage further.
 - Make `/api/city-reports/share-image.png` public so social crawlers can fetch the city-report Open Graph image without authentication.
+- Implement a real native Apple StoreKit subscription flow on iPhone, including App Store product loading, purchase handling, and restore purchases.
+- Route iPhone premium upgrades through `/api/users/subscribe/apple` using real transaction data instead of the old mock subscribe endpoint.
+- Hide the custom free-trial CTA on iPhone unless the App Store product actually reports an introductory offer, so the review build does not promise unsupported trial behavior.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 

@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Star, MapPin, Filter, Bell, Crown, Zap, Building2, Landmark, Building, Mail } from "lucide-react";
 import { Button } from "../components/ui/button";
@@ -8,18 +8,136 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import axios from "axios";
 import { toast } from "sonner";
 
-import { API } from "../config";
+import {
+  API,
+  APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID,
+  APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID,
+} from "../config";
 import { isCapacitorNative } from "../tokenManager";
+import {
+  getAppleSubscriptionProducts,
+  isNativeAppleSubscriptionsSupported,
+  purchaseAppleSubscription,
+  restoreAppleSubscriptions,
+} from "../utils/appleSubscriptions";
+
+const MONTHLY_PRICE_FALLBACK = "3,99";
+const ANNUAL_PRICE_FALLBACK = "29,99";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
   const { t, isRtl } = useLanguage();
   const navigate = useNavigate();
+  const [storeProducts, setStoreProducts] = useState({});
+  const [storeLoading, setStoreLoading] = useState(false);
+  const [purchaseBusyPlan, setPurchaseBusyPlan] = useState("");
+  const [restoreBusy, setRestoreBusy] = useState(false);
+
+  const isNativeAppleStore = isNativeAppleSubscriptionsSupported();
+  const appleProductIds = useMemo(
+    () => [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
+    []
+  );
+  const monthlyStoreProduct = storeProducts[APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID];
+  const annualStoreProduct = storeProducts[APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID];
+
+  useEffect(() => {
+    if (!isNativeAppleStore) {
+      return;
+    }
+
+    let cancelled = false;
+    const loadProducts = async () => {
+      setStoreLoading(true);
+      try {
+        const products = await getAppleSubscriptionProducts(appleProductIds);
+        if (cancelled) return;
+        const nextProducts = Object.fromEntries(products.map((product) => [product.id, product]));
+        setStoreProducts(nextProducts);
+      } catch (err) {
+        if (!cancelled) {
+          toast.error(
+            err?.message || t("subscriptionUi.storeProductsUnavailable")
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setStoreLoading(false);
+        }
+      }
+    };
+
+    loadProducts();
+    return () => {
+      cancelled = true;
+    };
+  }, [appleProductIds, isNativeAppleStore, t]);
+
+  const syncAppleSubscription = async (purchase) => {
+    const productId = purchase?.productId || "";
+    const plan = productId === APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const { data } = await axios.post(
+      `${API}/users/subscribe/apple`,
+      {
+        receipt_data: purchase?.receiptData || null,
+        transaction_id: purchase?.originalTransactionId || purchase?.transactionId || null,
+        plan,
+      },
+      { withCredentials: !isCapacitorNative() },
+    );
+    return data;
+  };
+
+  const pickPreferredAppleSubscription = (subscriptions) => {
+    const matching = (subscriptions || []).filter((subscription) =>
+      [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].includes(subscription?.productId)
+    );
+    if (!matching.length) {
+      return null;
+    }
+    return matching.sort((left, right) => {
+      const leftExpiry = left?.expirationDate || "";
+      const rightExpiry = right?.expirationDate || "";
+      return rightExpiry.localeCompare(leftExpiry);
+    })[0];
+  };
 
   const handleSubscribe = async (plan) => {
     if (!user) {
       navigate("/login");
       return;
+    }
+    if (isNativeAppleStore) {
+      const productId = plan === "annual"
+        ? APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID
+        : APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID;
+      setPurchaseBusyPlan(plan);
+      try {
+        const purchase = await purchaseAppleSubscription(productId);
+        if (purchase?.status === "cancelled") {
+          toast.message(t("subscriptionUi.purchaseCancelled"));
+          return;
+        }
+        if (purchase?.status === "pending") {
+          toast.message(t("subscriptionUi.purchasePending"));
+          return;
+        }
+        if (purchase?.status !== "purchased") {
+          toast.error(t("subscriptionUi.purchaseUnknown"));
+          return;
+        }
+        await syncAppleSubscription(purchase);
+        toast.success(t("subscriptionUi.subscriptionActivated"));
+        await checkAuth();
+        navigate("/");
+        return;
+      } catch (err) {
+        const detail = err.response?.data?.detail || err.message;
+        toast.error(detail || t("subscriptionUi.purchaseError"));
+        return;
+      } finally {
+        setPurchaseBusyPlan("");
+      }
     }
     try {
       const { data } = await axios.post(
@@ -37,6 +155,27 @@ export default function SubscriptionPage() {
         return;
       }
       toast.error(detail || "Error");
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    setRestoreBusy(true);
+    try {
+      const result = await restoreAppleSubscriptions();
+      const purchase = pickPreferredAppleSubscription(result?.subscriptions || []);
+      if (!purchase) {
+        toast.message(t("subscriptionUi.noPurchasesToRestore"));
+        return;
+      }
+      await syncAppleSubscription(purchase);
+      toast.success(t("subscriptionUi.restoreSuccess"));
+      await checkAuth();
+      navigate("/");
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message;
+      toast.error(detail || t("subscriptionUi.restoreError"));
+    } finally {
+      setRestoreBusy(false);
     }
   };
 
@@ -150,6 +289,14 @@ export default function SubscriptionPage() {
   ]), [t]);
 
   const alreadySubscribed = user?.subscription_active;
+  const monthlyPriceLabel = monthlyStoreProduct?.displayPrice || MONTHLY_PRICE_FALLBACK;
+  const annualPriceLabel = annualStoreProduct?.displayPrice || ANNUAL_PRICE_FALLBACK;
+  const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
+    !isNativeAppleStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
+  );
+  const disableNativePurchaseButtons = isNativeAppleStore && (storeLoading || !monthlyStoreProduct || !annualStoreProduct);
+  const annualButtonBusy = purchaseBusyPlan === "annual";
+  const monthlyButtonBusy = purchaseBusyPlan === "monthly";
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="subscription-page">
@@ -203,14 +350,35 @@ export default function SubscriptionPage() {
             </div>
           ) : (
             <>
-              {!user?.trial_used && (
+              {showNativeTrial ? (
                 <div className="bg-gradient-to-r from-[#FF6B6B] to-[#FF5252] rounded-2xl p-6 text-white text-center mb-4">
                   <Zap className="w-8 h-8 mx-auto mb-2" />
                   <h2 className="text-xl font-black mb-1">{t("subscriptionUi.freeTrialTitle")}</h2>
                   <p className="text-white/80 text-sm mb-4">{t("subscriptionUi.freeTrialSubtitle")}</p>
-                  <Button onClick={() => handleSubscribe("monthly")} className="bg-white text-[#FF6B6B] hover:bg-white/90 py-5 px-8 rounded-xl font-bold" data-testid="free-trial-btn">
+                  <Button
+                    onClick={() => handleSubscribe("monthly")}
+                    className="bg-white text-[#FF6B6B] hover:bg-white/90 py-5 px-8 rounded-xl font-bold"
+                    data-testid="free-trial-btn"
+                    disabled={disableNativePurchaseButtons || monthlyButtonBusy}
+                  >
                     {t("subscriptionUi.startFreeTrial")}
                   </Button>
+                </div>
+              ) : null}
+
+              {isNativeAppleStore && (
+                <div className="bg-white rounded-2xl shadow-sm p-4 text-center mb-4 border border-[#FF6B6B]/15">
+                  <p className="text-sm text-[#2B2D42]">{t("subscriptionUi.appStoreManaged")}</p>
+                  <div className="flex flex-col sm:flex-row gap-2 mt-3 justify-center">
+                    <Button
+                      variant="outline"
+                      onClick={handleRestorePurchases}
+                      disabled={restoreBusy || storeLoading}
+                      className="rounded-xl"
+                    >
+                      {restoreBusy ? t("subscriptionUi.restoringPurchases") : t("subscriptionUi.restorePurchases")}
+                    </Button>
+                  </div>
                 </div>
               )}
 
@@ -220,11 +388,16 @@ export default function SubscriptionPage() {
                     <div>
                       <h3 className="font-bold text-[#2B2D42]">{t("subscriptionUi.monthly")}</h3>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-[#2B2D42]">3,99</span>
+                        <span className="text-3xl font-black text-[#2B2D42]">{monthlyPriceLabel}</span>
                         <span className="text-[#8D99AE]">{t("subscriptionUi.perMonth")}</span>
                       </div>
                     </div>
-                    <Button onClick={() => handleSubscribe("monthly")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6" data-testid="subscribe-monthly-btn">
+                    <Button
+                      onClick={() => handleSubscribe("monthly")}
+                      className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6"
+                      data-testid="subscribe-monthly-btn"
+                      disabled={disableNativePurchaseButtons || monthlyButtonBusy}
+                    >
                       {t("subscriptionUi.subscribe")}
                     </Button>
                   </div>
@@ -236,17 +409,26 @@ export default function SubscriptionPage() {
                     <div>
                       <h3 className="font-bold text-[#2B2D42]">{t("subscriptionUi.annual")}</h3>
                       <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-[#2B2D42]">29,99</span>
+                        <span className="text-3xl font-black text-[#2B2D42]">{annualPriceLabel}</span>
                         <span className="text-[#8D99AE]">{t("subscriptionUi.perYear")}</span>
                       </div>
                       <p className="text-xs text-[#8D99AE]">{t("subscriptionUi.onlyMonthly")}</p>
                     </div>
-                    <Button onClick={() => handleSubscribe("annual")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6" data-testid="subscribe-annual-btn">
+                    <Button
+                      onClick={() => handleSubscribe("annual")}
+                      className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6"
+                      data-testid="subscribe-annual-btn"
+                      disabled={disableNativePurchaseButtons || annualButtonBusy}
+                    >
                       {t("subscriptionUi.subscribe")}
                     </Button>
                   </div>
                 </div>
               </div>
+
+              {isNativeAppleStore && storeLoading && (
+                <p className="text-xs text-[#8D99AE] text-center mt-3">{t("subscriptionUi.loadingStoreProducts")}</p>
+              )}
             </>
           )}
         </div>
