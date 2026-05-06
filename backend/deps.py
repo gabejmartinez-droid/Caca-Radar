@@ -252,6 +252,7 @@ PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.cacaradar.ap
 # ── Google Sign-In (GIS) ─────────────────────────────
 GOOGLE_WEB_CLIENT_ID = os.environ.get("GOOGLE_WEB_CLIENT_ID", "").strip()
 GOOGLE_ALLOWED_CLIENT_IDS = os.environ.get("GOOGLE_ALLOWED_CLIENT_IDS", "").strip()
+APP_REVIEW_EMAIL = os.environ.get("APP_REVIEW_EMAIL", "appletest@cacaradar.es").strip().lower()
 
 # ── VIP / Owner emails — permanent premium access ────
 VIP_EMAILS = {
@@ -278,6 +279,39 @@ VIP_EMAILS = {
 def is_vip_email(email: Optional[str]) -> bool:
     return (email or "").strip().lower() in VIP_EMAILS
 
+
+def is_app_review_email(email: Optional[str]) -> bool:
+    return (email or "").strip().lower() == APP_REVIEW_EMAIL
+
+
+async def apply_special_account_overrides(user: Optional[dict]) -> Optional[dict]:
+    if not user:
+        return user
+
+    email = (user.get("email") or "").strip().lower()
+    updates = {}
+
+    if is_app_review_email(email):
+        if user.get("subscription_active"):
+            updates["subscription_active"] = False
+        if user.get("subscription_type") is not None:
+            updates["subscription_type"] = None
+        if user.get("subscription_expires") is not None:
+            updates["subscription_expires"] = None
+    elif is_vip_email(email):
+        if not user.get("subscription_active"):
+            updates["subscription_active"] = True
+            updates["subscription_type"] = "lifetime"
+            updates["subscription_expires"] = None
+        if user.get("trust_score", 50) < 50:
+            updates["trust_score"] = 50
+
+    if updates:
+        await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+        user.update(updates)
+
+    return user
+
 # ── Auth Middleware ───────────────────────────────────
 async def get_current_user(request: Request) -> Optional[dict]:
     token = request.cookies.get("access_token")
@@ -294,18 +328,7 @@ async def get_current_user(request: Request) -> Optional[dict]:
         user = await db.users.find_one({"_id": ObjectId(payload["sub"])})
         if not user:
             return None
-        email = (user.get("email") or "").strip().lower()
-        if is_vip_email(email):
-            updates = {}
-            if not user.get("subscription_active"):
-                updates["subscription_active"] = True
-                updates["subscription_type"] = "lifetime"
-                updates["subscription_expires"] = None
-            if user.get("trust_score", 50) < 50:
-                updates["trust_score"] = 50
-            if updates:
-                await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
-                user.update(updates)
+        user = await apply_special_account_overrides(user)
         user["_id"] = str(user["_id"])
         user.pop("password_hash", None)
         return user

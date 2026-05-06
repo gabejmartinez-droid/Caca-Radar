@@ -2161,3 +2161,41 @@ Notes:
 - Remove app review account from seeded premium access
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `7440a1735014bb1015f7a3a7a1e3d840fb8fc07b-dirty`
+- Deployment status: `pending`
+- Rollback target: `b248c28948d6ba7a151c8fdbaa971ee6e75f4145`
+
+Exact versions:
+- Web: `1.1.74-web.1`
+- iOS: `1.1.92 (94)`
+- Android: `1.1.91 (93)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Force app review account to stay non-premium.
+
+Internal release notes:
+- Force app review account to stay non-premium
+
+Store submission notes:
+```text
+- Force app review account to stay non-premium.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 7440a1735014bb1015f7a3a7a1e3d840fb8fc07b-dirty
+Deployment status: pending
+Rollback target: b248c28948d6ba7a151c8fdbaa971ee6e75f4145
+Versions:
+• Web: `1.1.74-web.1`
+• iOS: `1.1.92 (94)`
+• Android: `1.1.91 (93)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Force app review account to stay non-premium
+```
+

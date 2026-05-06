@@ -40,7 +40,7 @@ from deps import (
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code, generate_password_reset_token, hash_password_reset_token,
     APP_STORE_URL, PLAY_STORE_URL,
-    is_vip_email,
+    is_vip_email, is_app_review_email, apply_special_account_overrides,
     GOOGLE_WEB_CLIENT_ID, GOOGLE_ALLOWED_CLIENT_IDS,
     APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url, is_production_env,
 )
@@ -1340,7 +1340,7 @@ async def login(data: UserLogin, request: Request, response: Response):
     
     await db.login_attempts.delete_one({"identifier": identifier})
     
-    # Ensure VIP users always have premium and healthy trust
+    # Ensure special account overrides stay consistent.
     if is_vip_email(email):
         updates = {}
         if not user.get("subscription_active"):
@@ -1351,7 +1351,19 @@ async def login(data: UserLogin, request: Request, response: Response):
         if updates:
             await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
             user.update(updates)
+    elif is_app_review_email(email):
+        updates = {}
+        if user.get("subscription_active"):
+            updates["subscription_active"] = False
+        if user.get("subscription_type") is not None:
+            updates["subscription_type"] = None
+        if user.get("subscription_expires") is not None:
+            updates["subscription_expires"] = None
+        if updates:
+            await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+            user.update(updates)
     user = await update_login_metadata(user["_id"], request, user)
+    user = await apply_special_account_overrides(user)
     
     access_token, refresh_token = issue_auth_session(user, request, response)
     return build_auth_payload(user, access_token, refresh_token, request)
