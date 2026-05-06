@@ -21,7 +21,7 @@ import {
   restoreAppleSubscriptions,
 } from "../utils/appleSubscriptions";
 
-const MONTHLY_PRICE_FALLBACK = "3,99";
+const MONTHLY_PRICE_FALLBACK = "0,99";
 const ANNUAL_PRICE_FALLBACK = "29,99";
 
 export default function SubscriptionPage() {

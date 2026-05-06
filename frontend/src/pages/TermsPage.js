@@ -141,7 +141,7 @@ export default function TermsPage() {
           </Section>
 
           <Section title="12. Funcionalidades premium y suscripciones">
-            <p>El código actual del servicio incluye funciones premium, prueba gratuita de 7 días y planes mostrados en la app de 3,99 €/mes y 29,99 €/año, además de lógica de verificación para Apple App Store y Google Play.</p>
+            <p>El código actual del servicio incluye funciones premium, prueba gratuita de 7 días y lógica de suscripción/verificación para Apple App Store y Google Play. Los precios, modalidades y disponibilidad aplicables serán los que se muestren en el flujo de compra vigente.</p>
             <p>Antes de confirmar una contratación, la información visible en el flujo correspondiente debe mostrar precio, periodicidad, renovación, forma de cancelación y funcionalidades incluidas.</p>
             <p>
               Algunas funciones premium, municipales, piloto o personalizadas pueden activarse de forma progresiva, durante onboarding o tras verificación manual.

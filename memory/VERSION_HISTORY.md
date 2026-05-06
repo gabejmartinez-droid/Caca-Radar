@@ -2279,3 +2279,45 @@ Notes:
 - Improve missing App Store product diagnostics
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `9d82b904850f44ca0d79b0b2bbdfa77df9351ba9-dirty`
+- Deployment status: `pending`
+- Rollback target: `1a3c5d8f9543933ceb684365dfb369cfa16035cb`
+
+Exact versions:
+- Web: `1.1.77-web.1`
+- iOS: `1.1.95 (97)`
+- Android: `1.1.94 (96)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Correct premium monthly fallback price display.
+- Remove stale hardcoded subscription prices from terms.
+
+Internal release notes:
+- Correct premium monthly fallback price display
+- Remove stale hardcoded subscription prices from terms
+
+Store submission notes:
+```text
+- Correct premium monthly fallback price display.
+- Remove stale hardcoded subscription prices from terms.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 9d82b904850f44ca0d79b0b2bbdfa77df9351ba9-dirty
+Deployment status: pending
+Rollback target: 1a3c5d8f9543933ceb684365dfb369cfa16035cb
+Versions:
+• Web: `1.1.77-web.1`
+• iOS: `1.1.95 (97)`
+• Android: `1.1.94 (96)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Correct premium monthly fallback price display
+- Remove stale hardcoded subscription prices from terms
+```
+
