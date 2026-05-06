@@ -2237,3 +2237,45 @@ Notes:
 - Fix disabled iPhone monthly subscribe button
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `1a3c5d8f9543933ceb684365dfb369cfa16035cb-dirty`
+- Deployment status: `pending`
+- Rollback target: `e562a90e78d3b428989b005ed18ebe672ad1ab09`
+
+Exact versions:
+- Web: `1.1.76-web.1`
+- iOS: `1.1.94 (96)`
+- Android: `1.1.93 (95)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Tighten monthly-only Apple subscription config.
+- Improve missing App Store product diagnostics.
+
+Internal release notes:
+- Tighten monthly-only Apple subscription config
+- Improve missing App Store product diagnostics
+
+Store submission notes:
+```text
+- Tighten monthly-only Apple subscription config.
+- Improve missing App Store product diagnostics.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 1a3c5d8f9543933ceb684365dfb369cfa16035cb-dirty
+Deployment status: pending
+Rollback target: e562a90e78d3b428989b005ed18ebe672ad1ab09
+Versions:
+• Web: `1.1.76-web.1`
+• iOS: `1.1.94 (96)`
+• Android: `1.1.93 (95)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Tighten monthly-only Apple subscription config
+- Improve missing App Store product diagnostics
+```
+

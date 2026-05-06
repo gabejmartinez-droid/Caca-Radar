@@ -55,7 +55,7 @@ public class AppleSubscriptionsPlugin: CAPPlugin, CAPBridgedPlugin {
             do {
                 let products = try await Product.products(for: [productId])
                 guard let product = products.first else {
-                    call.reject("App Store product not found")
+                    call.reject("App Store product not found: \(productId)")
                     return
                 }
 
