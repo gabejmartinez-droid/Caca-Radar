@@ -2199,3 +2199,41 @@ Notes:
 - Force app review account to stay non-premium
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `e562a90e78d3b428989b005ed18ebe672ad1ab09-dirty`
+- Deployment status: `pending`
+- Rollback target: `7440a1735014bb1015f7a3a7a1e3d840fb8fc07b`
+
+Exact versions:
+- Web: `1.1.75-web.1`
+- iOS: `1.1.93 (95)`
+- Android: `1.1.92 (94)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Fix disabled iPhone monthly subscribe button.
+
+Internal release notes:
+- Fix disabled iPhone monthly subscribe button
+
+Store submission notes:
+```text
+- Fix disabled iPhone monthly subscribe button.
+```
+
+Internal release notes block:
+```text
+Commit SHA: e562a90e78d3b428989b005ed18ebe672ad1ab09-dirty
+Deployment status: pending
+Rollback target: 7440a1735014bb1015f7a3a7a1e3d840fb8fc07b
+Versions:
+• Web: `1.1.75-web.1`
+• iOS: `1.1.93 (95)`
+• Android: `1.1.92 (94)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Fix disabled iPhone monthly subscribe button
+```
+

@@ -294,7 +294,7 @@ export default function SubscriptionPage() {
   const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
     !isNativeAppleStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
   );
-  const disableMonthlyPurchaseButton = isNativeAppleStore && (storeLoading || !monthlyStoreProduct);
+  const disableMonthlyPurchaseButton = isNativeAppleStore && storeLoading;
   const disableAnnualPurchaseButton = isNativeAppleStore && (storeLoading || !annualStoreProduct);
   const showAnnualPlan = !isNativeAppleStore || Boolean(annualStoreProduct);
   const annualButtonBusy = purchaseBusyPlan === "annual";
