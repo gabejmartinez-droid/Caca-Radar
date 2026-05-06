@@ -48,7 +48,7 @@ export const GOOGLE_IOS_CLIENT_ID =
 export const APPLE_WEB_CLIENT_ID = process.env.REACT_APP_APPLE_CLIENT_ID || "";
 export const APPLE_WEB_REDIRECT_URI = process.env.REACT_APP_APPLE_REDIRECT_URI || "";
 export const APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID =
-  process.env.REACT_APP_APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID || "premium_monthly";
+  process.env.REACT_APP_APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID || "com.jefe.cacaradar.premium.monthly";
 export const APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID =
   process.env.REACT_APP_APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID || "premium_annual";
 export const PLAY_INTEGRITY_ENABLED = process.env.REACT_APP_ENABLE_PLAY_INTEGRITY === "true";

@@ -6,9 +6,9 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-06 — Pending
 
-- Web: `1.1.72-web.1`
-- iOS: `1.1.90 (92)`
-- Android: `1.1.89 (91)`
+- Web: `1.1.73-web.1`
+- iOS: `1.1.91 (93)`
+- Android: `1.1.90 (92)`
 - Backend: `1.1.26-api.1`
 
 Changes:
@@ -31,6 +31,7 @@ Changes:
 - Implement a real native Apple StoreKit subscription flow on iPhone, including App Store product loading, purchase handling, and restore purchases.
 - Route iPhone premium upgrades through `/api/users/subscribe/apple` using real transaction data instead of the old mock subscribe endpoint.
 - Hide the custom free-trial CTA on iPhone unless the App Store product actually reports an introductory offer, so the review build does not promise unsupported trial behavior.
+- Configure the default iPhone monthly StoreKit product ID as `com.jefe.cacaradar.premium.monthly`.
 
 ### 2026-04-21 — Production deploy `commit unknown in runtime`
 
