@@ -2085,3 +2085,41 @@ Notes:
 - Support iPhone monthly-only subscription review build
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `d3f788b9064bb70af7c3be54daf7c4bdea45c01e-dirty`
+- Deployment status: `pending`
+- Rollback target: `6d1f3950d9d5a4b297a88576ce4757f8e7b252c1`
+
+Exact versions:
+- Web: `1.1.74-web.1`
+- iOS: `1.1.92 (94)`
+- Android: `1.1.91 (93)`
+- Backend: `1.1.27-api.1`
+
+User-facing release notes:
+- Allow rotating app review account independently.
+
+Internal release notes:
+- Allow rotating app review account independently
+
+Store submission notes:
+```text
+- Allow rotating app review account independently.
+```
+
+Internal release notes block:
+```text
+Commit SHA: d3f788b9064bb70af7c3be54daf7c4bdea45c01e-dirty
+Deployment status: pending
+Rollback target: 6d1f3950d9d5a4b297a88576ce4757f8e7b252c1
+Versions:
+• Web: `1.1.74-web.1`
+• iOS: `1.1.92 (94)`
+• Android: `1.1.91 (93)`
+• Backend: `1.1.27-api.1`
+Notes:
+- Allow rotating app review account independently
+```
+

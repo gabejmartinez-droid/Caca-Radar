@@ -5350,7 +5350,9 @@ def generated_seed_password(label: str) -> str:
     return f"{label}-{secrets.token_urlsafe(18)}"
 
 
-async def provision_privileged_accounts() -> dict | None:
+async def provision_privileged_accounts(selected_accounts: set[str] | None = None) -> dict | None:
+    accounts = selected_accounts or {"admin", "demo_muni", "review"}
+
     admin_email = os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
     admin_password = os.environ.get("ADMIN_PASSWORD") or (
         generated_seed_password("admin") if not is_production_env() else None
@@ -5366,90 +5368,94 @@ async def provision_privileged_accounts() -> dict | None:
 
     if is_production_env():
         missing_credentials = []
-        if not admin_password:
+        if "admin" in accounts and not admin_password:
             missing_credentials.append("ADMIN_PASSWORD")
-        if not demo_muni_password:
+        if "demo_muni" in accounts and not demo_muni_password:
             missing_credentials.append("DEMO_MUNI_PASSWORD")
-        if not review_password:
+        if "review" in accounts and not review_password:
             missing_credentials.append("APP_REVIEW_PASSWORD")
         if missing_credentials:
             raise RuntimeError(
-                "FATAL: startup seeding is enabled in production but secure credentials were not provided for: "
+                "FATAL: secure credentials were not provided for: "
                 + ", ".join(missing_credentials)
             )
 
-    existing = await db.users.find_one({"email": admin_email})
-    if existing is None:
-        await db.users.insert_one({
-            "email": admin_email, "password_hash": hash_password(admin_password),
-            "name": "El Jefe", "username": "el_jefe", "role": "admin",
-            "subscription_active": True, "subscription_type": "annual",
-            "total_score": 0, "trust_score": 100, "rank": "Admin", "level": 10,
-            "report_count": 0, "vote_count": 0, "streak_days": 0,
-            "created_at": datetime.now(timezone.utc)
-        })
-        logger.info("Admin user created")
-    elif not verify_password(admin_password, existing["password_hash"]):
-        await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+    seeded: dict[str, str] = {}
 
-    if not await db.users.find_one({"email": demo_muni_email}):
-        await db.users.insert_one({
-            "email": demo_muni_email, "password_hash": hash_password(demo_muni_password),
-            "name": "Ayuntamiento de Madrid", "role": "municipality",
-            "municipality_name": "Madrid", "municipality_province": "Madrid",
-            "municipality_subscription_active": True, "municipality_subscription_type": "annual",
-            "email_verified": True,
-            "created_at": datetime.now(timezone.utc)
-        })
-        logger.info("Demo municipality user created")
+    if "admin" in accounts:
+        existing = await db.users.find_one({"email": admin_email})
+        if existing is None:
+            await db.users.insert_one({
+                "email": admin_email, "password_hash": hash_password(admin_password),
+                "name": "El Jefe", "username": "el_jefe", "role": "admin",
+                "subscription_active": True, "subscription_type": "annual",
+                "total_score": 0, "trust_score": 100, "rank": "Admin", "level": 10,
+                "report_count": 0, "vote_count": 0, "streak_days": 0,
+                "created_at": datetime.now(timezone.utc)
+            })
+            logger.info("Admin user created")
+        elif not verify_password(admin_password, existing["password_hash"]):
+            await db.users.update_one({"email": admin_email}, {"$set": {"password_hash": hash_password(admin_password)}})
+        seeded["admin_email"] = admin_email
+        seeded["admin_password"] = admin_password
 
-    review_username = os.environ.get("APP_REVIEW_USERNAME", "appletest").lower()
-    review_user = await db.users.find_one({"email": review_email})
-    review_updates = {
-        "email": review_email,
-        "name": "Apple Review",
-        "username": review_username,
-        "role": "user",
-        "auth_provider": "password",
-        "auth_methods": ["password"],
-        "linked_providers": {},
-        "subscription_active": True,
-        "subscription_type": "lifetime",
-        "subscription_expires": None,
-        "geo_review_exempt": True,
-        "trust_score": 50,
-        "rank": DEFAULT_RANK_NAME,
-        "rank_key": get_rank_key(DEFAULT_RANK_NAME),
-        "level": 1,
-        "report_count": 0,
-        "vote_count": 0,
-        "daily_report_count": 0,
-        "streak_days": 0,
-        "last_active_date": None,
-    }
-    if review_user is None:
-        await db.users.insert_one({
-            **review_updates,
-            "password_hash": hash_password(review_password),
-            "total_score": 0,
-            "created_at": datetime.now(timezone.utc),
-        })
-        logger.info("App review user created")
-    else:
-        review_mutations = dict(review_updates)
-        if not verify_password(review_password, review_user.get("password_hash", "")):
-            review_mutations["password_hash"] = hash_password(review_password)
-        await db.users.update_one({"_id": review_user["_id"]}, {"$set": review_mutations})
+    if "demo_muni" in accounts:
+        if not await db.users.find_one({"email": demo_muni_email}):
+            await db.users.insert_one({
+                "email": demo_muni_email, "password_hash": hash_password(demo_muni_password),
+                "name": "Ayuntamiento de Madrid", "role": "municipality",
+                "municipality_name": "Madrid", "municipality_province": "Madrid",
+                "municipality_subscription_active": True, "municipality_subscription_type": "annual",
+                "email_verified": True,
+                "created_at": datetime.now(timezone.utc)
+            })
+            logger.info("Demo municipality user created")
+        seeded["demo_muni_email"] = demo_muni_email
+        seeded["demo_muni_password"] = demo_muni_password
 
-    return {
-        "admin_email": admin_email,
-        "admin_password": admin_password,
-        "demo_muni_email": demo_muni_email,
-        "demo_muni_password": demo_muni_password,
-        "review_email": review_email,
-        "review_password": review_password,
-        "review_username": review_username,
-    }
+    if "review" in accounts:
+        review_username = os.environ.get("APP_REVIEW_USERNAME", "appletest").lower()
+        review_user = await db.users.find_one({"email": review_email})
+        review_updates = {
+            "email": review_email,
+            "name": "Apple Review",
+            "username": review_username,
+            "role": "user",
+            "auth_provider": "password",
+            "auth_methods": ["password"],
+            "linked_providers": {},
+            "subscription_active": True,
+            "subscription_type": "lifetime",
+            "subscription_expires": None,
+            "geo_review_exempt": True,
+            "trust_score": 50,
+            "rank": DEFAULT_RANK_NAME,
+            "rank_key": get_rank_key(DEFAULT_RANK_NAME),
+            "level": 1,
+            "report_count": 0,
+            "vote_count": 0,
+            "daily_report_count": 0,
+            "streak_days": 0,
+            "last_active_date": None,
+        }
+        if review_user is None:
+            await db.users.insert_one({
+                **review_updates,
+                "password_hash": hash_password(review_password),
+                "total_score": 0,
+                "created_at": datetime.now(timezone.utc),
+            })
+            logger.info("App review user created")
+        else:
+            review_mutations = dict(review_updates)
+            if not verify_password(review_password, review_user.get("password_hash", "")):
+                review_mutations["password_hash"] = hash_password(review_password)
+            await db.users.update_one({"_id": review_user["_id"]}, {"$set": review_mutations})
+        seeded["review_email"] = review_email
+        seeded["review_password"] = review_password
+        seeded["review_username"] = review_username
+
+    return seeded or None
 
 
 async def seed_users():
