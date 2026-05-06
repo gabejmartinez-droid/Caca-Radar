@@ -2123,3 +2123,41 @@ Notes:
 - Allow rotating app review account independently
 ```
 
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `b248c28948d6ba7a151c8fdbaa971ee6e75f4145-dirty`
+- Deployment status: `pending`
+- Rollback target: `d3f788b9064bb70af7c3be54daf7c4bdea45c01e`
+
+Exact versions:
+- Web: `1.1.74-web.1`
+- iOS: `1.1.92 (94)`
+- Android: `1.1.91 (93)`
+- Backend: `1.1.28-api.1`
+
+User-facing release notes:
+- Remove app review account from seeded premium access.
+
+Internal release notes:
+- Remove app review account from seeded premium access
+
+Store submission notes:
+```text
+- Remove app review account from seeded premium access.
+```
+
+Internal release notes block:
+```text
+Commit SHA: b248c28948d6ba7a151c8fdbaa971ee6e75f4145-dirty
+Deployment status: pending
+Rollback target: d3f788b9064bb70af7c3be54daf7c4bdea45c01e
+Versions:
+• Web: `1.1.74-web.1`
+• iOS: `1.1.92 (94)`
+• Android: `1.1.91 (93)`
+• Backend: `1.1.28-api.1`
+Notes:
+- Remove app review account from seeded premium access
+```
+
