@@ -2046,3 +2046,42 @@ Versions:
 Notes:
 - Refresh Apple Watch auth context before report submission and mirror watch copy/layout updates on Wear OS.
 ```
+
+### 2026-05-06 — Pending
+
+Release metadata:
+- Commit SHA: `6d1f3950d9d5a4b297a88576ce4757f8e7b252c1-dirty`
+- Deployment status: `pending`
+- Rollback target: `8c76457824bf310038a7854a6e15f94916877d60`
+
+Exact versions:
+- Web: `1.1.74-web.1`
+- iOS: `1.1.92 (94)`
+- Android: `1.1.91 (93)`
+- Backend: `1.1.26-api.1`
+
+User-facing release notes:
+- Support iPhone monthly-only subscription review build.
+
+Internal release notes:
+- Support iPhone monthly-only subscription review build
+
+Store submission notes:
+```text
+- Support iPhone monthly-only subscription review build.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 6d1f3950d9d5a4b297a88576ce4757f8e7b252c1-dirty
+Deployment status: pending
+Rollback target: 8c76457824bf310038a7854a6e15f94916877d60
+Versions:
+• Web: `1.1.74-web.1`
+• iOS: `1.1.92 (94)`
+• Android: `1.1.91 (93)`
+• Backend: `1.1.26-api.1`
+Notes:
+- Support iPhone monthly-only subscription review build
+```
+

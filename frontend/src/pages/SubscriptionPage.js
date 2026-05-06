@@ -294,7 +294,9 @@ export default function SubscriptionPage() {
   const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
     !isNativeAppleStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
   );
-  const disableNativePurchaseButtons = isNativeAppleStore && (storeLoading || !monthlyStoreProduct || !annualStoreProduct);
+  const disableMonthlyPurchaseButton = isNativeAppleStore && (storeLoading || !monthlyStoreProduct);
+  const disableAnnualPurchaseButton = isNativeAppleStore && (storeLoading || !annualStoreProduct);
+  const showAnnualPlan = !isNativeAppleStore || Boolean(annualStoreProduct);
   const annualButtonBusy = purchaseBusyPlan === "annual";
   const monthlyButtonBusy = purchaseBusyPlan === "monthly";
 
@@ -359,7 +361,7 @@ export default function SubscriptionPage() {
                     onClick={() => handleSubscribe("monthly")}
                     className="bg-white text-[#FF6B6B] hover:bg-white/90 py-5 px-8 rounded-xl font-bold"
                     data-testid="free-trial-btn"
-                    disabled={disableNativePurchaseButtons || monthlyButtonBusy}
+                    disabled={disableMonthlyPurchaseButton || monthlyButtonBusy}
                   >
                     {t("subscriptionUi.startFreeTrial")}
                   </Button>
@@ -396,34 +398,36 @@ export default function SubscriptionPage() {
                       onClick={() => handleSubscribe("monthly")}
                       className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6"
                       data-testid="subscribe-monthly-btn"
-                      disabled={disableNativePurchaseButtons || monthlyButtonBusy}
+                      disabled={disableMonthlyPurchaseButton || monthlyButtonBusy}
                     >
                       {t("subscriptionUi.subscribe")}
                     </Button>
                   </div>
                 </div>
 
-                <div className="bg-white rounded-2xl shadow-sm p-5 border-2 border-[#FF6B6B] relative">
-                  <div className="absolute -top-3 right-4 bg-[#FF6B6B] text-white text-xs font-bold px-3 py-1 rounded-full">{t("subscriptionUi.save37")}</div>
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <h3 className="font-bold text-[#2B2D42]">{t("subscriptionUi.annual")}</h3>
-                      <div className="flex items-baseline gap-1">
-                        <span className="text-3xl font-black text-[#2B2D42]">{annualPriceLabel}</span>
-                        <span className="text-[#8D99AE]">{t("subscriptionUi.perYear")}</span>
+                {showAnnualPlan && (
+                  <div className="bg-white rounded-2xl shadow-sm p-5 border-2 border-[#FF6B6B] relative">
+                    <div className="absolute -top-3 right-4 bg-[#FF6B6B] text-white text-xs font-bold px-3 py-1 rounded-full">{t("subscriptionUi.save37")}</div>
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-bold text-[#2B2D42]">{t("subscriptionUi.annual")}</h3>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black text-[#2B2D42]">{annualPriceLabel}</span>
+                          <span className="text-[#8D99AE]">{t("subscriptionUi.perYear")}</span>
+                        </div>
+                        <p className="text-xs text-[#8D99AE]">{t("subscriptionUi.onlyMonthly")}</p>
                       </div>
-                      <p className="text-xs text-[#8D99AE]">{t("subscriptionUi.onlyMonthly")}</p>
+                      <Button
+                        onClick={() => handleSubscribe("annual")}
+                        className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6"
+                        data-testid="subscribe-annual-btn"
+                        disabled={disableAnnualPurchaseButton || annualButtonBusy}
+                      >
+                        {t("subscriptionUi.subscribe")}
+                      </Button>
                     </div>
-                    <Button
-                      onClick={() => handleSubscribe("annual")}
-                      className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl font-bold px-6"
-                      data-testid="subscribe-annual-btn"
-                      disabled={disableNativePurchaseButtons || annualButtonBusy}
-                    >
-                      {t("subscriptionUi.subscribe")}
-                    </Button>
                   </div>
-                </div>
+                )}
               </div>
 
               {isNativeAppleStore && storeLoading && (
