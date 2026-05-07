@@ -89,14 +89,20 @@ from play_integrity_service import decode_integrity_token, play_integrity_is_con
 
 # ==================== RECEIPT VERIFICATION ====================
 
-# Apple App Store verification
-APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
-APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
+# Apple configuration
 APPLE_BUNDLE_ID = os.environ.get("APPLE_BUNDLE_ID")
+APPLE_ENVIRONMENT = os.environ.get("APPLE_ENVIRONMENT", "Sandbox")  # "Production" or "Sandbox"
+
+# APNs (push notifications) — used by push_service.py
+APPLE_KEY_ID = os.environ.get("APPLE_KEY_ID")
+APPLE_KEY_PATH = os.environ.get("APPLE_KEY_PATH")  # Path to APNs .p8 key file
+
+# App Store Server API (subscription verification)
+APPLE_STOREKIT_KEY_ID = os.environ.get("APPLE_STOREKIT_KEY_ID")
+APPLE_STOREKIT_KEY_PATH = os.environ.get("APPLE_STOREKIT_KEY_PATH")  # Path to App Store Server API .p8 key file
+APPLE_ISSUER_ID = os.environ.get("APPLE_ISSUER_ID")
 APPLE_WEB_CLIENT_ID = os.environ.get("APPLE_WEB_CLIENT_ID", "").strip()
 APPLE_WEB_REDIRECT_URI = os.environ.get("APPLE_WEB_REDIRECT_URI", "").strip()
-APPLE_KEY_PATH = os.environ.get("APPLE_KEY_PATH")  # Path to .p8 key file
-APPLE_ENVIRONMENT = os.environ.get("APPLE_ENVIRONMENT", "Sandbox")  # "Production" or "Sandbox"
 
 # Google Play verification
 GOOGLE_SERVICE_ACCOUNT_PATH = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH")
@@ -105,11 +111,11 @@ GOOGLE_PACKAGE_NAME = os.environ.get("GOOGLE_PACKAGE_NAME")
 async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) -> dict:
     """Verify Apple App Store receipt using App Store Server API v2.
     Falls back to mock if credentials not configured."""
-    if not all([APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH]):
+    if not all([APPLE_STOREKIT_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_STOREKIT_KEY_PATH]):
         if is_production_env():
-            logger.error("Apple credentials not configured in production")
+            logger.error("Apple StoreKit credentials not configured in production")
             return {"valid": False, "error": "Apple subscription verification is not configured"}
-        logger.warning("Apple credentials not configured — using mock verification")
+        logger.warning("Apple StoreKit credentials not configured — using mock verification")
         return {"valid": True, "mock": True, "product_id": "premium_monthly", "expires": (datetime.now(timezone.utc) + timedelta(days=30)).isoformat()}
 
     try:
@@ -122,10 +128,10 @@ async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) ->
 
         env = Environment.PRODUCTION if APPLE_ENVIRONMENT == "Production" else Environment.SANDBOX
 
-        with open(APPLE_KEY_PATH, 'r') as f:
+        with open(APPLE_STOREKIT_KEY_PATH, 'r') as f:
             signing_key = f.read()
 
-        client = AppStoreServerAPIClient(signing_key, APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, env)
+        client = AppStoreServerAPIClient(signing_key, APPLE_STOREKIT_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, env)
 
         # Extract transaction ID from receipt if not provided
         if not transaction_id and receipt_data:
@@ -4638,10 +4644,11 @@ async def admin_integration_status(request: Request):
     await _require_admin(request)
     return {
         "apple": {
-            "configured": bool(APPLE_KEY_ID and APPLE_ISSUER_ID and APPLE_BUNDLE_ID and APPLE_KEY_PATH),
+            "configured": bool(APPLE_STOREKIT_KEY_ID and APPLE_ISSUER_ID and APPLE_BUNDLE_ID and APPLE_STOREKIT_KEY_PATH),
             "environment": APPLE_ENVIRONMENT,
             "bundle_id": APPLE_BUNDLE_ID or "Not set",
-            "key_id": APPLE_KEY_ID[:4] + "..." if APPLE_KEY_ID else "Not set",
+            "key_id": APPLE_STOREKIT_KEY_ID[:4] + "..." if APPLE_STOREKIT_KEY_ID else "Not set",
+            "apns_configured": bool(APPLE_KEY_ID and APPLE_KEY_PATH and APPLE_BUNDLE_ID),
         },
         "google": {
             "configured": bool(GOOGLE_SERVICE_ACCOUNT_PATH and GOOGLE_PACKAGE_NAME),
@@ -4653,7 +4660,7 @@ async def admin_integration_status(request: Request):
             "sender": os.environ.get("SENDER_EMAIL", "Not set"),
         },
         "setup_instructions": {
-            "apple": "Set APPLE_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_KEY_PATH in .env. Download .p8 key from App Store Connect > Keys.",
+            "apple": "Set APPLE_STOREKIT_KEY_ID, APPLE_ISSUER_ID, APPLE_BUNDLE_ID, APPLE_STOREKIT_KEY_PATH for subscription verification. Set APPLE_KEY_ID and APPLE_KEY_PATH for APNs push.",
             "google": "Set GOOGLE_SERVICE_ACCOUNT_PATH (JSON key file), GOOGLE_PACKAGE_NAME in .env. Create service account in Google Cloud Console.",
         }
     }

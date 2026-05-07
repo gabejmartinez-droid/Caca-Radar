@@ -4,6 +4,17 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ## Released
 
+### 2026-05-07 — Pending
+
+- Web: `1.1.79-web.1`
+- iOS: `1.1.97 (99)`
+- Android: `1.1.96 (98)`
+- Backend: `1.1.30-api.1`
+
+Changes:
+- Split Apple backend key configuration so APNs keeps using `APPLE_KEY_ID` / `APPLE_KEY_PATH` while App Store subscription verification now uses `APPLE_STOREKIT_KEY_ID` / `APPLE_STOREKIT_KEY_PATH`.
+- Updated the backend Apple integration status endpoint and operator guidance so it reports StoreKit verification readiness separately from APNs push readiness.
+
 ### 2026-05-06 — Pending
 
 - Web: `1.1.73-web.1`
@@ -2400,4 +2411,3 @@ Notes:
 - Make iOS review build metadata-safe
 - Replace Apple-style emoji app icon with custom radar icon
 ```
-
