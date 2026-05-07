@@ -10,6 +10,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import axios from "axios";
 
 import { API } from "../config";
+import { getCurrentPlatform } from "../versionInfo";
 
 export default function DashboardLogin() {
   const { login } = useAuth();
@@ -19,6 +20,7 @@ export default function DashboardLogin() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const isIOSApp = getCurrentPlatform() === "ios";
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -83,10 +85,12 @@ export default function DashboardLogin() {
             </Button>
           </form>
 
-          <p className="text-center text-[#8D99AE] text-sm mt-4">
-            {t("municipalityUi.notRegistered")}{" "}
-            <a href="/dashboard/register" className="text-[#2B2D42] font-medium hover:underline" data-testid="register-municipality-link">{t("municipalityUi.registerHere")}</a>
-          </p>
+          {!isIOSApp && (
+            <p className="text-center text-[#8D99AE] text-sm mt-4">
+              {t("municipalityUi.notRegistered")}{" "}
+              <a href="/dashboard/register" className="text-[#2B2D42] font-medium hover:underline" data-testid="register-municipality-link">{t("municipalityUi.registerHere")}</a>
+            </p>
+          )}
         </div>
       </div>
     </div>

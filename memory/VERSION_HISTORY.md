@@ -6,14 +6,15 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ### 2026-05-07 — Pending
 
-- Web: `1.1.79-web.1`
-- iOS: `1.1.97 (99)`
-- Android: `1.1.96 (98)`
+- Web: `1.1.80-web.1`
+- iOS: `1.1.98 (100)`
+- Android: `1.1.97 (99)`
 - Backend: `1.1.30-api.1`
 
 Changes:
 - Split Apple backend key configuration so APNs keeps using `APPLE_KEY_ID` / `APPLE_KEY_PATH` while App Store subscription verification now uses `APPLE_STOREKIT_KEY_ID` / `APPLE_STOREKIT_KEY_PATH`.
 - Updated the backend Apple integration status endpoint and operator guidance so it reports StoreKit verification readiness separately from APNs push readiness.
+- Hid municipality registration from the iPhone app review path and removed the remaining iPhone-visible Google Play / cross-store cancellation wording from support and account-deletion surfaces.
 
 ### 2026-05-06 — Pending
 
@@ -2411,3 +2412,42 @@ Notes:
 - Make iOS review build metadata-safe
 - Replace Apple-style emoji app icon with custom radar icon
 ```
+
+### 2026-05-07 — Pending
+
+Release metadata:
+- Commit SHA: `87650a6dcb89c642dcd62a8257966744a68f9f97-dirty`
+- Deployment status: `pending`
+- Rollback target: `9da1e43a483ab35bd439f4d06ec08eba6b73fb82`
+
+Exact versions:
+- Web: `1.1.80-web.1`
+- iOS: `1.1.99 (101)`
+- Android: `1.1.98 (100)`
+- Backend: `1.1.30-api.1`
+
+User-facing release notes:
+- Tighten iOS review surfaces.
+
+Internal release notes:
+- Tighten iOS review surfaces
+
+Store submission notes:
+```text
+- Tighten iOS review surfaces.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 87650a6dcb89c642dcd62a8257966744a68f9f97-dirty
+Deployment status: pending
+Rollback target: 9da1e43a483ab35bd439f4d06ec08eba6b73fb82
+Versions:
+• Web: `1.1.80-web.1`
+• iOS: `1.1.99 (101)`
+• Android: `1.1.98 (100)`
+• Backend: `1.1.30-api.1`
+Notes:
+- Tighten iOS review surfaces
+```
+

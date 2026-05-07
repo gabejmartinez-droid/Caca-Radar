@@ -4,10 +4,17 @@ import { Button } from "../components/ui/button";
 import { LanguageSelector } from "../components/LanguageSelector";
 import { useLanguage } from "../contexts/LanguageContext";
 import LegalLinksFooter from "../components/LegalLinksFooter";
+import { getCurrentPlatform } from "../versionInfo";
 
 export default function HelpPage() {
   const navigate = useNavigate();
-  const { isRtl, t } = useLanguage();
+  const { isRtl, t, language } = useLanguage();
+  const isIOSApp = getCurrentPlatform() === "ios";
+  const storeCancellationNote = isIOSApp
+    ? (language === "en"
+        ? "If you have a subscription through the App Store, you must also cancel it from your Apple account subscriptions."
+        : "Si tienes una suscripción a través del App Store, también debes cancelarla desde las suscripciones de tu cuenta de Apple.")
+    : t("helpUi.storeCancellationNote");
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="help-page">
@@ -143,7 +150,7 @@ export default function HelpPage() {
                 <a className="text-[#FF6B6B] font-medium" href="mailto:jefe@cacaradar.es">jefe@cacaradar.es</a>.
               </p>
               <p className="text-sm text-[#8D99AE]">
-                {t("helpUi.storeCancellationNote")}
+                {storeCancellationNote}
               </p>
             </div>
           </section>

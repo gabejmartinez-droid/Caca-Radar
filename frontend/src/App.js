@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { Toaster } from "./components/ui/sonner";
 import { AuthProvider, useAuth } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
@@ -36,6 +36,7 @@ import SpainLocationGate from "./components/SpainLocationGate";
 import { setupNativePushListeners } from "./utils/pushManager";
 import { preparePlayIntegrity } from "./utils/playIntegrity";
 import { isCapacitorNative } from "./tokenManager";
+import { getCurrentPlatform } from "./versionInfo";
 import "./App.css";
 
 function UsernameGate({ children }) {
@@ -53,6 +54,7 @@ function UsernameGate({ children }) {
 
 function App() {
   const [showNotificationChecker, setShowNotificationChecker] = useState(!isCapacitorNative());
+  const isIOSApp = getCurrentPlatform() === "ios";
 
   useEffect(() => {
     let cancelled = false;
@@ -144,7 +146,10 @@ function App() {
               <Route path="/profile" element={<SpainLocationGate><ProfilePage /></SpainLocationGate>} />
               <Route path="/settings/notifications" element={<SpainLocationGate><NotificationSettingsPage /></SpainLocationGate>} />
               <Route path="/dashboard/login" element={<DashboardLogin />} />
-              <Route path="/dashboard/register" element={<MunicipalityRegister />} />
+              <Route
+                path="/dashboard/register"
+                element={isIOSApp ? <Navigate to="/dashboard/login" replace /> : <MunicipalityRegister />}
+              />
               <Route path="/dashboard" element={<Dashboard />} />
               <Route path="/dashboard/analytics" element={<AnalyticsPage />} />
               <Route path="/admin/login" element={<AdminLoginPage />} />

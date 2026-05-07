@@ -7,15 +7,24 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
 import LegalLinksFooter from "../components/LegalLinksFooter";
+import { getCurrentPlatform } from "../versionInfo";
 
 export default function DeleteAccountPage() {
   const navigate = useNavigate();
   const { user, deleteAccount, loading } = useAuth();
-  const { isRtl, t } = useLanguage();
+  const { isRtl, t, language } = useLanguage();
   const [confirmed, setConfirmed] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const isIOSApp = getCurrentPlatform() === "ios";
 
   const email = useMemo(() => user?.email || t("deleteAccountUi.yourAccount"), [t, user]);
+  const storeCancellationNote = isIOSApp
+    ? (language === "en"
+        ? "If you have a subscription purchased in the App Store, you must also cancel it from your Apple account subscriptions."
+        : "Si tienes una suscripción comprada en App Store, debes cancelarla también desde las suscripciones de tu cuenta de Apple.")
+    : (language === "en"
+        ? "If you have a subscription purchased through an app store, you must also cancel it from that store account."
+        : "Si tienes una suscripción comprada en una tienda de aplicaciones, debes cancelarla también desde tu cuenta de la tienda correspondiente.");
 
   const handleDelete = async () => {
     if (!confirmed || deleting) return;
@@ -92,9 +101,7 @@ export default function DeleteAccountPage() {
                       Si eliminas la cuenta desde esta pantalla, el backend borra la cuenta, tokens, votos, validaciones, flags, ubicaciones guardadas, feedback y suscripciones push
                       vinculadas a ella. Los reportes publicados pasan a mostrarse como anónimos para mantener la utilidad del mapa público.
                     </p>
-                    <p>
-                      Si tienes una suscripción comprada en una tienda de aplicaciones, debes cancelarla también desde tu cuenta de la tienda correspondiente.
-                    </p>
+                    <p>{storeCancellationNote}</p>
                     <p className="text-sm text-[#8D99AE]">
                       Algunas copias de seguridad seguras pueden mantenerse durante un periodo operativo limitado de hasta 30 días hasta su rotación normal. No se reutilizan para finalidades ordinarias una vez atendida una solicitud válida de supresión.
                     </p>
