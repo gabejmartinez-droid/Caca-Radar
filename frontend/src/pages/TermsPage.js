@@ -137,11 +137,11 @@ export default function TermsPage() {
 
           <Section title="11. Disponibilidad y exactitud">
             <p>No garantizamos disponibilidad ininterrumpida, ausencia total de errores ni exactitud absoluta de todos los avisos o mapas.</p>
-            <p>El funcionamiento depende también de GPS, redes, OpenStreetMap, Nominatim, Apple App Store, Google Play, navegadores, sistemas operativos y otros proveedores externos.</p>
+            <p>El funcionamiento depende también de GPS, redes, OpenStreetMap, Nominatim, navegadores, sistemas operativos, la tienda de aplicaciones aplicable y otros proveedores externos.</p>
           </Section>
 
           <Section title="12. Funcionalidades premium y suscripciones">
-            <p>El código actual del servicio incluye funciones premium, prueba gratuita de 7 días y lógica de suscripción/verificación para Apple App Store y Google Play. Los precios, modalidades y disponibilidad aplicables serán los que se muestren en el flujo de compra vigente.</p>
+            <p>El código actual del servicio incluye funciones premium, prueba gratuita de 7 días y lógica de suscripción/verificación a través de la tienda de aplicaciones aplicable. Los precios, modalidades y disponibilidad aplicables serán los que se muestren en el flujo de compra vigente.</p>
             <p>Antes de confirmar una contratación, la información visible en el flujo correspondiente debe mostrar precio, periodicidad, renovación, forma de cancelación y funcionalidades incluidas.</p>
             <p>
               Algunas funciones premium, municipales, piloto o personalizadas pueden activarse de forma progresiva, durante onboarding o tras verificación manual.
@@ -157,7 +157,7 @@ export default function TermsPage() {
 
           <Section title="14. Baja y cancelación">
             <p>La persona usuaria puede dejar de usar el Servicio en cualquier momento y puede solicitar la eliminación de su cuenta desde la app o desde la página <Link to="/delete-account" className="text-[#FF6B6B] font-medium">Eliminar cuenta</Link>.</p>
-            <p>Si existe una suscripción activa contratada a través de Apple o Google, su cancelación debe hacerse también desde la cuenta de la tienda correspondiente.</p>
+            <p>Si existe una suscripción activa contratada a través de una tienda de aplicaciones, su cancelación debe hacerse también desde la cuenta de la tienda correspondiente.</p>
           </Section>
 
           <Section title="15. Propiedad intelectual e industrial">

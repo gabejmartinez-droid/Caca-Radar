@@ -683,7 +683,7 @@ export default function MapPage() {
     { key: "ios", label: "iOS", value: versionSummary.ios },
     { key: "android", label: "Android", value: versionSummary.android },
     { key: "backend", label: "Backend", value: backendVersion || versionSummary.backend },
-  ];
+  ].filter((entry) => !(currentPlatform === "ios" && entry.key === "android"));
   const loadingReportsLabel = (() => {
     const value = t("mapUi.loadingReports");
     return value === "mapUi.loadingReports"

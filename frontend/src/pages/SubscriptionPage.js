@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { ArrowLeft, Check, Star, MapPin, Filter, Bell, Crown, Zap, Building2, Landmark, Building, Mail } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
@@ -14,6 +14,7 @@ import {
   APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID,
 } from "../config";
 import { isCapacitorNative } from "../tokenManager";
+import { getCurrentPlatform } from "../versionInfo";
 import {
   getAppleSubscriptionProducts,
   isNativeAppleSubscriptionsSupported,
@@ -26,7 +27,7 @@ const ANNUAL_PRICE_FALLBACK = "29,99";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
-  const { t, isRtl } = useLanguage();
+  const { t, isRtl, language } = useLanguage();
   const navigate = useNavigate();
   const [storeProducts, setStoreProducts] = useState({});
   const [storeLoading, setStoreLoading] = useState(false);
@@ -34,6 +35,7 @@ export default function SubscriptionPage() {
   const [restoreBusy, setRestoreBusy] = useState(false);
 
   const isNativeAppleStore = isNativeAppleSubscriptionsSupported();
+  const isIOSApp = getCurrentPlatform() === "ios";
   const appleProductIds = useMemo(
     () => [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
     []
@@ -299,6 +301,12 @@ export default function SubscriptionPage() {
   const showAnnualPlan = !isNativeAppleStore || Boolean(annualStoreProduct);
   const annualButtonBusy = purchaseBusyPlan === "annual";
   const monthlyButtonBusy = purchaseBusyPlan === "monthly";
+  const subscriptionTermsNote = language === "en"
+    ? "Premium renews automatically unless cancelled at least 24 hours before the end of the current period. You can manage or cancel it in your Apple ID subscription settings."
+    : "Premium se renueva automáticamente salvo que canceles al menos 24 horas antes del final del periodo actual. Puedes gestionarlo o cancelarlo desde los ajustes de suscripciones de tu Apple ID.";
+  const iosPaymentNote = language === "en"
+    ? "Payment is managed through the App Store."
+    : "El pago se gestiona a través del App Store.";
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="subscription-page">
@@ -437,6 +445,7 @@ export default function SubscriptionPage() {
           )}
         </div>
 
+        {!isIOSApp && (
         <section className="mt-10 bg-[#2B2D42] rounded-[24px] p-6 md:p-8 text-white">
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 mb-3">
@@ -536,10 +545,21 @@ export default function SubscriptionPage() {
             <p className="text-sm text-white/75 leading-6 mt-2">{t("subscriptionUi.municipalBillingContact")}</p>
           </div>
         </section>
+        )}
 
-        <p className="text-center text-xs text-[#8D99AE] mt-6">
-          {t("subscriptionUi.paymentNote")}
-        </p>
+        <div className="text-center text-xs text-[#8D99AE] mt-6 space-y-2">
+          <p>{isIOSApp ? iosPaymentNote : t("subscriptionUi.paymentNote")}</p>
+          {isIOSApp && <p>{subscriptionTermsNote}</p>}
+          <p>
+            <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline">
+              {t("legalUi.termsOfUse")}
+            </Link>
+            {" · "}
+            <Link to="/privacy" className="text-[#FF6B6B] font-medium hover:underline">
+              {t("legalUi.privacyPolicy")}
+            </Link>
+          </p>
+        </div>
       </div>
     </div>
   );

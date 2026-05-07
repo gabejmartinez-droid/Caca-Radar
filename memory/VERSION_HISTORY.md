@@ -2359,3 +2359,45 @@ Notes:
 - Update Apple monthly subscription product id
 ```
 
+### 2026-05-07 — Pending
+
+Release metadata:
+- Commit SHA: `cff017a0b25fe4ae17b1fd0a9542ddc5b46a3c70-dirty`
+- Deployment status: `pending`
+- Rollback target: `c24724e076b665aef4e40d0f79a12064d08916eb`
+
+Exact versions:
+- Web: `1.1.79-web.1`
+- iOS: `1.1.97 (99)`
+- Android: `1.1.96 (98)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Make iOS review build metadata-safe.
+- Replace Apple-style emoji app icon with custom radar icon.
+
+Internal release notes:
+- Make iOS review build metadata-safe
+- Replace Apple-style emoji app icon with custom radar icon
+
+Store submission notes:
+```text
+- Make iOS review build metadata-safe.
+- Replace Apple-style emoji app icon with custom radar icon.
+```
+
+Internal release notes block:
+```text
+Commit SHA: cff017a0b25fe4ae17b1fd0a9542ddc5b46a3c70-dirty
+Deployment status: pending
+Rollback target: c24724e076b665aef4e40d0f79a12064d08916eb
+Versions:
+• Web: `1.1.79-web.1`
+• iOS: `1.1.97 (99)`
+• Android: `1.1.96 (98)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Make iOS review build metadata-safe
+- Replace Apple-style emoji app icon with custom radar icon
+```
+

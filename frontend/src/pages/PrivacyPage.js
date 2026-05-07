@@ -107,7 +107,7 @@ export default function PrivacyPage() {
               <div>
                 <h3 className="font-semibold text-[#2B2D42]">e) Suscripciones y pagos</h3>
                 <p>
-                  El proyecto incluye lógica de suscripciones premium y verificación de compras de Apple App Store y Google Play. Tratamos el plan,
+                  El proyecto incluye lógica de suscripciones premium y verificación de compras a través de la tienda de aplicaciones aplicable. Tratamos el plan,
                   estado, fechas de expiración, identificadores de compra y metadatos de verificación recibidos de la tienda correspondiente.
                 </p>
                 <p>No almacenamos números completos de tarjeta.</p>
@@ -140,7 +140,7 @@ export default function PrivacyPage() {
               <li>directamente de ti cuando te registras, inicias sesión, configuras alertas, subes contenido o contactas con nosotros;</li>
               <li>automáticamente cuando usas la app o la web para mantener la sesión, detectar abuso y prestar el servicio;</li>
               <li>de Google cuando eliges iniciar sesión con Google;</li>
-              <li>de Apple App Store o Google Play cuando el flujo de suscripción correspondiente está en uso;</li>
+              <li>de la tienda de aplicaciones aplicable cuando el flujo de suscripción correspondiente está en uso;</li>
               <li>de servicios técnicos integrados para mapas, geocodificación, almacenamiento de imágenes o notificaciones.</li>
             </ul>
           </Section>
@@ -167,7 +167,7 @@ export default function PrivacyPage() {
               <li>Emergent, como proveedor principal de despliegue, hosting y almacenamiento de objetos del servicio;</li>
               <li>MongoDB Atlas, como proveedor de base de datos principal;</li>
               <li>Resend, para el envío de emails transaccionales como verificación, recuperación de acceso y algunas comunicaciones operativas;</li>
-              <li>Apple App Store y Google Play, para suscripciones y verificación de compras cuando aplique;</li>
+              <li>la tienda de aplicaciones aplicable, para suscripciones y verificación de compras cuando proceda;</li>
               <li>servicios push del navegador y Google Firebase Cloud Messaging para notificaciones push cuando la función está activada.</li>
             </ul>
             <p>

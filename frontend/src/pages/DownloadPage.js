@@ -10,6 +10,7 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
 import { formatTranslation } from "../utils/ranks";
 import { shareWithNativeOrCopy } from "../utils/socialShare";
+import { getCurrentPlatform } from "../versionInfo";
 
 const FALLBACK_STORES = {
   app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
@@ -50,8 +51,9 @@ function buildContextTitle(kind, params, t) {
 export default function DownloadPage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [stores, setStores] = useState(FALLBACK_STORES);
+  const isIOSApp = getCurrentPlatform() === "ios";
 
   const kind = searchParams.get("kind") || "";
 
@@ -112,6 +114,11 @@ export default function DownloadPage() {
     url: shareUrl,
     imageUrl: kind === "city-rankings" || kind === "barrio-rankings" || kind === "city-report" ? previewImageUrl : undefined,
   }), [contextTitle, kind, previewImageUrl, shareUrl, t]);
+  const watchIntro = isIOSApp
+    ? (language === "en"
+        ? "Take Caca Radar to your wrist with the companion app for Apple Watch."
+        : "Lleva Caca Radar en tu muñeca con el companion app para Apple Watch.")
+    : t("downloadUi.watchIntro");
 
   const handleShare = async () => {
     try {
@@ -193,18 +200,20 @@ export default function DownloadPage() {
                   </span>
                   <ExternalLink className="w-4 h-4 text-[#8D99AE]" />
                 </a>
-                <a
-                  href={stores.play_store_url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="flex items-center justify-between rounded-xl border border-[#8D99AE]/15 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
-                >
-                  <span className="flex items-center gap-3 font-semibold">
-                    <Smartphone className="w-4 h-4 text-[#2B2D42]" />
-                    {t("downloadUi.openPlayStore")}
-                  </span>
-                  <ExternalLink className="w-4 h-4 text-[#8D99AE]" />
-                </a>
+                {!isIOSApp && (
+                  <a
+                    href={stores.play_store_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-between rounded-xl border border-[#8D99AE]/15 px-4 py-3 text-[#2B2D42] hover:bg-[#F8F9FA]"
+                  >
+                    <span className="flex items-center gap-3 font-semibold">
+                      <Smartphone className="w-4 h-4 text-[#2B2D42]" />
+                      {t("downloadUi.openPlayStore")}
+                    </span>
+                    <ExternalLink className="w-4 h-4 text-[#8D99AE]" />
+                  </a>
+                )}
               </div>
             </section>
 
@@ -222,7 +231,7 @@ export default function DownloadPage() {
                 <Watch className="w-5 h-5 text-[#FF6B6B]" />
                 <h2 className="text-lg font-bold">{t("downloadUi.watchTitle")}</h2>
               </div>
-              <p className="text-sm text-white/75 leading-6 mb-4">{t("downloadUi.watchIntro")}</p>
+              <p className="text-sm text-white/75 leading-6 mb-4">{watchIntro}</p>
               <ul className="space-y-3 text-sm text-white/85">
                 <li>{t("downloadUi.watchOne")}</li>
                 <li>{t("downloadUi.watchTwo")}</li>
@@ -230,6 +239,7 @@ export default function DownloadPage() {
               </ul>
             </section>
 
+            {!isIOSApp && (
             <section className="bg-white rounded-2xl shadow-sm p-6 border border-[#2B2D42]/10">
               <div className="flex items-center gap-2 mb-4">
                 <Building2 className="w-5 h-5 text-[#2B2D42]" />
@@ -249,6 +259,7 @@ export default function DownloadPage() {
                 {t("downloadUi.municipalCta")}
               </Button>
             </section>
+            )}
           </aside>
         </div>
 

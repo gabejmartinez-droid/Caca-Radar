@@ -6,6 +6,7 @@ import { LanguageSelector } from "../components/LanguageSelector";
 import LegalLinksFooter from "../components/LegalLinksFooter";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
+import { getCurrentPlatform } from "../versionInfo";
 
 function StatusPill({ ok, children }) {
   return (
@@ -110,6 +111,7 @@ export default function StatusPage() {
 
   const runtime = version?.runtime || health?.runtime || {};
   const appVersions = runtime.app_versions || {};
+  const isIOSApp = getCurrentPlatform() === "ios";
   const allChecksPassing = useMemo(() => {
     if (!health) return false;
     return Boolean(health.database && health.reports_readable && health.users_readable);
@@ -211,10 +213,12 @@ export default function StatusPage() {
                   label="iOS"
                   value={appVersions.ios ? `${appVersions.ios.version} (${appVersions.ios.build})` : t("statusUi.notAvailable")}
                 />
-                <StatRow
-                  label="Android"
-                  value={appVersions.android ? `${appVersions.android.version} (${appVersions.android.build})` : t("statusUi.notAvailable")}
-                />
+                {!isIOSApp && (
+                  <StatRow
+                    label="Android"
+                    value={appVersions.android ? `${appVersions.android.version} (${appVersions.android.build})` : t("statusUi.notAvailable")}
+                  />
+                )}
                 <StatRow label="Backend" value={runtime.backend_version || t("statusUi.notAvailable")} />
               </div>
             </section>
