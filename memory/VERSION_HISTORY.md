@@ -2321,3 +2321,41 @@ Notes:
 - Remove stale hardcoded subscription prices from terms
 ```
 
+### 2026-05-07 — Pending
+
+Release metadata:
+- Commit SHA: `c24724e076b665aef4e40d0f79a12064d08916eb-dirty`
+- Deployment status: `pending`
+- Rollback target: `9d82b904850f44ca0d79b0b2bbdfa77df9351ba9`
+
+Exact versions:
+- Web: `1.1.78-web.1`
+- iOS: `1.1.96 (98)`
+- Android: `1.1.95 (97)`
+- Backend: `1.1.29-api.1`
+
+User-facing release notes:
+- Update Apple monthly subscription product id.
+
+Internal release notes:
+- Update Apple monthly subscription product id
+
+Store submission notes:
+```text
+- Update Apple monthly subscription product id.
+```
+
+Internal release notes block:
+```text
+Commit SHA: c24724e076b665aef4e40d0f79a12064d08916eb-dirty
+Deployment status: pending
+Rollback target: 9d82b904850f44ca0d79b0b2bbdfa77df9351ba9
+Versions:
+• Web: `1.1.78-web.1`
+• iOS: `1.1.96 (98)`
+• Android: `1.1.95 (97)`
+• Backend: `1.1.29-api.1`
+Notes:
+- Update Apple monthly subscription product id
+```
+
