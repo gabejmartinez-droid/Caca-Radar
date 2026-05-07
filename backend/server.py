@@ -121,8 +121,7 @@ async def verify_apple_receipt(receipt_data: str, transaction_id: str = None) ->
     try:
         from appstoreserverlibrary.api_client import AppStoreServerAPIClient, GetTransactionHistoryVersion
         from appstoreserverlibrary.models.Environment import Environment
-        from appstoreserverlibrary.models.TransactionHistoryRequest import TransactionHistoryRequest
-        from appstoreserverlibrary.models.ProductType import ProductType
+        from appstoreserverlibrary.models.TransactionHistoryRequest import TransactionHistoryRequest, ProductType
         from appstoreserverlibrary.receipt_utility import ReceiptUtility
         import json as _json, base64 as _b64
 

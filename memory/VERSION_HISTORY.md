@@ -2451,3 +2451,41 @@ Notes:
 - Tighten iOS review surfaces
 ```
 
+### 2026-05-07 — Pending
+
+Release metadata:
+- Commit SHA: `0067ce15808f702022ceff331d4b938931ae56bc-dirty`
+- Deployment status: `pending`
+- Rollback target: `87650a6dcb89c642dcd62a8257966744a68f9f97`
+
+Exact versions:
+- Web: `1.1.80-web.1`
+- iOS: `1.1.99 (101)`
+- Android: `1.1.98 (100)`
+- Backend: `1.1.31-api.1`
+
+User-facing release notes:
+- Fix Apple Store Server library ProductType import.
+
+Internal release notes:
+- Fix Apple Store Server library ProductType import
+
+Store submission notes:
+```text
+- Fix Apple Store Server library ProductType import.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 0067ce15808f702022ceff331d4b938931ae56bc-dirty
+Deployment status: pending
+Rollback target: 87650a6dcb89c642dcd62a8257966744a68f9f97
+Versions:
+• Web: `1.1.80-web.1`
+• iOS: `1.1.99 (101)`
+• Android: `1.1.98 (100)`
+• Backend: `1.1.31-api.1`
+Notes:
+- Fix Apple Store Server library ProductType import
+```
+
