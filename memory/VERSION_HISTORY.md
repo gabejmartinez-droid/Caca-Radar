@@ -2489,3 +2489,41 @@ Notes:
 - Fix Apple Store Server library ProductType import
 ```
 
+### 2026-05-08 — Pending
+
+Release metadata:
+- Commit SHA: `95be64026ed9cb17672143329ec36ca3f5d8015a-dirty`
+- Deployment status: `pending`
+- Rollback target: `0067ce15808f702022ceff331d4b938931ae56bc`
+
+Exact versions:
+- Web: `1.1.80-web.1`
+- iOS: `1.1.99 (101)`
+- Android: `1.1.98 (100)`
+- Backend: `1.1.32-api.1`
+
+User-facing release notes:
+- Allow real Apple premium subscription for app review account.
+
+Internal release notes:
+- Allow real Apple premium subscription for app review account
+
+Store submission notes:
+```text
+- Allow real Apple premium subscription for app review account.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 95be64026ed9cb17672143329ec36ca3f5d8015a-dirty
+Deployment status: pending
+Rollback target: 0067ce15808f702022ceff331d4b938931ae56bc
+Versions:
+• Web: `1.1.80-web.1`
+• iOS: `1.1.99 (101)`
+• Android: `1.1.98 (100)`
+• Backend: `1.1.32-api.1`
+Notes:
+- Allow real Apple premium subscription for app review account
+```
+

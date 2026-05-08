@@ -40,7 +40,7 @@ from deps import (
     REPORT_CATEGORIES, FLAG_REASONS,
     is_valid_municipality_email, generate_verification_code, generate_password_reset_token, hash_password_reset_token,
     APP_STORE_URL, PLAY_STORE_URL,
-    is_vip_email, is_app_review_email, apply_special_account_overrides,
+    is_vip_email, is_app_review_email, has_real_app_review_subscription, apply_special_account_overrides,
     GOOGLE_WEB_CLIENT_ID, GOOGLE_ALLOWED_CLIENT_IDS,
     APP_ENV, db_name, is_mongo_local, mongo_url, redacted_mongo_url, is_production_env,
 )
@@ -1358,15 +1358,16 @@ async def login(data: UserLogin, request: Request, response: Response):
             user.update(updates)
     elif is_app_review_email(email):
         updates = {}
-        if user.get("subscription_active"):
-            updates["subscription_active"] = False
-        if user.get("subscription_type") is not None:
-            updates["subscription_type"] = None
-        if user.get("subscription_expires") is not None:
-            updates["subscription_expires"] = None
-        if updates:
-            await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
-            user.update(updates)
+        if not has_real_app_review_subscription(user):
+            if user.get("subscription_active"):
+                updates["subscription_active"] = False
+            if user.get("subscription_type") is not None:
+                updates["subscription_type"] = None
+            if user.get("subscription_expires") is not None:
+                updates["subscription_expires"] = None
+            if updates:
+                await db.users.update_one({"_id": user["_id"]}, {"$set": updates})
+                user.update(updates)
     user = await update_login_metadata(user["_id"], request, user)
     user = await apply_special_account_overrides(user)
     

@@ -284,6 +284,17 @@ def is_app_review_email(email: Optional[str]) -> bool:
     return (email or "").strip().lower() == APP_REVIEW_EMAIL
 
 
+def has_real_app_review_subscription(user: Optional[dict]) -> bool:
+    if not user:
+        return False
+    store = (user.get("subscription_store") or "").strip().lower()
+    return bool(
+        user.get("subscription_active")
+        and store == "apple"
+        and not user.get("subscription_mock", False)
+    )
+
+
 async def apply_special_account_overrides(user: Optional[dict]) -> Optional[dict]:
     if not user:
         return user
@@ -292,12 +303,13 @@ async def apply_special_account_overrides(user: Optional[dict]) -> Optional[dict
     updates = {}
 
     if is_app_review_email(email):
-        if user.get("subscription_active"):
-            updates["subscription_active"] = False
-        if user.get("subscription_type") is not None:
-            updates["subscription_type"] = None
-        if user.get("subscription_expires") is not None:
-            updates["subscription_expires"] = None
+        if not has_real_app_review_subscription(user):
+            if user.get("subscription_active"):
+                updates["subscription_active"] = False
+            if user.get("subscription_type") is not None:
+                updates["subscription_type"] = None
+            if user.get("subscription_expires") is not None:
+                updates["subscription_expires"] = None
     elif is_vip_email(email):
         if not user.get("subscription_active"):
             updates["subscription_active"] = True
