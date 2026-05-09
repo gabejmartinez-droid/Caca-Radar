@@ -4,6 +4,44 @@ This log tracks shipped versions and the next unreleased batch across web, iOS, 
 
 ## Released
 
+### 2026-05-09 — Pending
+
+Release metadata:
+- Commit SHA: `pending local changes`
+- Deployment status: `pending`
+- Rollback target: `ebb40d0c5b2edba65a1bf874318612dc54bc00dd`
+
+Exact versions:
+- Web: `1.1.82-web.1`
+- iOS: `1.1.101 (103)`
+- Android: `1.1.100 (102)`
+- Backend: `1.1.32-api.1`
+
+User-facing release notes:
+- Fix subscription price labels so App Store prices do not show a second hardcoded euro suffix.
+
+Internal release notes:
+- Remove hardcoded euro suffixes from StoreKit price labels and replace stale annual savings copy with currency-agnostic wording.
+
+Store submission notes:
+```text
+- Fix subscription price labels so StoreKit prices no longer show both a store currency symbol and a hardcoded euro suffix.
+```
+
+Internal release notes block:
+```text
+Commit SHA: pending local changes
+Deployment status: pending
+Rollback target: ebb40d0c5b2edba65a1bf874318612dc54bc00dd
+Versions:
+• Web: `1.1.82-web.1`
+• iOS: `1.1.101 (103)`
+• Android: `1.1.100 (102)`
+• Backend: `1.1.32-api.1`
+Notes:
+- Remove hardcoded euro suffixes from StoreKit price labels and replace stale annual savings copy with currency-agnostic wording
+```
+
 ### 2026-05-07 — Pending
 
 - Web: `1.1.80-web.1`
@@ -2564,4 +2602,3 @@ Versions:
 Notes:
 - Add Apple annual subscription product id
 ```
-

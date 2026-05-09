@@ -22,9 +22,6 @@ import {
   restoreAppleSubscriptions,
 } from "../utils/appleSubscriptions";
 
-const MONTHLY_PRICE_FALLBACK = "0,99";
-const ANNUAL_PRICE_FALLBACK = "9,99";
-
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
   const { t, isRtl, language } = useLanguage();
@@ -291,8 +288,8 @@ export default function SubscriptionPage() {
   ]), [t]);
 
   const alreadySubscribed = user?.subscription_active;
-  const monthlyPriceLabel = monthlyStoreProduct?.displayPrice || MONTHLY_PRICE_FALLBACK;
-  const annualPriceLabel = annualStoreProduct?.displayPrice || ANNUAL_PRICE_FALLBACK;
+  const monthlyPriceLabel = monthlyStoreProduct?.displayPrice || t("subscriptionUi.monthlyPriceFallback");
+  const annualPriceLabel = annualStoreProduct?.displayPrice || t("subscriptionUi.annualPriceFallback");
   const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
     !isNativeAppleStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
   );
