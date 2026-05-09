@@ -2527,3 +2527,41 @@ Notes:
 - Allow real Apple premium subscription for app review account
 ```
 
+### 2026-05-09 — Pending
+
+Release metadata:
+- Commit SHA: `ebb40d0c5b2edba65a1bf874318612dc54bc00dd-dirty`
+- Deployment status: `pending`
+- Rollback target: `95be64026ed9cb17672143329ec36ca3f5d8015a`
+
+Exact versions:
+- Web: `1.1.81-web.1`
+- iOS: `1.1.100 (102)`
+- Android: `1.1.99 (101)`
+- Backend: `1.1.32-api.1`
+
+User-facing release notes:
+- Add Apple annual subscription product id.
+
+Internal release notes:
+- Add Apple annual subscription product id
+
+Store submission notes:
+```text
+- Add Apple annual subscription product id.
+```
+
+Internal release notes block:
+```text
+Commit SHA: ebb40d0c5b2edba65a1bf874318612dc54bc00dd-dirty
+Deployment status: pending
+Rollback target: 95be64026ed9cb17672143329ec36ca3f5d8015a
+Versions:
+• Web: `1.1.81-web.1`
+• iOS: `1.1.100 (102)`
+• Android: `1.1.99 (101)`
+• Backend: `1.1.32-api.1`
+Notes:
+- Add Apple annual subscription product id
+```
+

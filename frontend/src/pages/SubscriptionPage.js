@@ -23,7 +23,7 @@ import {
 } from "../utils/appleSubscriptions";
 
 const MONTHLY_PRICE_FALLBACK = "0,99";
-const ANNUAL_PRICE_FALLBACK = "29,99";
+const ANNUAL_PRICE_FALLBACK = "9,99";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
