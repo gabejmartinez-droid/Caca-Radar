@@ -2602,3 +2602,42 @@ Versions:
 Notes:
 - Add Apple annual subscription product id
 ```
+
+### 2026-05-11 — Pending
+
+Release metadata:
+- Commit SHA: `fac439d485860fa5227fde7214068b88e248844e-dirty`
+- Deployment status: `pending`
+- Rollback target: `9d19f2d89c61e31bc181eda4e9acbc6e55af05a9`
+
+Exact versions:
+- Web: `1.1.82-web.1`
+- iOS: `1.1.102 (104)`
+- Android: `1.1.101 (103)`
+- Backend: `1.1.32-api.1`
+
+User-facing release notes:
+- Refresh mobile app icons.
+
+Internal release notes:
+- Refresh iPhone, watch, and Android launcher icons from new 1024 master artwork.
+
+Store submission notes:
+```text
+- Refresh mobile app icons.
+```
+
+Internal release notes block:
+```text
+Commit SHA: fac439d485860fa5227fde7214068b88e248844e-dirty
+Deployment status: pending
+Rollback target: 9d19f2d89c61e31bc181eda4e9acbc6e55af05a9
+Versions:
+• Web: `1.1.82-web.1`
+• iOS: `1.1.102 (104)`
+• Android: `1.1.101 (103)`
+• Backend: `1.1.32-api.1`
+Notes:
+- Refresh iPhone, watch, and Android launcher icons from new 1024 master artwork.
+```
+
