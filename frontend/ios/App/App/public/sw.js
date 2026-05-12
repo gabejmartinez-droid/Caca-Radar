@@ -1,6 +1,6 @@
 /* eslint-disable no-restricted-globals */
 
-const CACHE_NAME = 'caca-radar-v2';
+const CACHE_NAME = 'caca-radar-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',

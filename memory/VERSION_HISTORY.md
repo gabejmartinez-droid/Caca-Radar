@@ -2833,3 +2833,41 @@ Notes:
 - Allow native subscriptions before optional account registration
 ```
 
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `cd62571af36aa4f536510c3cfcfb13b634028b5a-dirty`
+- Deployment status: `pending`
+- Rollback target: `34da1a6f72f8e890656b8f7a1928e030f8e7d686`
+
+Exact versions:
+- Web: `1.1.85-web.1`
+- iOS: `1.1.106 (108)`
+- Android: `1.1.105 (107)`
+- Backend: `1.1.34-api.1`
+
+User-facing release notes:
+- Refresh bundled public app icons.
+
+Internal release notes:
+- Refresh bundled public app icons
+
+Store submission notes:
+```text
+- Refresh bundled public app icons.
+```
+
+Internal release notes block:
+```text
+Commit SHA: cd62571af36aa4f536510c3cfcfb13b634028b5a-dirty
+Deployment status: pending
+Rollback target: 34da1a6f72f8e890656b8f7a1928e030f8e7d686
+Versions:
+• Web: `1.1.85-web.1`
+• iOS: `1.1.106 (108)`
+• Android: `1.1.105 (107)`
+• Backend: `1.1.34-api.1`
+Notes:
+- Refresh bundled public app icons
+```
+
