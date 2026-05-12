@@ -2679,3 +2679,41 @@ Notes:
 - Temporarily hard-disable Spain location gate for app review
 ```
 
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `3d18eb44bb66eab5188194c03c108d5b66cd6893-dirty`
+- Deployment status: `pending`
+- Rollback target: `92c95f7332184cfef2d29c21714ac398310d3cdf`
+
+Exact versions:
+- Web: `1.1.83-web.1`
+- iOS: `1.1.103 (105)`
+- Android: `1.1.102 (104)`
+- Backend: `1.1.33-api.1`
+
+User-facing release notes:
+- Review account can complete report submission outside Spain.
+
+Internal release notes:
+- Allow geo-review-exempt accounts to submit reports outside Spain during review
+
+Store submission notes:
+```text
+- Review account can complete report submission outside Spain.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 3d18eb44bb66eab5188194c03c108d5b66cd6893-dirty
+Deployment status: pending
+Rollback target: 92c95f7332184cfef2d29c21714ac398310d3cdf
+Versions:
+• Web: `1.1.83-web.1`
+• iOS: `1.1.103 (105)`
+• Android: `1.1.102 (104)`
+• Backend: `1.1.33-api.1`
+Notes:
+- Allow geo-review-exempt accounts to submit reports outside Spain during review
+```
+
