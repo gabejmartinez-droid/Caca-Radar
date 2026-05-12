@@ -30,6 +30,10 @@ import {
   purchaseGoogleSubscription,
   restoreGoogleSubscriptions,
 } from "../utils/googleSubscriptions";
+import {
+  getNativePremiumEntitlement,
+  saveNativePremiumEntitlement,
+} from "../utils/nativeSubscriptionEntitlement";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
@@ -39,6 +43,7 @@ export default function SubscriptionPage() {
   const [storeLoading, setStoreLoading] = useState(false);
   const [purchaseBusyPlan, setPurchaseBusyPlan] = useState("");
   const [restoreBusy, setRestoreBusy] = useState(false);
+  const [localEntitlement, setLocalEntitlement] = useState(() => getNativePremiumEntitlement());
 
   const isNativeAppleStore = isNativeAppleSubscriptionsSupported();
   const isNativeGoogleStore = isNativeGoogleSubscriptionsSupported();
@@ -105,6 +110,19 @@ export default function SubscriptionPage() {
     return data;
   };
 
+  const rememberAppleSubscription = (purchase) => {
+    const productId = purchase?.productId || "";
+    const plan = productId === APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const entitlement = saveNativePremiumEntitlement({
+      store: "apple",
+      productId,
+      plan,
+      transactionId: purchase?.originalTransactionId || purchase?.transactionId || "",
+      expirationDate: purchase?.expirationDate || "",
+    });
+    setLocalEntitlement(entitlement);
+  };
+
   const syncGoogleSubscription = async (purchase) => {
     const productId = purchase?.productId || "";
     const plan = productId === GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
@@ -121,6 +139,18 @@ export default function SubscriptionPage() {
       await acknowledgeGoogleSubscription(purchase?.purchaseToken);
     }
     return data;
+  };
+
+  const rememberGoogleSubscription = (purchase) => {
+    const productId = purchase?.productId || "";
+    const plan = productId === GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const entitlement = saveNativePremiumEntitlement({
+      store: "google",
+      productId,
+      plan,
+      purchaseToken: purchase?.purchaseToken || "",
+    });
+    setLocalEntitlement(entitlement);
   };
 
   const pickPreferredAppleSubscription = (subscriptions) => {
@@ -148,7 +178,7 @@ export default function SubscriptionPage() {
   };
 
   const handleSubscribe = async (plan) => {
-    if (!user) {
+    if (!user && !isNativeStore) {
       navigate("/login");
       return;
     }
@@ -171,10 +201,15 @@ export default function SubscriptionPage() {
           toast.error(t("subscriptionUi.purchaseUnknown"));
           return;
         }
-        await syncAppleSubscription(purchase);
+        rememberAppleSubscription(purchase);
+        if (user) {
+          await syncAppleSubscription(purchase);
+          await checkAuth();
+        }
         toast.success(t("subscriptionUi.subscriptionActivated"));
-        await checkAuth();
-        navigate("/");
+        if (user) {
+          navigate("/");
+        }
         return;
       } catch (err) {
         const detail = err.response?.data?.detail || err.message;
@@ -205,10 +240,15 @@ export default function SubscriptionPage() {
           toast.error(t("subscriptionUi.purchaseUnknown"));
           return;
         }
-        await syncGoogleSubscription(purchase);
+        rememberGoogleSubscription(purchase);
+        if (user) {
+          await syncGoogleSubscription(purchase);
+          await checkAuth();
+        }
         toast.success(t("subscriptionUi.subscriptionActivated"));
-        await checkAuth();
-        navigate("/");
+        if (user) {
+          navigate("/");
+        }
         return;
       } catch (err) {
         const detail = err.response?.data?.detail || err.message;
@@ -249,8 +289,18 @@ export default function SubscriptionPage() {
         return;
       }
       if (isNativeGoogleStore) {
+        rememberGoogleSubscription(purchase);
+        if (!user) {
+          toast.success(t("subscriptionUi.restoreSuccess"));
+          return;
+        }
         await syncGoogleSubscription(purchase);
       } else {
+        rememberAppleSubscription(purchase);
+        if (!user) {
+          toast.success(t("subscriptionUi.restoreSuccess"));
+          return;
+        }
         await syncAppleSubscription(purchase);
       }
       toast.success(t("subscriptionUi.restoreSuccess"));
@@ -373,7 +423,7 @@ export default function SubscriptionPage() {
     },
   ]), [t]);
 
-  const alreadySubscribed = user?.subscription_active;
+  const alreadySubscribed = user?.subscription_active || Boolean(localEntitlement);
   const monthlyPriceLabel = monthlyStoreProduct?.displayPrice || t("subscriptionUi.monthlyPriceFallback");
   const annualPriceLabel = annualStoreProduct?.displayPrice || t("subscriptionUi.annualPriceFallback");
   const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
@@ -390,6 +440,9 @@ export default function SubscriptionPage() {
   const storePaymentNote = language === "en"
     ? `Payment is managed through ${isNativeGoogleStore ? "Google Play" : "the App Store"}.`
     : `El pago se gestiona a través de ${isNativeGoogleStore ? "Google Play" : "App Store"}.`;
+  const optionalAccountNote = language === "en"
+    ? "Your subscription is active on this device. Creating or signing in to an account is optional and lets you sync Premium access and account-specific features across supported devices."
+    : "Tu suscripción está activa en este dispositivo. Crear una cuenta o iniciar sesión es opcional y te permite sincronizar el acceso Premium y funciones vinculadas a tu cuenta en dispositivos compatibles.";
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="subscription-page">
@@ -440,6 +493,19 @@ export default function SubscriptionPage() {
               <Check className="w-8 h-8 text-[#66BB6A] mx-auto mb-2" />
               <p className="font-bold text-[#2B2D42]">{t("subscriptionUi.alreadyPremium")}</p>
               <p className="text-xs text-[#8D99AE] mt-1">{t("subscriptionUi.enjoyFeatures")}</p>
+              {!user && localEntitlement && (
+                <div className="mt-4 rounded-xl bg-white/80 border border-[#66BB6A]/15 p-3">
+                  <p className="text-xs text-[#5C677D] leading-5">{optionalAccountNote}</p>
+                  <div className="flex flex-col sm:flex-row gap-2 justify-center mt-3">
+                    <Button variant="outline" onClick={() => navigate("/login")} className="rounded-xl">
+                      {language === "en" ? "Sign in" : "Iniciar sesión"}
+                    </Button>
+                    <Button onClick={() => navigate("/register")} className="bg-[#FF6B6B] hover:bg-[#FF5252] text-white rounded-xl">
+                      {language === "en" ? "Create optional account" : "Crear cuenta opcional"}
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           ) : (
             <>

@@ -2795,3 +2795,41 @@ Notes:
 - Carry shared subscription page updates into iOS version metadata
 ```
 
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `34da1a6f72f8e890656b8f7a1928e030f8e7d686-dirty`
+- Deployment status: `pending`
+- Rollback target: `091cf6fdf24232cf3ac95dc8752035e0cfac548f`
+
+Exact versions:
+- Web: `1.1.85-web.1`
+- iOS: `1.1.105 (107)`
+- Android: `1.1.104 (106)`
+- Backend: `1.1.34-api.1`
+
+User-facing release notes:
+- Users can subscribe before creating an optional account.
+
+Internal release notes:
+- Allow native subscriptions before optional account registration
+
+Store submission notes:
+```text
+- Users can subscribe before creating an optional account.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 34da1a6f72f8e890656b8f7a1928e030f8e7d686-dirty
+Deployment status: pending
+Rollback target: 091cf6fdf24232cf3ac95dc8752035e0cfac548f
+Versions:
+• Web: `1.1.85-web.1`
+• iOS: `1.1.105 (107)`
+• Android: `1.1.104 (106)`
+• Backend: `1.1.34-api.1`
+Notes:
+- Allow native subscriptions before optional account registration
+```
+
