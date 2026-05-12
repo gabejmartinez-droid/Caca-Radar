@@ -2641,3 +2641,41 @@ Notes:
 - Refresh iPhone, watch, and Android launcher icons from new 1024 master artwork.
 ```
 
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `92c95f7332184cfef2d29c21714ac398310d3cdf-dirty`
+- Deployment status: `pending`
+- Rollback target: `fac439d485860fa5227fde7214068b88e248844e`
+
+Exact versions:
+- Web: `1.1.83-web.1`
+- iOS: `1.1.103 (105)`
+- Android: `1.1.102 (104)`
+- Backend: `1.1.32-api.1`
+
+User-facing release notes:
+- Location access gate disabled during review.
+
+Internal release notes:
+- Temporarily hard-disable Spain location gate for app review
+
+Store submission notes:
+```text
+- Location access gate disabled during review.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 92c95f7332184cfef2d29c21714ac398310d3cdf-dirty
+Deployment status: pending
+Rollback target: fac439d485860fa5227fde7214068b88e248844e
+Versions:
+• Web: `1.1.83-web.1`
+• iOS: `1.1.103 (105)`
+• Android: `1.1.102 (104)`
+• Backend: `1.1.32-api.1`
+Notes:
+- Temporarily hard-disable Spain location gate for app review
+```
+
