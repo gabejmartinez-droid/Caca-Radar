@@ -211,11 +211,19 @@ async def verify_google_receipt(purchase_token: str, subscription_id: str) -> di
                 expiry_str = item.get("expiryTime")  # RFC3339 string
                 auto_renew = item.get("autoRenewingPlan", {}).get("autoRenewing", False)
                 product_id = item.get("productId", subscription_id)
+                subscription_state = result.get("subscriptionState")
 
                 is_active = True
                 if expiry_str:
                     expiry_dt = datetime.fromisoformat(expiry_str.replace("Z", "+00:00"))
                     is_active = expiry_dt > datetime.now(timezone.utc)
+                if subscription_state in {
+                    "SUBSCRIPTION_STATE_PENDING",
+                    "SUBSCRIPTION_STATE_ON_HOLD",
+                    "SUBSCRIPTION_STATE_PAUSED",
+                    "SUBSCRIPTION_STATE_EXPIRED",
+                }:
+                    is_active = False
 
                 return {
                     "valid": is_active,
@@ -223,6 +231,7 @@ async def verify_google_receipt(purchase_token: str, subscription_id: str) -> di
                     "product_id": product_id,
                     "expires": expiry_str,
                     "auto_renewing": auto_renew,
+                    "subscription_state": subscription_state,
                     "acknowledgement_state": result.get("acknowledgementState"),
                 }
         except Exception:

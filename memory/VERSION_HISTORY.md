@@ -2717,3 +2717,81 @@ Notes:
 - Allow geo-review-exempt accounts to submit reports outside Spain during review
 ```
 
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `091cf6fdf24232cf3ac95dc8752035e0cfac548f-dirty`
+- Deployment status: `pending`
+- Rollback target: `3d18eb44bb66eab5188194c03c108d5b66cd6893`
+
+Exact versions:
+- Web: `1.1.84-web.1`
+- iOS: `1.1.103 (105)`
+- Android: `1.1.103 (105)`
+- Backend: `1.1.34-api.1`
+
+User-facing release notes:
+- Android Premium subscriptions now use Google Play Billing.
+
+Internal release notes:
+- Add Google Play Billing subscription purchase flow for Android Premium
+- Handle paused and on-hold Google subscriptions without active Premium access
+
+Store submission notes:
+```text
+- Android Premium subscriptions now use Google Play Billing.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 091cf6fdf24232cf3ac95dc8752035e0cfac548f-dirty
+Deployment status: pending
+Rollback target: 3d18eb44bb66eab5188194c03c108d5b66cd6893
+Versions:
+• Web: `1.1.84-web.1`
+• iOS: `1.1.103 (105)`
+• Android: `1.1.103 (105)`
+• Backend: `1.1.34-api.1`
+Notes:
+- Add Google Play Billing subscription purchase flow for Android Premium
+- Handle paused and on-hold Google subscriptions without active Premium access
+```
+
+### 2026-05-12 — Pending
+
+Release metadata:
+- Commit SHA: `091cf6fdf24232cf3ac95dc8752035e0cfac548f-dirty`
+- Deployment status: `pending`
+- Rollback target: `3d18eb44bb66eab5188194c03c108d5b66cd6893`
+
+Exact versions:
+- Web: `1.1.84-web.1`
+- iOS: `1.1.104 (106)`
+- Android: `1.1.103 (105)`
+- Backend: `1.1.34-api.1`
+
+User-facing release notes:
+- Subscription page compatibility updates.
+
+Internal release notes:
+- Carry shared subscription page updates into iOS version metadata
+
+Store submission notes:
+```text
+- Subscription page compatibility updates.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 091cf6fdf24232cf3ac95dc8752035e0cfac548f-dirty
+Deployment status: pending
+Rollback target: 3d18eb44bb66eab5188194c03c108d5b66cd6893
+Versions:
+• Web: `1.1.84-web.1`
+• iOS: `1.1.104 (106)`
+• Android: `1.1.103 (105)`
+• Backend: `1.1.34-api.1`
+Notes:
+- Carry shared subscription page updates into iOS version metadata
+```
+

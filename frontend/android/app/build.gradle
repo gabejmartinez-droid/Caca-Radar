@@ -14,8 +14,8 @@ android {
         applicationId "com.jefe.cacaradar"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 104
-        versionName "1.1.102"
+        versionCode 105
+        versionName "1.1.103"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -50,6 +50,7 @@ repositories {
 dependencies {
     implementation project(':capacitor-android')
     implementation 'androidx.security:security-crypto:1.1.0-alpha06'
+    implementation 'com.android.billingclient:billing:8.3.0'
     implementation 'com.google.android.play:integrity:1.6.0'
     implementation 'com.google.android.gms:play-services-auth:21.5.0'
     implementation 'com.google.android.gms:play-services-wearable:19.0.0'

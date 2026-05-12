@@ -12,15 +12,24 @@ import {
   API,
   APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID,
   APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID,
+  GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID,
+  GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID,
 } from "../config";
 import { isCapacitorNative } from "../tokenManager";
-import { getCurrentPlatform } from "../versionInfo";
 import {
   getAppleSubscriptionProducts,
   isNativeAppleSubscriptionsSupported,
   purchaseAppleSubscription,
   restoreAppleSubscriptions,
 } from "../utils/appleSubscriptions";
+import {
+  acknowledgeGoogleSubscription,
+  getGoogleSubscriptionProducts,
+  isNativeGoogleSubscriptionsSupported,
+  openGoogleSubscriptionManagement,
+  purchaseGoogleSubscription,
+  restoreGoogleSubscriptions,
+} from "../utils/googleSubscriptions";
 
 export default function SubscriptionPage() {
   const { user, checkAuth } = useAuth();
@@ -32,16 +41,23 @@ export default function SubscriptionPage() {
   const [restoreBusy, setRestoreBusy] = useState(false);
 
   const isNativeAppleStore = isNativeAppleSubscriptionsSupported();
-  const isIOSApp = getCurrentPlatform() === "ios";
+  const isNativeGoogleStore = isNativeGoogleSubscriptionsSupported();
+  const isNativeStore = isNativeAppleStore || isNativeGoogleStore;
   const appleProductIds = useMemo(
     () => [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
     []
   );
-  const monthlyStoreProduct = storeProducts[APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID];
-  const annualStoreProduct = storeProducts[APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID];
+  const googleProductIds = useMemo(
+    () => [GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID, GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
+    []
+  );
+  const monthlyProductId = isNativeGoogleStore ? GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID : APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID;
+  const annualProductId = isNativeGoogleStore ? GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID : APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID;
+  const monthlyStoreProduct = storeProducts[monthlyProductId];
+  const annualStoreProduct = storeProducts[annualProductId];
 
   useEffect(() => {
-    if (!isNativeAppleStore) {
+    if (!isNativeStore) {
       return;
     }
 
@@ -49,7 +65,9 @@ export default function SubscriptionPage() {
     const loadProducts = async () => {
       setStoreLoading(true);
       try {
-        const products = await getAppleSubscriptionProducts(appleProductIds);
+        const products = isNativeGoogleStore
+          ? await getGoogleSubscriptionProducts(googleProductIds)
+          : await getAppleSubscriptionProducts(appleProductIds);
         if (cancelled) return;
         const nextProducts = Object.fromEntries(products.map((product) => [product.id, product]));
         setStoreProducts(nextProducts);
@@ -70,7 +88,7 @@ export default function SubscriptionPage() {
     return () => {
       cancelled = true;
     };
-  }, [appleProductIds, isNativeAppleStore, t]);
+  }, [appleProductIds, googleProductIds, isNativeGoogleStore, isNativeStore, t]);
 
   const syncAppleSubscription = async (purchase) => {
     const productId = purchase?.productId || "";
@@ -87,6 +105,24 @@ export default function SubscriptionPage() {
     return data;
   };
 
+  const syncGoogleSubscription = async (purchase) => {
+    const productId = purchase?.productId || "";
+    const plan = productId === GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const { data } = await axios.post(
+      `${API}/users/subscribe/google`,
+      {
+        purchase_token: purchase?.purchaseToken,
+        subscription_id: productId,
+        plan,
+      },
+      { withCredentials: !isCapacitorNative() },
+    );
+    if (!purchase?.isAcknowledged) {
+      await acknowledgeGoogleSubscription(purchase?.purchaseToken);
+    }
+    return data;
+  };
+
   const pickPreferredAppleSubscription = (subscriptions) => {
     const matching = (subscriptions || []).filter((subscription) =>
       [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].includes(subscription?.productId)
@@ -99,6 +135,16 @@ export default function SubscriptionPage() {
       const rightExpiry = right?.expirationDate || "";
       return rightExpiry.localeCompare(leftExpiry);
     })[0];
+  };
+
+  const pickPreferredGoogleSubscription = (subscriptions) => {
+    const matching = (subscriptions || []).filter((subscription) =>
+      [GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID, GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID].includes(subscription?.productId)
+    );
+    if (!matching.length) {
+      return null;
+    }
+    return matching[0];
   };
 
   const handleSubscribe = async (plan) => {
@@ -138,6 +184,40 @@ export default function SubscriptionPage() {
         setPurchaseBusyPlan("");
       }
     }
+    if (isNativeGoogleStore) {
+      const productId = plan === "annual"
+        ? GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID
+        : GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID;
+      setPurchaseBusyPlan(plan);
+      try {
+        const purchase = await purchaseGoogleSubscription(productId, {
+          obfuscatedAccountId: user?.id || "",
+        });
+        if (purchase?.status === "cancelled") {
+          toast.message(t("subscriptionUi.purchaseCancelled"));
+          return;
+        }
+        if (purchase?.status === "pending") {
+          toast.message(t("subscriptionUi.purchasePending"));
+          return;
+        }
+        if (purchase?.status !== "purchased") {
+          toast.error(t("subscriptionUi.purchaseUnknown"));
+          return;
+        }
+        await syncGoogleSubscription(purchase);
+        toast.success(t("subscriptionUi.subscriptionActivated"));
+        await checkAuth();
+        navigate("/");
+        return;
+      } catch (err) {
+        const detail = err.response?.data?.detail || err.message;
+        toast.error(detail || t("subscriptionUi.purchaseError"));
+        return;
+      } finally {
+        setPurchaseBusyPlan("");
+      }
+    }
     try {
       const { data } = await axios.post(
         `${API}/users/subscribe`,
@@ -160,13 +240,19 @@ export default function SubscriptionPage() {
   const handleRestorePurchases = async () => {
     setRestoreBusy(true);
     try {
-      const result = await restoreAppleSubscriptions();
-      const purchase = pickPreferredAppleSubscription(result?.subscriptions || []);
+      const result = isNativeGoogleStore ? await restoreGoogleSubscriptions() : await restoreAppleSubscriptions();
+      const purchase = isNativeGoogleStore
+        ? pickPreferredGoogleSubscription(result?.subscriptions || [])
+        : pickPreferredAppleSubscription(result?.subscriptions || []);
       if (!purchase) {
         toast.message(t("subscriptionUi.noPurchasesToRestore"));
         return;
       }
-      await syncAppleSubscription(purchase);
+      if (isNativeGoogleStore) {
+        await syncGoogleSubscription(purchase);
+      } else {
+        await syncAppleSubscription(purchase);
+      }
       toast.success(t("subscriptionUi.restoreSuccess"));
       await checkAuth();
       navigate("/");
@@ -291,19 +377,19 @@ export default function SubscriptionPage() {
   const monthlyPriceLabel = monthlyStoreProduct?.displayPrice || t("subscriptionUi.monthlyPriceFallback");
   const annualPriceLabel = annualStoreProduct?.displayPrice || t("subscriptionUi.annualPriceFallback");
   const showNativeTrial = !alreadySubscribed && !user?.trial_used && (
-    !isNativeAppleStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
+    !isNativeStore || Boolean(monthlyStoreProduct?.hasIntroOffer)
   );
-  const disableMonthlyPurchaseButton = isNativeAppleStore && storeLoading;
-  const disableAnnualPurchaseButton = isNativeAppleStore && (storeLoading || !annualStoreProduct);
-  const showAnnualPlan = !isNativeAppleStore || Boolean(annualStoreProduct);
+  const disableMonthlyPurchaseButton = isNativeStore && (storeLoading || !monthlyStoreProduct);
+  const disableAnnualPurchaseButton = isNativeStore && (storeLoading || !annualStoreProduct);
+  const showAnnualPlan = !isNativeStore || Boolean(annualStoreProduct);
   const annualButtonBusy = purchaseBusyPlan === "annual";
   const monthlyButtonBusy = purchaseBusyPlan === "monthly";
   const subscriptionTermsNote = language === "en"
-    ? "Premium renews automatically unless cancelled at least 24 hours before the end of the current period. You can manage or cancel it in your Apple ID subscription settings."
-    : "Premium se renueva automáticamente salvo que canceles al menos 24 horas antes del final del periodo actual. Puedes gestionarlo o cancelarlo desde los ajustes de suscripciones de tu Apple ID.";
-  const iosPaymentNote = language === "en"
-    ? "Payment is managed through the App Store."
-    : "El pago se gestiona a través del App Store.";
+    ? `Premium renews automatically unless cancelled before the end of the current period. You can manage, cancel, or pause it in your ${isNativeGoogleStore ? "Google Play" : "Apple ID"} subscription settings.`
+    : `Premium se renueva automáticamente salvo que canceles antes del final del periodo actual. Puedes gestionarlo, cancelarlo o pausarlo desde los ajustes de suscripciones de ${isNativeGoogleStore ? "Google Play" : "tu Apple ID"}.`;
+  const storePaymentNote = language === "en"
+    ? `Payment is managed through ${isNativeGoogleStore ? "Google Play" : "the App Store"}.`
+    : `El pago se gestiona a través de ${isNativeGoogleStore ? "Google Play" : "App Store"}.`;
 
   return (
     <div className={`min-h-screen bg-[#F8F9FA] ${isRtl ? "rtl" : "ltr"}`} data-testid="subscription-page">
@@ -373,9 +459,15 @@ export default function SubscriptionPage() {
                 </div>
               ) : null}
 
-              {isNativeAppleStore && (
+              {isNativeStore && (
                 <div className="bg-white rounded-2xl shadow-sm p-4 text-center mb-4 border border-[#FF6B6B]/15">
-                  <p className="text-sm text-[#2B2D42]">{t("subscriptionUi.appStoreManaged")}</p>
+                  <p className="text-sm text-[#2B2D42]">
+                    {isNativeGoogleStore
+                      ? (language === "en"
+                        ? "Premium on Android is handled through the official Google Play purchase flow."
+                        : "La suscripción Premium en Android se gestiona mediante la compra oficial de Google Play.")
+                      : t("subscriptionUi.appStoreManaged")}
+                  </p>
                   <div className="flex flex-col sm:flex-row gap-2 mt-3 justify-center">
                     <Button
                       variant="outline"
@@ -385,6 +477,15 @@ export default function SubscriptionPage() {
                     >
                       {restoreBusy ? t("subscriptionUi.restoringPurchases") : t("subscriptionUi.restorePurchases")}
                     </Button>
+                    {isNativeGoogleStore && (
+                      <Button
+                        variant="outline"
+                        onClick={() => openGoogleSubscriptionManagement(monthlyProductId)}
+                        className="rounded-xl"
+                      >
+                        {language === "en" ? "Manage in Google Play" : "Gestionar en Google Play"}
+                      </Button>
+                    )}
                   </div>
                 </div>
               )}
@@ -435,14 +536,14 @@ export default function SubscriptionPage() {
                 )}
               </div>
 
-              {isNativeAppleStore && storeLoading && (
+              {isNativeStore && storeLoading && (
                 <p className="text-xs text-[#8D99AE] text-center mt-3">{t("subscriptionUi.loadingStoreProducts")}</p>
               )}
             </>
           )}
         </div>
 
-        {!isIOSApp && (
+        {!isNativeStore && (
         <section className="mt-10 bg-[#2B2D42] rounded-[24px] p-6 md:p-8 text-white">
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 mb-3">
@@ -545,8 +646,8 @@ export default function SubscriptionPage() {
         )}
 
         <div className="text-center text-xs text-[#8D99AE] mt-6 space-y-2">
-          <p>{isIOSApp ? iosPaymentNote : t("subscriptionUi.paymentNote")}</p>
-          {isIOSApp && <p>{subscriptionTermsNote}</p>}
+          <p>{isNativeStore ? storePaymentNote : t("subscriptionUi.paymentNote")}</p>
+          {isNativeStore && <p>{subscriptionTermsNote}</p>}
           <p>
             <Link to="/terms" className="text-[#FF6B6B] font-medium hover:underline">
               {t("legalUi.termsOfUse")}

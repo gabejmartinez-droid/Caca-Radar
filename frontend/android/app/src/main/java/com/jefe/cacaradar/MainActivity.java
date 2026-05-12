@@ -8,6 +8,7 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         registerPlugin(PlayIntegrityPlugin.class);
         registerPlugin(GoogleAuthPlugin.class);
+        registerPlugin(GoogleSubscriptionsPlugin.class);
         registerPlugin(CompanionBridgePlugin.class);
         super.onCreate(savedInstanceState);
     }

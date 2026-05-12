@@ -289,10 +289,15 @@ async def update_subscription_from_webhook(
         update_fields["subscription_active"] = False
         logger.info(f"Deactivating subscription for user {user_id} ({event})")
 
-    elif event in {"on_hold", "in_grace_period", "paused"}:
-        # Keep active during grace/hold but flag it
+    elif event == "in_grace_period":
+        update_fields["subscription_active"] = True
         update_fields["subscription_hold_status"] = event
-        logger.info(f"Subscription on hold for user {user_id} ({event})")
+        logger.info(f"Subscription in grace period for user {user_id}")
+
+    elif event in {"on_hold", "paused"}:
+        update_fields["subscription_active"] = False
+        update_fields["subscription_hold_status"] = event
+        logger.info(f"Suspending subscription access for user {user_id} ({event})")
 
     elif event == "status_changed":
         update_fields["subscription_auto_renew"] = auto_renew
