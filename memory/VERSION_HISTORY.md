@@ -2947,3 +2947,41 @@ Notes:
 - Use public city report image for share cards
 ```
 
+### 2026-05-13 — Pending
+
+Release metadata:
+- Commit SHA: `7edfbe57ae6fc9b1963811f14bcab69cdc0e9cee-dirty`
+- Deployment status: `pending`
+- Rollback target: `46bd1ff5507fb703bf465eebb5794ce7924b6efe`
+
+Exact versions:
+- Web: `1.1.87-web.1`
+- iOS: `1.1.108 (110)`
+- Android: `1.1.107 (109)`
+- Backend: `1.1.37-api.1`
+
+User-facing release notes:
+- Re-enable Spain location gate after app review approval.
+
+Internal release notes:
+- Re-enable Spain location gate after app review approval
+
+Store submission notes:
+```text
+- Re-enable Spain location gate after app review approval.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 7edfbe57ae6fc9b1963811f14bcab69cdc0e9cee-dirty
+Deployment status: pending
+Rollback target: 46bd1ff5507fb703bf465eebb5794ce7924b6efe
+Versions:
+• Web: `1.1.87-web.1`
+• iOS: `1.1.108 (110)`
+• Android: `1.1.107 (109)`
+• Backend: `1.1.37-api.1`
+Notes:
+- Re-enable Spain location gate after app review approval
+```
+

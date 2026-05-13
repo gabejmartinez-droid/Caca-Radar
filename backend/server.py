@@ -2177,7 +2177,7 @@ async def audit_report_event(
 
 async def validate_report_input(db, data: ReportCreate, user: dict, user_id: str) -> None:
     """Validate anti-spam rules before creating a report."""
-    if not (user or {}).get("geo_review_exempt") and not await check_gps_plausible(data.latitude, data.longitude):
+    if not await check_gps_plausible(data.latitude, data.longitude):
         raise HTTPException(status_code=400, detail="Ubicación fuera de España")
     if user is not None and await check_cooldown(db, user_id):
         raise HTTPException(status_code=429, detail="Espera al menos 15 segundos entre reportes")
@@ -5459,7 +5459,7 @@ async def provision_privileged_accounts(selected_accounts: set[str] | None = Non
             "subscription_active": False,
             "subscription_type": None,
             "subscription_expires": None,
-            "geo_review_exempt": True,
+            "geo_review_exempt": False,
             "trust_score": 50,
             "rank": DEFAULT_RANK_NAME,
             "rank_key": get_rank_key(DEFAULT_RANK_NAME),
