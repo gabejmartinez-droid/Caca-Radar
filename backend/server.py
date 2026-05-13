@@ -3227,7 +3227,11 @@ async def api_public_share_page(
         selected_city = city or "Madrid"
         title = "Caca Radar"
         description = "Inicia sesión para ver informes privados por ciudad o barrio."
-        image_url = fallback_image
+        image_url = append_query_params(
+            f"{frontend_url}/api/city-reports/share-image.png?city={quote(selected_city)}"
+            + (f"&barrio={quote(barrio)}" if barrio else ""),
+            v=get_share_image_version(),
+        )
         redirect_url = build_download_url("city-report", city=selected_city, barrio=barrio)
         share_url = build_share_page_url("city-report", city=selected_city, barrio=barrio)
         return HTMLResponse(render_share_page(title=title, description=description, image_url=image_url, share_url=share_url, redirect_url=redirect_url))

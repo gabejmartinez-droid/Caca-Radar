@@ -2908,3 +2908,42 @@ Versions:
 Notes:
 - Update Play Store listing URL
 ```
+
+### 2026-05-13 — Pending
+
+Release metadata:
+- Commit SHA: `46bd1ff5507fb703bf465eebb5794ce7924b6efe-dirty`
+- Deployment status: `pending`
+- Rollback target: `d81ad783c3a6a3631e1025fb953b4416334603d8`
+
+Exact versions:
+- Web: `1.1.86-web.1`
+- iOS: `1.1.107 (109)`
+- Android: `1.1.106 (108)`
+- Backend: `1.1.36-api.1`
+
+User-facing release notes:
+- Use public city report image for share cards.
+
+Internal release notes:
+- Use public city report image for share cards
+
+Store submission notes:
+```text
+- Use public city report image for share cards.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 46bd1ff5507fb703bf465eebb5794ce7924b6efe-dirty
+Deployment status: pending
+Rollback target: d81ad783c3a6a3631e1025fb953b4416334603d8
+Versions:
+• Web: `1.1.86-web.1`
+• iOS: `1.1.107 (109)`
+• Android: `1.1.106 (108)`
+• Backend: `1.1.36-api.1`
+Notes:
+- Use public city report image for share cards
+```
+
