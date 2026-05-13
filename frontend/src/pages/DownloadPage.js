@@ -14,7 +14,7 @@ import { getCurrentPlatform } from "../versionInfo";
 
 const FALLBACK_STORES = {
   app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
-  play_store_url: "https://play.google.com/store/apps/details?id=com.cacaradar.app",
+  play_store_url: "https://play.google.com/store/apps/details?id=com.jefe.cacaradar",
 };
 
 function buildContextTitle(kind, params, t) {

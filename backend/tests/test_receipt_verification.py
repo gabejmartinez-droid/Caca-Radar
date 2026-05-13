@@ -327,7 +327,7 @@ class TestWebhookEndpoints:
             "notificationType": "TEST",
             "subtype": "",
             "data": {
-                "bundleId": "com.cacaradar.app",
+                "bundleId": "com.jefe.cacaradar",
                 "environment": "Sandbox"
             }
         }
@@ -366,7 +366,7 @@ class TestWebhookEndpoints:
                 "purchaseToken": "mock_token_12345",
                 "subscriptionId": "premium_monthly"
             },
-            "packageName": "com.cacaradar.app"
+            "packageName": "com.jefe.cacaradar"
         }
         encoded_data = base64.b64encode(json.dumps(notification_data).encode()).decode()
         

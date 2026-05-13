@@ -247,7 +247,7 @@ async def reverse_geocode_async(lat: float, lon: float) -> dict:
 
 # ── App Store URLs ───────────────────────────────────
 APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
-PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.cacaradar.app"
+PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jefe.cacaradar"
 
 # ── Google Sign-In (GIS) ─────────────────────────────
 GOOGLE_WEB_CLIENT_ID = os.environ.get("GOOGLE_WEB_CLIENT_ID", "").strip()

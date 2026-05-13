@@ -2871,3 +2871,40 @@ Notes:
 - Refresh bundled public app icons
 ```
 
+### 2026-05-13 — Pending
+
+Release metadata:
+- Commit SHA: `d81ad783c3a6a3631e1025fb953b4416334603d8-dirty`
+- Deployment status: `pending`
+- Rollback target: `cd62571af36aa4f536510c3cfcfb13b634028b5a`
+
+Exact versions:
+- Web: `1.1.86-web.1`
+- iOS: `1.1.107 (109)`
+- Android: `1.1.106 (108)`
+- Backend: `1.1.35-api.1`
+
+User-facing release notes:
+- Update Play Store listing URL.
+
+Internal release notes:
+- Update Play Store listing URL
+
+Store submission notes:
+```text
+- Update Play Store listing URL.
+```
+
+Internal release notes block:
+```text
+Commit SHA: d81ad783c3a6a3631e1025fb953b4416334603d8-dirty
+Deployment status: pending
+Rollback target: cd62571af36aa4f536510c3cfcfb13b634028b5a
+Versions:
+• Web: `1.1.86-web.1`
+• iOS: `1.1.107 (109)`
+• Android: `1.1.106 (108)`
+• Backend: `1.1.35-api.1`
+Notes:
+- Update Play Store listing URL
+```
