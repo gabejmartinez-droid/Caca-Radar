@@ -3061,3 +3061,41 @@ Notes:
 - Update App Store listing URL
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `91a8252489272971867bf11bae51af80b5436afa-dirty`
+- Deployment status: `pending`
+- Rollback target: `c296a14b0c2461763cfedce80eba433d08f1c771`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.111 (113)`
+- Android: `1.1.110 (112)`
+- Backend: `1.1.38-api.1`
+
+User-facing release notes:
+- Fix bundled app menu icon assets.
+
+Internal release notes:
+- Fix bundled app menu icon assets
+
+Store submission notes:
+```text
+- Fix bundled app menu icon assets.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 91a8252489272971867bf11bae51af80b5436afa-dirty
+Deployment status: pending
+Rollback target: c296a14b0c2461763cfedce80eba433d08f1c771
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.111 (113)`
+• Android: `1.1.110 (112)`
+• Backend: `1.1.38-api.1`
+Notes:
+- Fix bundled app menu icon assets
+```
+
