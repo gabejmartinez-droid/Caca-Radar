@@ -3089,7 +3089,7 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
         },
-        "share_text": f"{title} según Caca Radar. ¡Descarga la app y ayuda a mantener tu ciudad limpia! {APP_STORE_URL}",
+        "share_text": f"{title} según Caca Radar. ¡Descarga la app y ayuda a mantener tu ciudad limpia!",
     }
 
 
@@ -3146,7 +3146,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
         },
         "share_text": (
             f"{title} según Caca Radar. "
-            f"Consulta el ranking y ayuda a mantener tu barrio limpio. {APP_STORE_URL}"
+            "Consulta el ranking y ayuda a mantener tu barrio limpio."
         ),
     }
 
@@ -3270,7 +3270,7 @@ async def api_city_report_share(request: Request, city: str, barrio: str | None 
             "ios": APP_STORE_URL,
             "android": PLAY_STORE_URL,
         },
-        "share_text": f"{data['display_label']}: {data['fresh_count']} frescos · {data['old_count']} antiguos · {data['fossil_count']} fósiles. {APP_STORE_URL}",
+        "share_text": f"{data['display_label']}: {data['fresh_count']} frescos · {data['old_count']} antiguos · {data['fossil_count']} fósiles.",
     }
 
 

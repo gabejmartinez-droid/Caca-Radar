@@ -3213,3 +3213,41 @@ Notes:
 - Recognize Apple and Google municipal subscription IDs
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `86ba45f6e557636b4eeef807b7fa6beab5a87b91-dirty`
+- Deployment status: `pending`
+- Rollback target: `4a678ac5634ee5780907ffeb9a2ae39e8dfbd6b2`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.114 (116)`
+- Android: `1.1.113 (115)`
+- Backend: `1.1.42-api.1`
+
+User-facing release notes:
+- Share payloads now include one generated card URL only.
+
+Internal release notes:
+- Share payloads now include one generated card URL only
+
+Store submission notes:
+```text
+- Share payloads now include one generated card URL only.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 86ba45f6e557636b4eeef807b7fa6beab5a87b91-dirty
+Deployment status: pending
+Rollback target: 4a678ac5634ee5780907ffeb9a2ae39e8dfbd6b2
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.114 (116)`
+• Android: `1.1.113 (115)`
+• Backend: `1.1.42-api.1`
+Notes:
+- Share payloads now include one generated card URL only
+```
+
