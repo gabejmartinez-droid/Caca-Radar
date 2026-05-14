@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import axios from "axios";
 import { toast } from "sonner";
-import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Share2, Bell, Heart, LifeBuoy, Lock, Trash2, FileText, Cookie, Flag } from "lucide-react";
+import { User, MapPin, Trophy, Star, Shield, Flame, ArrowLeft, Loader2, Edit3, Check, X, Crown, BarChart3, Bell, Heart, LifeBuoy, Lock, Trash2, FileText, Cookie, Flag } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
 import { Badge } from "../components/ui/badge";
@@ -14,7 +14,6 @@ import SocialShareButtons from "../components/SocialShareButtons";
 import { subscribeToPush, unsubscribeFromPush, isPushSupported, getPushUnavailableReasonKey } from "../utils/pushManager";
 import { formatTranslation, getRankLabel } from "../utils/ranks";
 import { getBadgeName, getBadgeDescription } from "../utils/badges";
-import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { isAppleSignInSupported } from "../utils/appleIdentity";
 
 import { API } from "../config";
@@ -146,17 +145,6 @@ export default function ProfilePage() {
     };
   };
 
-  const handleShareProfile = async () => {
-    try {
-      await shareWithNativeOrCopy({
-        ...(await getSharePayload()),
-        onCopied: () => toast.success(t("rankUi.profileCopied")),
-      });
-    } catch (err) {
-      if (err.name !== "AbortError") toast.error(t("profileUi.shareError"));
-    }
-  };
-
   const handleLinkGoogle = async (credential) => {
     try {
       const result = await linkGoogle(credential);
@@ -252,12 +240,10 @@ export default function ProfilePage() {
             </Button>
           )}
 
-          <Button size="sm" variant="ghost" onClick={handleShareProfile} className="mt-2 text-[#42A5F5]" data-testid="share-profile-btn">
-            <Share2 className="w-4 h-4 mr-1" />{t("profileUi.shareProfile")}
-          </Button>
           <SocialShareButtons
             className="mt-2"
             prefix="profile-share"
+            label={t("profileUi.shareProfile")}
             loadShareData={getSharePayload}
             onCopied={() => toast.success(t("rankUi.profileCopied"))}
             onError={() => toast.error(t("profileUi.shareError"))}

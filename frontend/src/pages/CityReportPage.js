@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { MapContainer, TileLayer, CircleMarker } from "react-leaflet";
 import axios from "axios";
-import { ArrowLeft, Building2, Loader2, Lock, MapPin, Search, Share2 } from "lucide-react";
+import { ArrowLeft, Building2, Loader2, Lock, MapPin, Search } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "../components/ui/button";
 import { Input } from "../components/ui/input";
@@ -11,7 +11,6 @@ import { useLanguage } from "../contexts/LanguageContext";
 import { LanguageSelector } from "../components/LanguageSelector";
 import SocialShareButtons from "../components/SocialShareButtons";
 import { formatTranslation } from "../utils/ranks";
-import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { buildLocationShareUrl, buildLocationImageUrl } from "../utils/locationShare";
 import { API } from "../config";
 import "leaflet/dist/leaflet.css";
@@ -307,20 +306,6 @@ export default function CityReportPage() {
     };
   };
 
-  const handleShare = async () => {
-    if (!summary?.city) return;
-    try {
-      await shareWithNativeOrCopy({
-        ...(await getSharePayload()),
-        onCopied: () => toast.success(t("cityReportUi.copied")),
-      });
-    } catch (error) {
-      if (error?.name !== "AbortError") {
-        toast.error(t("cityReportUi.shareError"));
-      }
-    }
-  };
-
   const summaryLine = summary ? formatTranslation(t, "cityReportUi.summaryLine", {
       location: summary.barrio
         ? formatTranslation(t, "cityReportUi.locationWithBarrio", { city: summary.city, barrio: summary.barrio })
@@ -521,14 +506,11 @@ export default function CityReportPage() {
                   </h2>
                   {summary.province && <p className="text-sm text-[#8D99AE]">{summary.province}</p>}
                 </div>
-                <Button onClick={handleShare} variant="outline" className="rounded-xl border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 shrink-0" data-testid="share-city-report-btn">
-                  <Share2 className="w-4 h-4 mr-2" />
-                  {t("cityReportUi.shareButton")}
-                </Button>
               </div>
               <SocialShareButtons
                 className="mt-3"
                 prefix="city-report-share"
+                label={t("cityReportUi.shareButton")}
                 loadShareData={getSharePayload}
                 onCopied={() => toast.success(t("cityReportUi.copied"))}
                 onError={() => toast.error(t("cityReportUi.shareError"))}

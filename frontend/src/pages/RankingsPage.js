@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { ArrowLeft, Trophy, MapPin, Share2, Building2, ChevronDown, Loader2, BarChart3 } from "lucide-react";
+import { ArrowLeft, Trophy, MapPin, Building2, ChevronDown, Loader2, BarChart3 } from "lucide-react";
 import { Button } from "../components/ui/button";
 import { useAuth } from "../contexts/AuthContext";
 import { useLanguage } from "../contexts/LanguageContext";
@@ -9,7 +9,6 @@ import SocialShareButtons from "../components/SocialShareButtons";
 import { toast } from "sonner";
 import axios from "axios";
 import { formatTranslation } from "../utils/ranks";
-import { shareWithNativeOrCopy } from "../utils/socialShare";
 
 import { API } from "../config";
 
@@ -106,17 +105,6 @@ export default function RankingsPage() {
     return { title: data.title, text: data.share_text, url: data.share_url || data.app_url, imageUrl: data.image_url };
   };
 
-  const handleShare = async (type) => {
-    try {
-      await shareWithNativeOrCopy({
-        ...(await getSharePayload(type)),
-        onCopied: () => toast.success(t("rankingUi.copied")),
-      });
-    } catch (err) {
-      if (err.name !== "AbortError") toast.error(t("rankingUi.shareError"));
-    }
-  };
-
   const currentList = cityData ? (listType === "dirtiest" ? cityData.dirtiest : cityData.cleanest) : [];
 
   return (
@@ -190,13 +178,10 @@ export default function RankingsPage() {
               )}
             </div>
 
-            {/* Share button */}
-            <Button onClick={() => handleShare(listType)} variant="outline" className="w-full border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-rankings-btn">
-              <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
-            </Button>
             <SocialShareButtons
-              className="mt-3"
+              className="mt-4"
               prefix="city-rankings-share"
+              label={t("rankingUi.shareRanking")}
               loadShareData={() => getSharePayload(listType)}
               onCopied={() => toast.success(t("rankingUi.copied"))}
               onError={() => toast.error(t("rankingUi.shareError"))}
@@ -243,12 +228,10 @@ export default function RankingsPage() {
 
             {!!barrioData?.barrios?.length && (
               <>
-                <Button onClick={() => handleShare("barrios")} variant="outline" className="w-full mt-4 border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10 rounded-xl" data-testid="share-barrio-rankings-btn">
-                  <Share2 className="w-4 h-4 mr-2" /> {t("rankingUi.shareRanking")}
-                </Button>
                 <SocialShareButtons
-                  className="mt-3"
+                  className="mt-4"
                   prefix="barrio-rankings-share"
+                  label={t("rankingUi.shareRanking")}
                   loadShareData={() => getSharePayload("barrios")}
                   onCopied={() => toast.success(t("rankingUi.copied"))}
                   onError={() => toast.error(t("rankingUi.shareError"))}

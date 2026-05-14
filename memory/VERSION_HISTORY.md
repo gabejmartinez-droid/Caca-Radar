@@ -2985,3 +2985,41 @@ Notes:
 - Re-enable Spain location gate after app review approval
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `dcadae65d8b4863de0fe1189692d31c940c8b781-dirty`
+- Deployment status: `pending`
+- Rollback target: `7edfbe57ae6fc9b1963811f14bcab69cdc0e9cee`
+
+Exact versions:
+- Web: `1.1.88-web.1`
+- iOS: `1.1.109 (111)`
+- Android: `1.1.108 (110)`
+- Backend: `1.1.37-api.1`
+
+User-facing release notes:
+- Simplify share cards to native share sheet.
+
+Internal release notes:
+- Simplify share cards to native share sheet
+
+Store submission notes:
+```text
+- Simplify share cards to native share sheet.
+```
+
+Internal release notes block:
+```text
+Commit SHA: dcadae65d8b4863de0fe1189692d31c940c8b781-dirty
+Deployment status: pending
+Rollback target: 7edfbe57ae6fc9b1963811f14bcab69cdc0e9cee
+Versions:
+• Web: `1.1.88-web.1`
+• iOS: `1.1.109 (111)`
+• Android: `1.1.108 (110)`
+• Backend: `1.1.37-api.1`
+Notes:
+- Simplify share cards to native share sheet
+```
+

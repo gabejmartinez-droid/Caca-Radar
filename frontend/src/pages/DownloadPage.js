@@ -9,7 +9,6 @@ import SocialShareButtons from "../components/SocialShareButtons";
 import { useLanguage } from "../contexts/LanguageContext";
 import { API, HOSTED_WEB_URL } from "../config";
 import { formatTranslation } from "../utils/ranks";
-import { shareWithNativeOrCopy } from "../utils/socialShare";
 import { getCurrentPlatform } from "../versionInfo";
 
 const FALLBACK_STORES = {
@@ -120,17 +119,6 @@ export default function DownloadPage() {
         : "Lleva Caca Radar en tu muñeca con el companion app para Apple Watch.")
     : t("downloadUi.watchIntro");
 
-  const handleShare = async () => {
-    try {
-      await shareWithNativeOrCopy({
-        ...sharePayload,
-        onCopied: () => toast.success(t("mapUi.linkCopied")),
-      });
-    } catch {
-      // noop
-    }
-  };
-
   return (
     <div className="min-h-screen bg-[#F8F9FA]" data-testid="download-page">
       <div className="ios-safe-header p-4 flex justify-between items-center">
@@ -169,12 +157,10 @@ export default function DownloadPage() {
                 className="block w-full h-auto"
               />
             </div>
-            <Button onClick={handleShare} variant="outline" className="w-full mt-4 rounded-xl border-[#FF6B6B]/30 text-[#FF6B6B] hover:bg-[#FF6B6B]/10">
-              {t("mapUi.share")}
-            </Button>
             <SocialShareButtons
-              className="mt-3"
+              className="mt-4"
               prefix="download-share"
+              label={t("mapUi.share")}
               loadShareData={async () => sharePayload}
               onCopied={() => toast.success(t("mapUi.linkCopied"))}
             />
