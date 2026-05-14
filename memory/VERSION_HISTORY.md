@@ -3251,3 +3251,41 @@ Notes:
 - Share payloads now include one generated card URL only
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `04eed552e3b60d548f85fa9cfebd9cb9b0996016-dirty`
+- Deployment status: `pending`
+- Rollback target: `86ba45f6e557636b4eeef807b7fa6beab5a87b91`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.114 (116)`
+- Android: `1.1.113 (115)`
+- Backend: `1.1.43-api.1`
+
+User-facing release notes:
+- Use cacas de perro in share card accompanying text.
+
+Internal release notes:
+- Use cacas de perro in share card accompanying text
+
+Store submission notes:
+```text
+- Use cacas de perro in share card accompanying text.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 04eed552e3b60d548f85fa9cfebd9cb9b0996016-dirty
+Deployment status: pending
+Rollback target: 86ba45f6e557636b4eeef807b7fa6beab5a87b91
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.114 (116)`
+• Android: `1.1.113 (115)`
+• Backend: `1.1.43-api.1`
+Notes:
+- Use cacas de perro in share card accompanying text
+```
+

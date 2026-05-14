@@ -3124,7 +3124,7 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     """Public shareable barrio ranking data (top 10 only) for a city."""
     await archive_expired_reports()
     data = await get_barrio_rankings(db, city, limit=10)
-    title = f"Los barrios con más avisos en {city}"
+    title = f"Los barrios con más cacas de perro en {city}"
     app_url = build_download_url("barrio-rankings", city=city)
     share_url = build_share_page_url("barrio-rankings", city=city)
     image_url = append_query_params(
@@ -3375,7 +3375,7 @@ async def api_public_share_page(
 
     if kind == "barrio-rankings":
         selected_city = city or "Madrid"
-        title = f"Los barrios con más avisos en {selected_city}"
+        title = f"Los barrios con más cacas de perro en {selected_city}"
         description = f"{title} según Caca Radar. Consulta el ranking y ayuda a mantener tu barrio limpio."
         image_url = append_query_params(
             f"{frontend_url}/api/rankings/barrios/share-image.png?city={quote(selected_city)}",
