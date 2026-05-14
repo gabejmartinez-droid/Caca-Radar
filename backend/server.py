@@ -335,8 +335,8 @@ MUNICIPAL_SUBSCRIPTION_TIERS = {
     "pro": {
         "label": "Municipal Pro",
         "product_id": "com.jefe.cacaradar.municipal.pro.yearly",
-        "price": "1.499 €/año + IVA",
-        "price_amount": 1499.00,
+        "price": "999 €/año + IVA",
+        "price_amount": 999.00,
     },
 }
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"

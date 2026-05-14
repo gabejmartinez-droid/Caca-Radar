@@ -3137,3 +3137,41 @@ Notes:
 - Make municipal subscriptions annual-only and notify admin on municipal setup
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `0ffcc2c5116910872e242c92a175de409bdb5c8e-dirty`
+- Deployment status: `pending`
+- Rollback target: `9be4f434c128b800b16699878d46f0413fb720fd`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.113 (115)`
+- Android: `1.1.112 (114)`
+- Backend: `1.1.40-api.1`
+
+User-facing release notes:
+- Update Municipal Pro annual price to 999 plus IVA.
+
+Internal release notes:
+- Update Municipal Pro annual price to 999 plus IVA
+
+Store submission notes:
+```text
+- Update Municipal Pro annual price to 999 plus IVA.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 0ffcc2c5116910872e242c92a175de409bdb5c8e-dirty
+Deployment status: pending
+Rollback target: 9be4f434c128b800b16699878d46f0413fb720fd
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.113 (115)`
+• Android: `1.1.112 (114)`
+• Backend: `1.1.40-api.1`
+Notes:
+- Update Municipal Pro annual price to 999 plus IVA
+```
+
