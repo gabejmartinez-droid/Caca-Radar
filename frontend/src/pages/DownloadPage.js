@@ -12,7 +12,7 @@ import { formatTranslation } from "../utils/ranks";
 import { getCurrentPlatform } from "../versionInfo";
 
 const FALLBACK_STORES = {
-  app_store_url: "https://apps.apple.com/app/caca-radar/id000000000",
+  app_store_url: "https://apps.apple.com/es/app/caca-radar/id6764108012?l=en-GB",
   play_store_url: "https://play.google.com/store/apps/details?id=com.jefe.cacaradar",
 };
 

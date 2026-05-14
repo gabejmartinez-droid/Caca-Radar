@@ -1,6 +1,6 @@
 {
   "name": "frontend",
-  "version": "1.1.88-web.1",
+  "version": "1.1.89-web.1",
   "private": true,
   "homepage": ".",
   "dependencies": {

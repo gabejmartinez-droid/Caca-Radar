@@ -246,7 +246,7 @@ async def reverse_geocode_async(lat: float, lon: float) -> dict:
         return {"municipality": "Desconocido", "province": "", "country": "España", "barrio": "", "display_name": ""}
 
 # ── App Store URLs ───────────────────────────────────
-APP_STORE_URL = "https://apps.apple.com/app/caca-radar/id000000000"
+APP_STORE_URL = "https://apps.apple.com/es/app/caca-radar/id6764108012?l=en-GB"
 PLAY_STORE_URL = "https://play.google.com/store/apps/details?id=com.jefe.cacaradar"
 
 # ── Google Sign-In (GIS) ─────────────────────────────

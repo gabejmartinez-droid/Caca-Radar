@@ -3023,3 +3023,41 @@ Notes:
 - Simplify share cards to native share sheet
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `c296a14b0c2461763cfedce80eba433d08f1c771-dirty`
+- Deployment status: `pending`
+- Rollback target: `dcadae65d8b4863de0fe1189692d31c940c8b781`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.110 (112)`
+- Android: `1.1.109 (111)`
+- Backend: `1.1.38-api.1`
+
+User-facing release notes:
+- Update App Store listing URL.
+
+Internal release notes:
+- Update App Store listing URL
+
+Store submission notes:
+```text
+- Update App Store listing URL.
+```
+
+Internal release notes block:
+```text
+Commit SHA: c296a14b0c2461763cfedce80eba433d08f1c771-dirty
+Deployment status: pending
+Rollback target: dcadae65d8b4863de0fe1189692d31c940c8b781
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.110 (112)`
+• Android: `1.1.109 (111)`
+• Backend: `1.1.38-api.1`
+Notes:
+- Update App Store listing URL
+```
+
