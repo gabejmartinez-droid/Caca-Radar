@@ -3099,3 +3099,41 @@ Notes:
 - Fix bundled app menu icon assets
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `9be4f434c128b800b16699878d46f0413fb720fd-dirty`
+- Deployment status: `pending`
+- Rollback target: `91a8252489272971867bf11bae51af80b5436afa`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.112 (114)`
+- Android: `1.1.111 (113)`
+- Backend: `1.1.39-api.1`
+
+User-facing release notes:
+- Make municipal subscriptions annual-only and notify admin on municipal setup.
+
+Internal release notes:
+- Make municipal subscriptions annual-only and notify admin on municipal setup
+
+Store submission notes:
+```text
+- Make municipal subscriptions annual-only and notify admin on municipal setup.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 9be4f434c128b800b16699878d46f0413fb720fd-dirty
+Deployment status: pending
+Rollback target: 91a8252489272971867bf11bae51af80b5436afa
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.112 (114)`
+• Android: `1.1.111 (113)`
+• Backend: `1.1.39-api.1`
+Notes:
+- Make municipal subscriptions annual-only and notify admin on municipal setup
+```
+

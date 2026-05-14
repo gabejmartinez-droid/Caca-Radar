@@ -61,7 +61,12 @@ from antispam_service import (
 from validation_service import process_validation
 from ranking_service import recalculate_all_ranks, get_user_rank_info
 from rank_metadata import DEFAULT_RANK_NAME, get_rank_key
-from email_service import send_verification_code as send_verification_email, is_configured as email_configured, send_admin_verification_code
+from email_service import (
+    send_verification_code as send_verification_email,
+    is_configured as email_configured,
+    send_admin_verification_code,
+    send_municipality_admin_notification,
+)
 from webhook_handlers import process_apple_notification, process_google_notification
 from push_service import notify_nearby_users, VAPID_PUBLIC_KEY, SAVED_LOCATION_ALERT_RADIUS_METERS
 from badges_service import check_and_award_badges, get_user_badges, calc_confidence_score, get_freshness_label, calc_neighborhood_cleanliness
@@ -314,6 +319,26 @@ api_router = APIRouter(prefix="/api")
 ACTION_PROXIMITY_METERS = 5
 REPORT_CLEARED_VOTES_NEEDED = 1
 REPORT_PHOTO_STORAGE_MAX_SIDE = 1200
+MUNICIPAL_SUBSCRIPTION_TIERS = {
+    "basic": {
+        "label": "Municipal Básico",
+        "product_id": "com.jefe.cacaradar.municipal.basic.yearly",
+        "price": "399 €/año + IVA",
+        "price_amount": 399.00,
+    },
+    "plus": {
+        "label": "Municipal Plus",
+        "product_id": "com.jefe.cacaradar.municipal.plus.yearly",
+        "price": "799 €/año + IVA",
+        "price_amount": 799.00,
+    },
+    "pro": {
+        "label": "Municipal Pro",
+        "product_id": "com.jefe.cacaradar.municipal.pro.yearly",
+        "price": "1.499 €/año + IVA",
+        "price_amount": 1499.00,
+    },
+}
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 SUPPORTED_LANGUAGE_CODES = {"es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"}
 
@@ -3407,6 +3432,20 @@ async def register_municipality(data: MunicipalityRegister, response: Response):
     # Send verification email
     email_result = await send_verification_email(email, verification_code, data.municipality_name)
     logger.info("Municipality verification email dispatched for %s with status=%s", email, email_result.get("status"))
+    admin_email_result = await send_municipality_admin_notification(
+        {
+            "email": email,
+            "name": data.name,
+            "municipality_name": data.municipality_name,
+            "province": data.province or "",
+            "tier": "Pendiente de selección",
+            "product_id": "Pendiente de selección",
+            "price": "Pendiente de confirmación",
+            "created_at": user_doc["created_at"].isoformat(),
+        },
+        event_type="registered",
+    )
+    logger.info("Municipality admin notification dispatched for %s with status=%s", email, admin_email_result.get("status"))
     
     return {
         "id": user_id, "email": email, "name": data.name,
@@ -3509,24 +3548,55 @@ async def resend_municipality_verification(data: MunicipalityResendVerification,
 
 @api_router.post("/municipality/subscribe")
 async def subscribe_municipality(request: Request):
-    """Municipality subscription at €50/month."""
+    """Activate an annual municipality subscription in non-production environments."""
     if is_production_env():
         raise HTTPException(status_code=403, detail="La activación municipal manual no está disponible en producción sin validación interna")
     user = await require_municipality(request)
-    await request.json()  # Accept body for future plan options
-    
-    expires = datetime.now(timezone.utc) + timedelta(days=30)
+    try:
+        body = await request.json()
+    except Exception:
+        body = {}
+    tier_id = str(body.get("tier") or body.get("plan") or "basic").strip().lower()
+    tier = MUNICIPAL_SUBSCRIPTION_TIERS.get(tier_id)
+    if not tier:
+        raise HTTPException(status_code=400, detail="Plan municipal no válido")
+
+    expires = datetime.now(timezone.utc) + timedelta(days=365)
     
     await db.users.update_one(
         {"_id": ObjectId(user["_id"])},
         {"$set": {
             "municipality_subscription_active": True,
-            "municipality_subscription_type": "monthly",
-            "municipality_subscription_price": 50.00,
+            "municipality_subscription_type": "annual",
+            "municipality_subscription_tier": tier_id,
+            "municipality_subscription_product_id": tier["product_id"],
+            "municipality_subscription_price": tier["price_amount"],
+            "municipality_subscription_price_label": tier["price"],
             "municipality_subscription_expires": expires.isoformat()
         }}
     )
-    return {"message": "Suscripción de municipio activada (€50/mes)", "plan": "monthly", "price": "€50/mes", "expires": expires.isoformat()}
+    admin_email_result = await send_municipality_admin_notification(
+        {
+            "email": user.get("email"),
+            "name": user.get("name"),
+            "municipality_name": user.get("municipality_name"),
+            "province": user.get("municipality_province"),
+            "tier": tier["label"],
+            "product_id": tier["product_id"],
+            "price": tier["price"],
+            "expires": expires.isoformat(),
+        },
+        event_type="activated",
+    )
+    logger.info("Municipality subscription admin notification dispatched for %s with status=%s", user.get("email"), admin_email_result.get("status"))
+    return {
+        "message": f"Suscripción municipal anual activada ({tier['price']})",
+        "plan": "annual",
+        "tier": tier_id,
+        "product_id": tier["product_id"],
+        "price": tier["price"],
+        "expires": expires.isoformat(),
+    }
 
 def _build_municipality_report_query(muni_name: str, status: Optional[str] = None) -> dict:
     query = {"municipality": muni_name}

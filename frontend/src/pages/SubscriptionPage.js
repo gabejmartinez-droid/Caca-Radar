@@ -341,7 +341,7 @@ export default function SubscriptionPage() {
       `Tier: ${plan.title}`,
       `Population: ${plan.population}`,
       `Annual price: ${plan.annualPrice}`,
-      `Monthly price: ${plan.monthlyPrice}`,
+      `Product ID: ${plan.productId}`,
       "Tax: + IVA",
     ].join("\n");
 
@@ -355,7 +355,7 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalBasicTitle"),
       population: t("subscriptionUi.municipalBasicPopulation"),
       annualPrice: t("subscriptionUi.municipalBasicAnnualPrice"),
-      monthlyPrice: t("subscriptionUi.municipalBasicMonthlyPrice"),
+      productId: "com.jefe.cacaradar.municipal.basic.yearly",
       description: t("subscriptionUi.municipalBasicDescription"),
       features: [
         t("subscriptionUi.municipalFeatureVerifiedProfile"),
@@ -378,7 +378,7 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalPlusTitle"),
       population: t("subscriptionUi.municipalPlusPopulation"),
       annualPrice: t("subscriptionUi.municipalPlusAnnualPrice"),
-      monthlyPrice: t("subscriptionUi.municipalPlusMonthlyPrice"),
+      productId: "com.jefe.cacaradar.municipal.plus.yearly",
       description: t("subscriptionUi.municipalPlusDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingBasic"),
@@ -402,7 +402,7 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalProTitle"),
       population: t("subscriptionUi.municipalProPopulation"),
       annualPrice: t("subscriptionUi.municipalProAnnualPrice"),
-      monthlyPrice: t("subscriptionUi.municipalProMonthlyPrice"),
+      productId: "com.jefe.cacaradar.municipal.pro.yearly",
       description: t("subscriptionUi.municipalProDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingPlus"),
@@ -664,9 +664,9 @@ export default function SubscriptionPage() {
                     </div>
                     <div className="mt-3 rounded-2xl border border-[#E7EBF0] bg-white px-4 py-3">
                       <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8D99AE]">
-                        {t("subscriptionUi.municipalMonthlyAlternative")}
+                        {t("subscriptionUi.municipalAnnualOnlyLabel")}
                       </div>
-                      <div className="mt-2 text-lg font-bold text-[#2B2D42]">{plan.monthlyPrice}</div>
+                      <div className="mt-2 text-sm font-semibold text-[#2B2D42]">{t("subscriptionUi.municipalAnnualOnlyNote")}</div>
                     </div>
                   </div>
 

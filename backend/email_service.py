@@ -2,12 +2,14 @@
 import os
 import asyncio
 import logging
+from html import escape
 import resend
 
 logger = logging.getLogger(__name__)
 
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY", "")
 SENDER_EMAIL = os.environ.get("SENDER_EMAIL", "no-reply@cacaradar.es")
+ADMIN_NOTIFICATION_EMAIL = os.environ.get("ADMIN_NOTIFICATION_EMAIL") or os.environ.get("ADMIN_EMAIL", "jefe@cacaradar.es")
 
 
 def is_configured() -> bool:
@@ -112,6 +114,54 @@ async def send_subscription_update(to: str, event_type: str, details: dict) -> d
     </div>
     """
     return await send_email(to, subject, html)
+
+
+async def send_municipality_admin_notification(details: dict, event_type: str = "created") -> dict:
+    """Notify the admin when a municipality account/subscription needs setup."""
+    event_labels = {
+        "registered": "Nueva solicitud municipal",
+        "created": "Nueva suscripción municipal",
+        "activated": "Suscripción municipal activada",
+    }
+    label = event_labels.get(event_type, "Actividad municipal")
+    municipality_name = escape(str(details.get("municipality_name") or "Sin municipio"))
+    province = escape(str(details.get("province") or details.get("municipality_province") or ""))
+    contact_name = escape(str(details.get("name") or details.get("contact_name") or ""))
+    email = escape(str(details.get("email") or ""))
+    tier = escape(str(details.get("tier") or details.get("plan") or "Pendiente"))
+    product_id = escape(str(details.get("product_id") or "Pendiente"))
+    price = escape(str(details.get("price") or "Pendiente"))
+    expires = escape(str(details.get("expires") or ""))
+    created_at = escape(str(details.get("created_at") or ""))
+    admin_url = os.environ.get("FRONTEND_URL", "https://cacaradar.es").rstrip("/") + "/admin"
+
+    subject = f"Caca Radar — {label}: {municipality_name}"
+    html = f"""
+    <div style="font-family: 'Helvetica Neue', Arial, sans-serif; max-width: 560px; margin: 0 auto; padding: 32px;">
+      <div style="margin-bottom: 24px;">
+        <h1 style="color: #2B2D42; font-size: 24px; margin: 0 0 6px;">{label}</h1>
+        <p style="color: #8D99AE; font-size: 14px; margin: 0;">Caca Radar municipal dashboard setup needed</p>
+      </div>
+
+      <div style="background: #F8F9FA; border-radius: 16px; padding: 20px; margin-bottom: 20px;">
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Municipio:</strong> {municipality_name}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Provincia:</strong> {province}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Contacto:</strong> {contact_name}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Email:</strong> {email}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Plan:</strong> {tier}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Product ID:</strong> {product_id}</p>
+        <p style="color: #2B2D42; font-size: 14px; margin: 6px 0;"><strong>Precio:</strong> {price}</p>
+        {"<p style='color: #2B2D42; font-size: 14px; margin: 6px 0;'><strong>Caduca:</strong> " + expires + "</p>" if expires else ""}
+        {"<p style='color: #8D99AE; font-size: 12px; margin: 12px 0 0;'><strong>Creado:</strong> " + created_at + "</p>" if created_at else ""}
+      </div>
+
+      <div style="background: #2B2D42; border-radius: 16px; padding: 18px; text-align: center;">
+        <p style="color: white; font-size: 14px; margin: 0 0 10px;">Next step: configure or verify the custom municipal dashboard.</p>
+        <a href="{admin_url}" style="color: #FF6B6B; font-size: 15px; font-weight: 700; text-decoration: none;">Open admin dashboard</a>
+      </div>
+    </div>
+    """
+    return await send_email(ADMIN_NOTIFICATION_EMAIL, subject, html)
 
 
 async def send_admin_verification_code(to: str, code: str) -> dict:

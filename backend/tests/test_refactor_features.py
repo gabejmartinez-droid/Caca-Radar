@@ -9,7 +9,7 @@ Test suite for server.py refactor and new features:
 7. GET /api/rankings/barrios?city=Madrid works for premium users
 8. GET /api/rankings/cities/share is public
 9. GET /api/notifications returns unread notifications
-10. POST /api/municipality/subscribe returns €50/mes price
+10. POST /api/municipality/subscribe returns annual municipal subscription price
 """
 
 import pytest
@@ -219,8 +219,8 @@ class TestNotificationsEndpoint:
 class TestMunicipalitySubscription:
     """Test municipality subscription endpoint"""
     
-    def test_municipality_subscribe_returns_50_euros(self):
-        """POST /api/municipality/subscribe returns €50/mes price"""
+    def test_municipality_subscribe_returns_annual_plan(self):
+        """POST /api/municipality/subscribe returns an annual municipal subscription."""
         session = requests.Session()
         
         # Login as municipality user
@@ -231,14 +231,15 @@ class TestMunicipalitySubscription:
         assert login_response.status_code == 200
         
         # Subscribe
-        response = session.post(f"{BASE_URL}/api/municipality/subscribe", json={})
+        response = session.post(f"{BASE_URL}/api/municipality/subscribe", json={"tier": "basic"})
         assert response.status_code == 200
         data = response.json()
         
-        # Check price is €50/mes
-        assert data.get("price") == "€50/mes" or "50" in str(data.get("price", ""))
-        assert data.get("plan") == "monthly"
-        print(f"PASS: Municipality subscription returns €50/mes - got: {data}")
+        # Check subscription is annual-only
+        assert data.get("price") == "399 €/año + IVA"
+        assert data.get("plan") == "annual"
+        assert data.get("product_id") == "com.jefe.cacaradar.municipal.basic.yearly"
+        print(f"PASS: Municipality subscription returns annual plan - got: {data}")
 
 
 if __name__ == "__main__":
