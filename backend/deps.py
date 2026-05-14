@@ -442,6 +442,7 @@ class MunicipalityRegister(BaseModel):
 class AppleReceiptVerify(BaseModel):
     receipt_data: Optional[str] = None
     transaction_id: Optional[str] = None
+    product_id: Optional[str] = None
     plan: Literal["monthly", "annual"] = "monthly"
 
 class GoogleReceiptVerify(BaseModel):

@@ -3175,3 +3175,41 @@ Notes:
 - Update Municipal Pro annual price to 999 plus IVA
 ```
 
+### 2026-05-14 — Pending
+
+Release metadata:
+- Commit SHA: `4a678ac5634ee5780907ffeb9a2ae39e8dfbd6b2-dirty`
+- Deployment status: `pending`
+- Rollback target: `0ffcc2c5116910872e242c92a175de409bdb5c8e`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.114 (116)`
+- Android: `1.1.113 (115)`
+- Backend: `1.1.41-api.1`
+
+User-facing release notes:
+- Recognize Apple and Google municipal subscription IDs.
+
+Internal release notes:
+- Recognize Apple and Google municipal subscription IDs
+
+Store submission notes:
+```text
+- Recognize Apple and Google municipal subscription IDs.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 4a678ac5634ee5780907ffeb9a2ae39e8dfbd6b2-dirty
+Deployment status: pending
+Rollback target: 0ffcc2c5116910872e242c92a175de409bdb5c8e
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.114 (116)`
+• Android: `1.1.113 (115)`
+• Backend: `1.1.41-api.1`
+Notes:
+- Recognize Apple and Google municipal subscription IDs
+```
+

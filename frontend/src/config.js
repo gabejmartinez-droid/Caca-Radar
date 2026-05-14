@@ -55,6 +55,18 @@ export const GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID =
   process.env.REACT_APP_GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID || "com.jefe.cacaradar.monthly";
 export const GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID =
   process.env.REACT_APP_GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID || "com.jefe.cacaradar.yearly";
+export const APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID =
+  process.env.REACT_APP_APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID || "com.jefe.cacaradar.municipal.basic.yearly";
+export const APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID =
+  process.env.REACT_APP_APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID || "com.jefe.cacaradar.municipal.plus.yearly";
+export const APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID =
+  process.env.REACT_APP_APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID || "com.jefe.cacaradar.municipal.pro.yearly";
+export const GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID =
+  process.env.REACT_APP_GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID || "com.jefe.cacaradar.municipal.basic";
+export const GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID =
+  process.env.REACT_APP_GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID || "com.jefe.cacaradar.municipal.plus";
+export const GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID =
+  process.env.REACT_APP_GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID || "com.jefe.cacaradar.municipal.pro";
 export const PLAY_INTEGRITY_ENABLED = process.env.REACT_APP_ENABLE_PLAY_INTEGRITY === "true";
 export const PLAY_INTEGRITY_CLOUD_PROJECT_NUMBER = process.env.REACT_APP_GOOGLE_CLOUD_PROJECT_NUMBER || "";
 export const SPAIN_LOCATION_GATE_ENABLED = process.env.REACT_APP_ENABLE_SPAIN_LOCATION_GATE !== "false";

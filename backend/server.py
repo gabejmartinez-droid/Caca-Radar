@@ -323,24 +323,45 @@ MUNICIPAL_SUBSCRIPTION_TIERS = {
     "basic": {
         "label": "Municipal Básico",
         "product_id": "com.jefe.cacaradar.municipal.basic.yearly",
+        "apple_product_id": "com.jefe.cacaradar.municipal.basic.yearly",
+        "google_product_id": "com.jefe.cacaradar.municipal.basic",
         "price": "399 €/año + IVA",
         "price_amount": 399.00,
     },
     "plus": {
         "label": "Municipal Plus",
         "product_id": "com.jefe.cacaradar.municipal.plus.yearly",
+        "apple_product_id": "com.jefe.cacaradar.municipal.plus.yearly",
+        "google_product_id": "com.jefe.cacaradar.municipal.plus",
         "price": "799 €/año + IVA",
         "price_amount": 799.00,
     },
     "pro": {
         "label": "Municipal Pro",
         "product_id": "com.jefe.cacaradar.municipal.pro.yearly",
+        "apple_product_id": "com.jefe.cacaradar.municipal.pro.yearly",
+        "google_product_id": "com.jefe.cacaradar.municipal.pro",
         "price": "999 €/año + IVA",
         "price_amount": 999.00,
     },
 }
 APP_VERSIONS_PATH = Path(__file__).resolve().parent.parent / "frontend" / "src" / "appVersions.json"
 SUPPORTED_LANGUAGE_CODES = {"es", "en", "eu", "val", "ca", "de", "nl", "pl", "uk", "ru"}
+
+
+def get_municipal_subscription_tier(product_id: Optional[str]) -> tuple[Optional[str], Optional[dict]]:
+    normalized = (product_id or "").strip()
+    if not normalized:
+        return None, None
+    for tier_id, tier in MUNICIPAL_SUBSCRIPTION_TIERS.items():
+        product_ids = {
+            tier.get("product_id"),
+            tier.get("apple_product_id"),
+            tier.get("google_product_id"),
+        }
+        if normalized in product_ids:
+            return tier_id, tier
+    return None, None
 
 
 def get_frontend_url() -> str:
@@ -1704,6 +1725,71 @@ async def subscribe_user(request: Request):
     )
     return {"message": "Suscripción activada", "plan": plan, "expires": expires.isoformat(), "mock": True}
 
+
+async def activate_municipal_store_subscription(
+    user: dict,
+    *,
+    store: str,
+    tier_id: str,
+    tier: dict,
+    product_id: str,
+    expires: str,
+    transaction_id: Optional[str] = None,
+    purchase_token: Optional[str] = None,
+) -> dict:
+    updates = {
+        "municipality_subscription_active": True,
+        "municipality_subscription_type": "annual",
+        "municipality_subscription_tier": tier_id,
+        "municipality_subscription_product_id": product_id,
+        "municipality_subscription_apple_product_id": tier.get("apple_product_id"),
+        "municipality_subscription_google_product_id": tier.get("google_product_id"),
+        "municipality_subscription_price": tier["price_amount"],
+        "municipality_subscription_price_label": tier["price"],
+        "municipality_subscription_expires": expires,
+        "municipality_subscription_store": store,
+        "municipality_subscription_needs_onboarding": True,
+    }
+    if transaction_id:
+        updates["municipality_subscription_transaction_id"] = transaction_id
+    if purchase_token:
+        updates["municipality_subscription_purchase_token"] = purchase_token
+
+    await db.users.update_one({"_id": ObjectId(user["_id"])}, {"$set": updates})
+    admin_email_result = await send_municipality_admin_notification(
+        {
+            "email": user.get("email"),
+            "name": user.get("name") or user.get("username"),
+            "municipality_name": user.get("municipality_name") or "Pending onboarding",
+            "province": user.get("municipality_province") or "",
+            "tier": tier["label"],
+            "store": store,
+            "product_id": product_id,
+            "apple_product_id": tier.get("apple_product_id"),
+            "google_product_id": tier.get("google_product_id"),
+            "price": tier["price"],
+            "expires": expires,
+        },
+        event_type="activated",
+    )
+    logger.info(
+        "Municipality store subscription notification dispatched for %s via %s with status=%s",
+        user.get("email"),
+        store,
+        admin_email_result.get("status"),
+    )
+    return {
+        "message": "Suscripción municipal activada",
+        "plan": "annual",
+        "tier": tier_id,
+        "product_id": product_id,
+        "apple_product_id": tier.get("apple_product_id"),
+        "google_product_id": tier.get("google_product_id"),
+        "price": tier["price"],
+        "expires": expires,
+        "municipal": True,
+    }
+
 @api_router.post("/users/subscribe/apple")
 async def subscribe_via_apple(data: AppleReceiptVerify, request: Request):
     """Verify Apple App Store receipt and activate subscription."""
@@ -1714,6 +1800,31 @@ async def subscribe_via_apple(data: AppleReceiptVerify, request: Request):
         raise HTTPException(status_code=400, detail=f"Verificación de recibo Apple fallida: {result.get('error', 'Unknown')}")
     
     expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
+    product_id = result.get("product_id") or data.product_id or ""
+    tier_id, tier = get_municipal_subscription_tier(product_id)
+    if tier_id and tier:
+        response_data = await activate_municipal_store_subscription(
+            user,
+            store="apple",
+            tier_id=tier_id,
+            tier=tier,
+            product_id=product_id,
+            expires=expires,
+            transaction_id=data.transaction_id,
+        )
+        await db.subscription_receipts.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user["_id"],
+            "store": "apple",
+            "plan": "annual",
+            "transaction_id": data.transaction_id,
+            "product_id": product_id,
+            "municipal": True,
+            "municipality_tier": tier_id,
+            "verification_result": {k: v for k, v in result.items() if k != "error"},
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        return response_data
     
     await db.users.update_one(
         {"_id": ObjectId(user["_id"])},
@@ -1734,6 +1845,7 @@ async def subscribe_via_apple(data: AppleReceiptVerify, request: Request):
         "store": "apple",
         "plan": data.plan,
         "transaction_id": data.transaction_id,
+        "product_id": product_id,
         "verification_result": {k: v for k, v in result.items() if k != "error"},
         "created_at": datetime.now(timezone.utc).isoformat()
     })
@@ -1750,6 +1862,31 @@ async def subscribe_via_google(data: GoogleReceiptVerify, request: Request):
         raise HTTPException(status_code=400, detail=f"Verificación de recibo Google fallida: {result.get('error', 'Unknown')}")
     
     expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
+    tier_id, tier = get_municipal_subscription_tier(data.subscription_id)
+    if tier_id and tier:
+        response_data = await activate_municipal_store_subscription(
+            user,
+            store="google",
+            tier_id=tier_id,
+            tier=tier,
+            product_id=data.subscription_id,
+            expires=expires,
+            purchase_token=data.purchase_token,
+        )
+        await db.subscription_receipts.insert_one({
+            "id": str(uuid.uuid4()),
+            "user_id": user["_id"],
+            "store": "google",
+            "plan": "annual",
+            "purchase_token": data.purchase_token,
+            "subscription_id": data.subscription_id,
+            "product_id": data.subscription_id,
+            "municipal": True,
+            "municipality_tier": tier_id,
+            "verification_result": {k: v for k, v in result.items() if k != "error"},
+            "created_at": datetime.now(timezone.utc).isoformat()
+        })
+        return response_data
     
     await db.users.update_one(
         {"_id": ObjectId(user["_id"])},
@@ -3570,6 +3707,8 @@ async def subscribe_municipality(request: Request):
             "municipality_subscription_type": "annual",
             "municipality_subscription_tier": tier_id,
             "municipality_subscription_product_id": tier["product_id"],
+            "municipality_subscription_apple_product_id": tier["apple_product_id"],
+            "municipality_subscription_google_product_id": tier["google_product_id"],
             "municipality_subscription_price": tier["price_amount"],
             "municipality_subscription_price_label": tier["price"],
             "municipality_subscription_expires": expires.isoformat()
@@ -3583,6 +3722,8 @@ async def subscribe_municipality(request: Request):
             "province": user.get("municipality_province"),
             "tier": tier["label"],
             "product_id": tier["product_id"],
+            "apple_product_id": tier["apple_product_id"],
+            "google_product_id": tier["google_product_id"],
             "price": tier["price"],
             "expires": expires.isoformat(),
         },
@@ -3594,6 +3735,8 @@ async def subscribe_municipality(request: Request):
         "plan": "annual",
         "tier": tier_id,
         "product_id": tier["product_id"],
+        "apple_product_id": tier["apple_product_id"],
+        "google_product_id": tier["google_product_id"],
         "price": tier["price"],
         "expires": expires.isoformat(),
     }

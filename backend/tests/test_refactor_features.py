@@ -239,6 +239,8 @@ class TestMunicipalitySubscription:
         assert data.get("price") == "399 €/año + IVA"
         assert data.get("plan") == "annual"
         assert data.get("product_id") == "com.jefe.cacaradar.municipal.basic.yearly"
+        assert data.get("apple_product_id") == "com.jefe.cacaradar.municipal.basic.yearly"
+        assert data.get("google_product_id") == "com.jefe.cacaradar.municipal.basic"
         print(f"PASS: Municipality subscription returns annual plan - got: {data}")
 
 

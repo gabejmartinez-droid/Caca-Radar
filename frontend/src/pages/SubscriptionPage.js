@@ -10,8 +10,14 @@ import { toast } from "sonner";
 
 import {
   API,
+  APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID,
+  APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID,
+  APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID,
   APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID,
   APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID,
+  GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID,
+  GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID,
+  GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID,
   GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID,
   GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID,
 } from "../config";
@@ -103,6 +109,7 @@ export default function SubscriptionPage() {
       {
         receipt_data: purchase?.receiptData || null,
         transaction_id: purchase?.originalTransactionId || purchase?.transactionId || null,
+        product_id: productId,
         plan,
       },
       { withCredentials: !isCapacitorNative() },
@@ -341,7 +348,8 @@ export default function SubscriptionPage() {
       `Tier: ${plan.title}`,
       `Population: ${plan.population}`,
       `Annual price: ${plan.annualPrice}`,
-      `Product ID: ${plan.productId}`,
+      `Apple product ID: ${plan.appleProductId}`,
+      `Google Play product ID: ${plan.googleProductId}`,
       "Tax: + IVA",
     ].join("\n");
 
@@ -355,7 +363,8 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalBasicTitle"),
       population: t("subscriptionUi.municipalBasicPopulation"),
       annualPrice: t("subscriptionUi.municipalBasicAnnualPrice"),
-      productId: "com.jefe.cacaradar.municipal.basic.yearly",
+      appleProductId: APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID,
+      googleProductId: GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID,
       description: t("subscriptionUi.municipalBasicDescription"),
       features: [
         t("subscriptionUi.municipalFeatureVerifiedProfile"),
@@ -378,7 +387,8 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalPlusTitle"),
       population: t("subscriptionUi.municipalPlusPopulation"),
       annualPrice: t("subscriptionUi.municipalPlusAnnualPrice"),
-      productId: "com.jefe.cacaradar.municipal.plus.yearly",
+      appleProductId: APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID,
+      googleProductId: GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID,
       description: t("subscriptionUi.municipalPlusDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingBasic"),
@@ -402,7 +412,8 @@ export default function SubscriptionPage() {
       title: t("subscriptionUi.municipalProTitle"),
       population: t("subscriptionUi.municipalProPopulation"),
       annualPrice: t("subscriptionUi.municipalProAnnualPrice"),
-      productId: "com.jefe.cacaradar.municipal.pro.yearly",
+      appleProductId: APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID,
+      googleProductId: GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID,
       description: t("subscriptionUi.municipalProDescription"),
       features: [
         t("subscriptionUi.municipalFeatureEverythingPlus"),
