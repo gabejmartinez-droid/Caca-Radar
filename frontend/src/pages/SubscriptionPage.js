@@ -55,11 +55,23 @@ export default function SubscriptionPage() {
   const isNativeGoogleStore = isNativeGoogleSubscriptionsSupported();
   const isNativeStore = isNativeAppleStore || isNativeGoogleStore;
   const appleProductIds = useMemo(
-    () => [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
+    () => [
+      APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID,
+      APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID,
+    ].filter(Boolean),
     []
   );
   const googleProductIds = useMemo(
-    () => [GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID, GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID].filter(Boolean),
+    () => [
+      GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID,
+      GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID,
+    ].filter(Boolean),
     []
   );
   const monthlyProductId = isNativeGoogleStore ? GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID : APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID;
@@ -103,7 +115,12 @@ export default function SubscriptionPage() {
 
   const syncAppleSubscription = async (purchase) => {
     const productId = purchase?.productId || "";
-    const plan = productId === APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const plan = [
+      APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_BASIC_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_PLUS_PRODUCT_ID,
+      APPLE_IAP_MUNICIPAL_PRO_PRODUCT_ID,
+    ].includes(productId) ? "annual" : "monthly";
     const { data } = await axios.post(
       `${API}/users/subscribe/apple`,
       {
@@ -132,7 +149,12 @@ export default function SubscriptionPage() {
 
   const syncGoogleSubscription = async (purchase) => {
     const productId = purchase?.productId || "";
-    const plan = productId === GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID ? "annual" : "monthly";
+    const plan = [
+      GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_BASIC_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_PLUS_PRODUCT_ID,
+      GOOGLE_PLAY_MUNICIPAL_PRO_PRODUCT_ID,
+    ].includes(productId) ? "annual" : "monthly";
     const { data } = await axios.post(
       `${API}/users/subscribe/google`,
       {
@@ -162,7 +184,7 @@ export default function SubscriptionPage() {
 
   const pickPreferredAppleSubscription = (subscriptions) => {
     const matching = (subscriptions || []).filter((subscription) =>
-      [APPLE_IAP_PREMIUM_MONTHLY_PRODUCT_ID, APPLE_IAP_PREMIUM_ANNUAL_PRODUCT_ID].includes(subscription?.productId)
+      appleProductIds.includes(subscription?.productId)
     );
     if (!matching.length) {
       return null;
@@ -176,7 +198,7 @@ export default function SubscriptionPage() {
 
   const pickPreferredGoogleSubscription = (subscriptions) => {
     const matching = (subscriptions || []).filter((subscription) =>
-      [GOOGLE_PLAY_PREMIUM_MONTHLY_PRODUCT_ID, GOOGLE_PLAY_PREMIUM_ANNUAL_PRODUCT_ID].includes(subscription?.productId)
+      googleProductIds.includes(subscription?.productId)
     );
     if (!matching.length) {
       return null;
@@ -281,6 +303,56 @@ export default function SubscriptionPage() {
         return;
       }
       toast.error(detail || "Error");
+    }
+  };
+
+  const handleMunicipalSubscribe = async (plan) => {
+    if (isNativeStore && !user) {
+      toast.message(language === "en"
+        ? "Please sign in first so we can attach the municipal subscription to an account."
+        : "Inicia sesión primero para vincular la suscripción municipal a una cuenta.");
+      navigate("/login");
+      return;
+    }
+
+    if (!isNativeStore) {
+      window.location.href = buildMunicipalMailto(plan);
+      return;
+    }
+
+    const productId = isNativeGoogleStore ? plan.googleProductId : plan.appleProductId;
+    const busyKey = `municipal-${plan.id}`;
+    setPurchaseBusyPlan(busyKey);
+    try {
+      const purchase = isNativeGoogleStore
+        ? await purchaseGoogleSubscription(productId, { obfuscatedAccountId: user?.id || "" })
+        : await purchaseAppleSubscription(productId);
+
+      if (purchase?.status === "cancelled") {
+        toast.message(t("subscriptionUi.purchaseCancelled"));
+        return;
+      }
+      if (purchase?.status === "pending") {
+        toast.message(t("subscriptionUi.purchasePending"));
+        return;
+      }
+      if (purchase?.status !== "purchased") {
+        toast.error(t("subscriptionUi.purchaseUnknown"));
+        return;
+      }
+
+      if (isNativeGoogleStore) {
+        await syncGoogleSubscription({ ...purchase, productId });
+      } else {
+        await syncAppleSubscription({ ...purchase, productId });
+      }
+      await checkAuth();
+      toast.success(language === "en" ? "Municipal subscription activated" : "Suscripción municipal activada");
+    } catch (err) {
+      const detail = err.response?.data?.detail || err.message;
+      toast.error(detail || t("subscriptionUi.purchaseError"));
+    } finally {
+      setPurchaseBusyPlan("");
     }
   };
 
@@ -620,7 +692,6 @@ export default function SubscriptionPage() {
           )}
         </div>
 
-        {!isNativeStore && (
         <section className="mt-10 bg-[#2B2D42] rounded-[24px] p-6 md:p-8 text-white">
           <div className="max-w-3xl">
             <div className="flex items-center gap-2 mb-3">
@@ -638,6 +709,13 @@ export default function SubscriptionPage() {
           <div className="grid gap-4 mt-6 lg:grid-cols-3">
             {municipalPlans.map((plan) => {
               const Icon = plan.icon;
+              const nativeProductId = isNativeGoogleStore ? plan.googleProductId : plan.appleProductId;
+              const nativeProduct = storeProducts[nativeProductId];
+              const displayAnnualPrice = isNativeStore
+                ? (nativeProduct?.displayPrice || plan.annualPrice)
+                : plan.annualPrice;
+              const municipalBusy = purchaseBusyPlan === `municipal-${plan.id}`;
+              const disableMunicipalPurchaseButton = isNativeStore && (storeLoading || !nativeProduct);
               return (
                 <article
                   key={plan.id}
@@ -671,7 +749,7 @@ export default function SubscriptionPage() {
                           {t("subscriptionUi.annual")}
                         </span>
                       </div>
-                      <div className="mt-3 text-3xl font-black text-white">{plan.annualPrice}</div>
+                      <div className="mt-3 text-3xl font-black text-white">{displayAnnualPrice}</div>
                     </div>
                     <div className="mt-3 rounded-2xl border border-[#E7EBF0] bg-white px-4 py-3">
                       <div className="text-[11px] font-bold uppercase tracking-[0.18em] text-[#8D99AE]">
@@ -699,16 +777,27 @@ export default function SubscriptionPage() {
                       </p>
                     )}
                     <p className="text-xs text-[#8D99AE] leading-5">{t("subscriptionUi.municipalOnboardingContact")}</p>
-                    <Button
-                      asChild
-                      className={`w-full rounded-xl font-bold ${plan.highlighted ? "bg-[#FF6B6B] hover:bg-[#FF5252] text-white" : "bg-[#2B2D42] hover:bg-[#23253A] text-white"}`}
-                      data-testid={`municipal-plan-${plan.id}-cta`}
-                    >
-                      <a href={buildMunicipalMailto(plan)}>
-                        <Mail className="w-4 h-4" />
-                        {plan.cta}
-                      </a>
-                    </Button>
+                    {isNativeStore ? (
+                      <Button
+                        onClick={() => handleMunicipalSubscribe(plan)}
+                        disabled={disableMunicipalPurchaseButton || municipalBusy}
+                        className={`w-full rounded-xl font-bold ${plan.highlighted ? "bg-[#FF6B6B] hover:bg-[#FF5252] text-white" : "bg-[#2B2D42] hover:bg-[#23253A] text-white"}`}
+                        data-testid={`municipal-plan-${plan.id}-cta`}
+                      >
+                        {municipalBusy ? t("subscriptionUi.processingPurchase") : plan.cta}
+                      </Button>
+                    ) : (
+                      <Button
+                        asChild
+                        className={`w-full rounded-xl font-bold ${plan.highlighted ? "bg-[#FF6B6B] hover:bg-[#FF5252] text-white" : "bg-[#2B2D42] hover:bg-[#23253A] text-white"}`}
+                        data-testid={`municipal-plan-${plan.id}-cta`}
+                      >
+                        <a href={buildMunicipalMailto(plan)}>
+                          <Mail className="w-4 h-4" />
+                          {plan.cta}
+                        </a>
+                      </Button>
+                    )}
                   </div>
                 </article>
               );
@@ -717,10 +806,11 @@ export default function SubscriptionPage() {
 
           <div className="mt-5 rounded-2xl border border-white/10 bg-white/6 p-4 md:p-5">
             <p className="text-sm text-white/85 leading-6">{t("subscriptionUi.municipalConfiguredIndividually")}</p>
-            <p className="text-sm text-white/75 leading-6 mt-2">{t("subscriptionUi.municipalBillingContact")}</p>
+            <p className="text-sm text-white/75 leading-6 mt-2">
+              {isNativeStore ? t("subscriptionUi.municipalNativeQuestionsContact") : t("subscriptionUi.municipalBillingContact")}
+            </p>
           </div>
         </section>
-        )}
 
         <div className="text-center text-xs text-[#8D99AE] mt-6 space-y-2">
           <p>{isNativeStore ? storePaymentNote : t("subscriptionUi.paymentNote")}</p>

@@ -1799,9 +1799,12 @@ async def subscribe_via_apple(data: AppleReceiptVerify, request: Request):
     if not result.get("valid"):
         raise HTTPException(status_code=400, detail=f"Verificación de recibo Apple fallida: {result.get('error', 'Unknown')}")
     
-    expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
     product_id = result.get("product_id") or data.product_id or ""
     tier_id, tier = get_municipal_subscription_tier(product_id)
+    expires = result.get("expires") or (
+        datetime.now(timezone.utc)
+        + (timedelta(days=365) if (tier_id or data.plan == "annual") else timedelta(days=30))
+    ).isoformat()
     if tier_id and tier:
         response_data = await activate_municipal_store_subscription(
             user,
@@ -1861,8 +1864,11 @@ async def subscribe_via_google(data: GoogleReceiptVerify, request: Request):
     if not result.get("valid"):
         raise HTTPException(status_code=400, detail=f"Verificación de recibo Google fallida: {result.get('error', 'Unknown')}")
     
-    expires = result.get("expires") or (datetime.now(timezone.utc) + (timedelta(days=30) if data.plan == "monthly" else timedelta(days=365))).isoformat()
     tier_id, tier = get_municipal_subscription_tier(data.subscription_id)
+    expires = result.get("expires") or (
+        datetime.now(timezone.utc)
+        + (timedelta(days=365) if (tier_id or data.plan == "annual") else timedelta(days=30))
+    ).isoformat()
     if tier_id and tier:
         response_data = await activate_municipal_store_subscription(
             user,

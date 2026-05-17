@@ -3289,3 +3289,41 @@ Notes:
 - Use cacas de perro in share card accompanying text
 ```
 
+### 2026-05-17 — Pending
+
+Release metadata:
+- Commit SHA: `649c9b0109cfd24f6a24e71bf0c2cb4f5bf5ded4-dirty`
+- Deployment status: `pending`
+- Rollback target: `04eed552e3b60d548f85fa9cfebd9cb9b0996016`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.115 (117)`
+- Android: `1.1.114 (116)`
+- Backend: `1.1.44-api.1`
+
+User-facing release notes:
+- Expose municipal in-app subscriptions in native pricing screen.
+
+Internal release notes:
+- Expose municipal in-app subscriptions in native pricing screen
+
+Store submission notes:
+```text
+- Expose municipal in-app subscriptions in native pricing screen.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 649c9b0109cfd24f6a24e71bf0c2cb4f5bf5ded4-dirty
+Deployment status: pending
+Rollback target: 04eed552e3b60d548f85fa9cfebd9cb9b0996016
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.115 (117)`
+• Android: `1.1.114 (116)`
+• Backend: `1.1.44-api.1`
+Notes:
+- Expose municipal in-app subscriptions in native pricing screen
+```
+
