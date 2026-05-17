@@ -475,15 +475,18 @@ def render_share_page(*, title: str, description: str, image_url: str, share_url
     <meta property="og:title" content="{safe_title}" />
     <meta property="og:description" content="{safe_description}" />
     <meta property="og:image" content="{safe_image}" />
+    <meta property="og:image:url" content="{safe_image}" />
     <meta property="og:image:secure_url" content="{safe_image}" />
     <meta property="og:image:type" content="image/png" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="{safe_title}" />
     <meta property="og:url" content="{safe_share}" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="{safe_title}" />
     <meta name="twitter:description" content="{safe_description}" />
     <meta name="twitter:image" content="{safe_image}" />
+    <meta name="twitter:image:alt" content="{safe_title}" />
     <link rel="canonical" href="{safe_share}" />
     <style>
       body {{
@@ -3070,6 +3073,7 @@ async def api_city_rankings(request: Request):
     await archive_expired_reports()
     return await get_city_rankings(db)
 
+@api_router.head("/rankings/cities/share")
 @api_router.get("/rankings/cities/share")
 async def api_city_rankings_share(list_type: str = "dirtiest"):
     """Public shareable city ranking data (top 10 only)."""
@@ -3099,6 +3103,8 @@ async def api_city_rankings_share(list_type: str = "dirtiest"):
     }
 
 
+@api_router.head("/rankings/cities/share-image")
+@api_router.head("/rankings/cities/share-image.png")
 @api_router.get("/rankings/cities/share-image")
 @api_router.get("/rankings/cities/share-image.png")
 async def api_city_rankings_share_image(list_type: str = "dirtiest"):
@@ -3125,6 +3131,7 @@ async def api_barrio_rankings(request: Request, city: str = "Madrid"):
     await archive_expired_reports()
     return await get_barrio_rankings(db, city)
 
+@api_router.head("/rankings/barrios/share")
 @api_router.get("/rankings/barrios/share")
 async def api_barrio_rankings_share(city: str = "Madrid"):
     """Public shareable barrio ranking data (top 10 only) for a city."""
@@ -3157,6 +3164,8 @@ async def api_barrio_rankings_share(city: str = "Madrid"):
     }
 
 
+@api_router.head("/rankings/barrios/share-image")
+@api_router.head("/rankings/barrios/share-image.png")
 @api_router.get("/rankings/barrios/share-image")
 @api_router.get("/rankings/barrios/share-image.png")
 async def api_barrio_rankings_share_image(city: str = "Madrid"):
@@ -3280,6 +3289,8 @@ async def api_city_report_share(request: Request, city: str, barrio: str | None 
     }
 
 
+@api_router.head("/city-reports/share-image")
+@api_router.head("/city-reports/share-image.png")
 @api_router.get("/city-reports/share-image")
 @api_router.get("/city-reports/share-image.png")
 async def api_city_report_share_image(request: Request, city: str, barrio: str | None = None):
@@ -3298,6 +3309,8 @@ async def api_city_report_share_image(request: Request, city: str, barrio: str |
     return build_share_image_response(png, {"kind": "city-report", "city": city, "barrio": barrio, "generated_at": summary.get("generated_at")})
 
 
+@api_router.head("/share-image/location")
+@api_router.head("/share-image/location.png")
 @api_router.get("/share-image/location")
 @api_router.get("/share-image/location.png")
 async def api_location_share_image(city: str, barrio: str | None = None):
@@ -3310,18 +3323,23 @@ async def api_location_share_image(city: str, barrio: str | None = None):
     return build_share_image_response(png, {"kind": "location-share-private", "city": city, "barrio": barrio})
 
 
+@api_router.head("/share-image/location/{city_slug}")
+@api_router.head("/share-image/location/{city_slug}.png")
 @api_router.get("/share-image/location/{city_slug}")
 @api_router.get("/share-image/location/{city_slug}.png")
 async def api_location_share_image_city_slug(city_slug: str):
     return await api_location_share_image(city_slug, None)
 
 
+@api_router.head("/share-image/location/{city_slug}/{barrio_slug}")
+@api_router.head("/share-image/location/{city_slug}/{barrio_slug}.png")
 @api_router.get("/share-image/location/{city_slug}/{barrio_slug}")
 @api_router.get("/share-image/location/{city_slug}/{barrio_slug}.png")
 async def api_location_share_image_barrio_slug(city_slug: str, barrio_slug: str):
     return await api_location_share_image(city_slug, barrio_slug)
 
 
+@api_router.head("/share/location", response_class=HTMLResponse)
 @api_router.get("/share/location", response_class=HTMLResponse)
 async def api_location_share_page(city: str, barrio: str | None = None):
     city_slug = slugify_location_segment(city)
@@ -3344,16 +3362,19 @@ async def api_location_share_page(city: str, barrio: str | None = None):
     )
 
 
+@api_router.head("/share/location/{city_slug}", response_class=HTMLResponse)
 @api_router.get("/share/location/{city_slug}", response_class=HTMLResponse)
 async def api_location_share_page_city_slug(city_slug: str):
     return await api_location_share_page(city_slug, None)
 
 
+@api_router.head("/share/location/{city_slug}/{barrio_slug}", response_class=HTMLResponse)
 @api_router.get("/share/location/{city_slug}/{barrio_slug}", response_class=HTMLResponse)
 async def api_location_share_page_barrio_slug(city_slug: str, barrio_slug: str):
     return await api_location_share_page(city_slug, barrio_slug)
 
 
+@api_router.head("/share", response_class=HTMLResponse)
 @api_router.get("/share", response_class=HTMLResponse)
 async def api_public_share_page(
     kind: str,

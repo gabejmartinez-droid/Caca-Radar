@@ -3327,3 +3327,41 @@ Notes:
 - Expose municipal in-app subscriptions in native pricing screen
 ```
 
+### 2026-05-17 — Pending
+
+Release metadata:
+- Commit SHA: `98f173f72af4dfc61aa923cb77abec031e1b9dd0-dirty`
+- Deployment status: `pending`
+- Rollback target: `649c9b0109cfd24f6a24e71bf0c2cb4f5bf5ded4`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.115 (117)`
+- Android: `1.1.114 (116)`
+- Backend: `1.1.45-api.1`
+
+User-facing release notes:
+- Harden social share card previews for crawlers.
+
+Internal release notes:
+- Harden social share card previews for crawlers
+
+Store submission notes:
+```text
+- Harden social share card previews for crawlers.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 98f173f72af4dfc61aa923cb77abec031e1b9dd0-dirty
+Deployment status: pending
+Rollback target: 649c9b0109cfd24f6a24e71bf0c2cb4f5bf5ded4
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.115 (117)`
+• Android: `1.1.114 (116)`
+• Backend: `1.1.45-api.1`
+Notes:
+- Harden social share card previews for crawlers
+```
+

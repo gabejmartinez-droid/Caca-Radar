@@ -234,7 +234,7 @@ def _stat_box_png(draw, x: int, label: str, value: str, note: str, color: str, s
 
 def build_rankings_share_png(title: str, subtitle: str, rows: Iterable[dict], footer: str = "Caca Radar") -> bytes:
     if Image is not None:
-        scale = LOCATION_PNG_SCALE
+        scale = 1
         rows = list(rows)[:4]
         title_font, _, fitted_title = _fit_text(
             title,
