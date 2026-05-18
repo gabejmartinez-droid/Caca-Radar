@@ -3403,3 +3403,41 @@ Notes:
 - Prepare Wear OS companion bundle for Play Console release
 ```
 
+### 2026-05-18 — Pending
+
+Release metadata:
+- Commit SHA: `7c3d9d3e64c8890bce628ee9ed697a4edaeece51-dirty`
+- Deployment status: `pending`
+- Rollback target: `85a2d8a840cfe880a5546845097822594707ecc7`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.115 (117)`
+- Android: `1.1.116 (118)`
+- Backend: `1.1.45-api.1`
+
+User-facing release notes:
+- Sign Wear OS release bundle for Play Console upload.
+
+Internal release notes:
+- Sign Wear OS release bundle for Play Console upload
+
+Store submission notes:
+```text
+- Sign Wear OS release bundle for Play Console upload.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 7c3d9d3e64c8890bce628ee9ed697a4edaeece51-dirty
+Deployment status: pending
+Rollback target: 85a2d8a840cfe880a5546845097822594707ecc7
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.115 (117)`
+• Android: `1.1.116 (118)`
+• Backend: `1.1.45-api.1`
+Notes:
+- Sign Wear OS release bundle for Play Console upload
+```
+

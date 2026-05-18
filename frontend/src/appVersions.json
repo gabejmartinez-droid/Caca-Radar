@@ -5,8 +5,8 @@
     "build": "117"
   },
   "android": {
-    "version": "1.1.115",
-    "build": "117"
+    "version": "1.1.116",
+    "build": "118"
   },
   "backend": "1.1.45-api.1"
 }
