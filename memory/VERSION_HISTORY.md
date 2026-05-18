@@ -3365,3 +3365,41 @@ Notes:
 - Harden social share card previews for crawlers
 ```
 
+### 2026-05-18 — Pending
+
+Release metadata:
+- Commit SHA: `85a2d8a840cfe880a5546845097822594707ecc7-dirty`
+- Deployment status: `pending`
+- Rollback target: `98f173f72af4dfc61aa923cb77abec031e1b9dd0`
+
+Exact versions:
+- Web: `1.1.89-web.1`
+- iOS: `1.1.115 (117)`
+- Android: `1.1.115 (117)`
+- Backend: `1.1.45-api.1`
+
+User-facing release notes:
+- Prepare Wear OS companion bundle for Play Console release.
+
+Internal release notes:
+- Prepare Wear OS companion bundle for Play Console release
+
+Store submission notes:
+```text
+- Prepare Wear OS companion bundle for Play Console release.
+```
+
+Internal release notes block:
+```text
+Commit SHA: 85a2d8a840cfe880a5546845097822594707ecc7-dirty
+Deployment status: pending
+Rollback target: 98f173f72af4dfc61aa923cb77abec031e1b9dd0
+Versions:
+• Web: `1.1.89-web.1`
+• iOS: `1.1.115 (117)`
+• Android: `1.1.115 (117)`
+• Backend: `1.1.45-api.1`
+Notes:
+- Prepare Wear OS companion bundle for Play Console release
+```
+

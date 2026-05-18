@@ -7,11 +7,11 @@ android {
     compileSdkVersion rootProject.ext.compileSdkVersion
 
     defaultConfig {
-        applicationId "com.jefe.cacaradar.wear"
+        applicationId "com.jefe.cacaradar"
         minSdkVersion 30
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "0.1.0"
+        versionCode 100117
+        versionName "1.1.115"
     }
 
     buildFeatures {
